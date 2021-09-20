@@ -177,10 +177,6 @@ var liveNetwork = {
   name: 'livenet',
   alias: 'mainnet',
   prefix: 'ecash',
-<<<<<<< Updated upstream
-=======
-  legacyPrefix: 'bitcoincash',
->>>>>>> Stashed changes
   pubkeyhash: 0,
   privatekey: 0x80,
   scripthash: 5,
