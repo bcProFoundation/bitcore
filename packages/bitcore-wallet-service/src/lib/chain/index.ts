@@ -43,6 +43,7 @@ export interface IChain {
   checkDust(output: { amount: number; toAddress: string; valid: boolean }, opts: { outputs: any[] } & any);
   getFee(server: WalletService, wallet: IWallet, opts: { fee: number; feePerKb: number } & any);
   getBitcoreTx(txp: TxProposal, opts: { signed: boolean });
+  getBitcoreTxWithMessage(txp: TxProposal, opts: { signed: boolean }, wallet);
   convertFeePerKb(p: number, feePerKb: number);
   convertAddressToScriptPayload(address: string);
   getTokenInfo(tokenId);
@@ -125,6 +126,10 @@ class ChainProxy {
 
   getBitcoreTx(txp: TxProposal, opts = { signed: true }) {
     return this.get(txp.chain).getBitcoreTx(txp, { signed: opts.signed });
+  }
+
+  getBitcoreTxWithMessage(txp: TxProposal, wallet, opts = { signed: true }) {
+    return this.get(txp.chain).getBitcoreTxWithMessage(txp, { signed: opts.signed }, wallet);
   }
 
   convertFeePerKb(coin, p, feePerKb) {

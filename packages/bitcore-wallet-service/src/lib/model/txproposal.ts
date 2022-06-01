@@ -119,6 +119,7 @@ export class TxProposal {
   proposalSignaturePubKey: string;
   proposalSignaturePubKeySig: string;
   signingMethod: string;
+  wallet: any;
   raw?: Array<string> | string;
   nonce?: number;
   gasPrice?: number;
@@ -324,6 +325,11 @@ export class TxProposal {
 
   getRawTx() {
     const t = ChainService.getBitcoreTx(this);
+    return t.uncheckedSerialize();
+  }
+
+  getRawTxWithMessage(wallet) {
+    const t = ChainService.getBitcoreTxWithMessage(this, wallet);
     return t.uncheckedSerialize();
   }
 

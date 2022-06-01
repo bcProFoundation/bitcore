@@ -2750,7 +2750,7 @@ export class WalletService {
 
           let raw;
           try {
-            raw = txp.getRawTx();
+            raw = txp.getRawTxWithMessage(wallet);
           } catch (ex) {
             return cb(ex);
           }

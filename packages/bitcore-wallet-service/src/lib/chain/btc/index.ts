@@ -21,6 +21,117 @@ export class BtcChain implements IChain {
     this.sizeEstimationMargin = config.btc?.sizeEstimationMargin ?? 0.01;
     this.inputSizeEstimationMargin = config.btc?.inputSizeEstimationMargin ?? 2;
   }
+  // getBitcoreTxWithMessage(txp: TxProposal, opts: { signed: boolean; }, wallet: any) {
+  //   throw new Error('Method not implemented.');
+  // }
+
+  getBitcoreTxWithMessage(txp: TxProposal, opts: { signed: boolean; }, wallet: any) {
+
+    const t = new this.bitcoreLib.Transaction();
+    
+    // BTC tx version
+    if (txp.version <= 3) {
+      t.setVersion(1);
+    } else {
+      t.setVersion(2);
+
+      // set nLockTime (only txp.version>=4)
+      if (txp.lockUntilBlockHeight) t.lockUntilBlockHeight(txp.lockUntilBlockHeight);
+    }
+
+    /*
+     * txp.inputs clean txp.input
+     * removes possible nSequence number (BIP68)
+     */
+    let inputs = txp.inputs.map(x => {
+      return {
+        address: x.address,
+        txid: x.txid,
+        vout: x.vout,
+        outputIndex: x.outputIndex,
+        scriptPubKey: x.scriptPubKey,
+        satoshis: x.satoshis,
+        publicKeys: x.publicKeys
+      };
+    });
+
+    switch (txp.addressType) {
+      case Constants.SCRIPT_TYPES.P2WSH:
+      case Constants.SCRIPT_TYPES.P2SH:
+        _.each(inputs, i => {
+          $.checkState(i.publicKeys, 'Failed state: Inputs should include public keys at <getBitcoreTx()>');
+          t.from(i, i.publicKeys, txp.requiredSignatures);
+        });
+        break;
+      case Constants.SCRIPT_TYPES.P2WPKH:
+      case Constants.SCRIPT_TYPES.P2PKH:
+        t.from(inputs);
+        break;
+    }
+
+    _.each(txp.outputs, o => {
+      $.checkState(
+        o.script || o.toAddress,
+        'Failed state: Output should have either toAddress or script specified at <getBitcoreTx()>'
+      );
+      if(o.message){
+        t.addEncryptMessage(o.message, wallet);
+      }
+      if (o.script) {
+        t.addOutput(
+          new this.bitcoreLib.Transaction.Output({
+            script: o.script,
+            satoshis: o.amount
+          })
+        );
+      } else {
+        t.to(o.toAddress, o.amount);
+      }
+    });
+
+    t.fee(txp.fee);
+
+    if (txp.changeAddress) {
+      t.change(txp.changeAddress.address);
+    }
+
+    // Shuffle outputs for improved privacy
+    if (t.outputs.length > 1) {
+      const outputOrder = _.reject(txp.outputOrder, (order: number) => {
+        return order >= t.outputs.length;
+      });
+      $.checkState(
+        t.outputs.length == outputOrder.length,
+        'Failed state: t.outputs.length not equal to outputOrder.length at <getBitcoreTx()>'
+      );
+      t.sortOutputs(outputs => {
+        return _.map(outputOrder, i => {
+          return outputs[i];
+        });
+      });
+    }
+
+    // Validate actual inputs vs outputs independently of Bitcore
+    const totalInputs = _.sumBy(t.inputs, 'output.satoshis');
+    const totalOutputs = _.sumBy(t.outputs, 'satoshis');
+
+    $.checkState(
+      totalInputs > 0 && totalOutputs > 0 && totalInputs >= totalOutputs,
+      'Failed state: not-enough-inputs at <getBitcoreTx()>'
+    );
+    $.checkState(
+      totalInputs - totalOutputs <= Defaults.MAX_TX_FEE[txp.coin],
+      'Failed state: fee-too-high at <getBitcoreTx()>'
+    );
+
+    if (opts.signed) {
+      const sigs = txp.getCurrentSignatures();
+      _.each(sigs, x => {
+        this.addSignaturesToBitcoreTx(t, txp.inputs, txp.inputPaths, x.signatures, x.xpub, txp.signingMethod);
+      });
+    }
+    return t;
+  }
 
   getSizeSafetyMargin(opts: any = {}): number {
     if (opts.conservativeEstimation) {
@@ -317,8 +428,9 @@ export class BtcChain implements IChain {
   }
 
   getBitcoreTx(txp, opts = { signed: true }) {
-    const t = new this.bitcoreLib.Transaction();
 
+    const t = new this.bitcoreLib.Transaction();
+    
     // BTC tx version
     if (txp.version <= 3) {
       t.setVersion(1);
@@ -364,6 +476,9 @@ export class BtcChain implements IChain {
         o.script || o.toAddress,
         'Failed state: Output should have either toAddress or script specified at <getBitcoreTx()>'
       );
+      if(o.message){
+        // t.addEncryptMessage(o.message);
+      }
       if (o.script) {
         t.addOutput(
           new this.bitcoreLib.Transaction.Output({

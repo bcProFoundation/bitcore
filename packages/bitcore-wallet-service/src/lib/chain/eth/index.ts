@@ -1,6 +1,7 @@
 import { Transactions, Validation } from '@abcpros/crypto-wallet-core';
 import { Web3 } from '@abcpros/crypto-wallet-core';
 import _ from 'lodash';
+import { TxProposal } from 'src/lib/model';
 import { IAddress } from 'src/lib/model/address';
 import { IChain, INotificationData } from '..';
 import { ClientError } from '../../errors/clienterror';
@@ -31,6 +32,9 @@ function getInvoiceDecoder() {
 }
 
 export class EthChain implements IChain {
+  getBitcoreTxWithMessage(txp: TxProposal, opts: { signed: boolean; }, wallet: any) {
+    throw new Error('Method not implemented.');
+  }
   /**
    * Converts Bitcore Balance Response.
    * @param {Object} bitcoreBalance - { unconfirmed, confirmed, balance }

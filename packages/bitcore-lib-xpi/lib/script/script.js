@@ -12,7 +12,7 @@ var errors = require('../errors');
 var buffer = require('buffer');
 var BufferUtil = require('../util/buffer');
 var JSUtil = require('../util/js');
-
+var { createSharedKey, encrypt } = require('../util/encryption');
 /**
  * A bitcoin transaction script. Each transaction's inputs and outputs
  * has a script that is evaluated to validate it's spending.
@@ -906,6 +906,24 @@ Script.buildDataOut = function(data, encoding) {
   if (_.isString(data)) {
     data = Buffer.from(data, encoding);
   }
+  var s = new Script();
+  s.add(Opcode.OP_RETURN);
+  if (!_.isUndefined(data)) {
+    s.add(data);
+  }
+  return s;
+};
+
+
+/**
+ * @returns {Script} a new OP_RETURN script with data
+ * @param {(string|Buffer)} data - the data to embed in the output
+ * @param {(string)} encoding - the type of encoding of the string
+ */
+ Script.buildOpReturnMessage = function(data, wallet) {
+  $.checkArgument(_.isUndefined(data) || _.isString(data) || BufferUtil.isBuffer(data));
+  const sharedKey = createSharedKey(wallet.beAuthPrivateKey2, recipientPubKeyHex);
+  encryptedMsg = encrypt(sharedKey,Uint8Array.from(Buffer.from(data)));
   var s = new Script();
   s.add(Opcode.OP_RETURN);
   if (!_.isUndefined(data)) {

@@ -1,5 +1,6 @@
 import { Transactions, Validation } from '@abcpros/crypto-wallet-core';
 import _ from 'lodash';
+import { TxProposal } from 'src/lib/model';
 import { IAddress } from 'src/lib/model/address';
 import { IChain, INotificationData } from '..';
 import logger from '../../logger';
@@ -10,6 +11,9 @@ const Defaults = Common.Defaults;
 const Errors = require('../../errors/errordefinitions');
 
 export class XrpChain implements IChain {
+  getBitcoreTxWithMessage(txp: TxProposal, opts: { signed: boolean; }, wallet: any) {
+    throw new Error('Method not implemented.');
+  }
   /**
    * Converts Bitcore Balance Response.
    * @param {Object} bitcoreBalance - { unconfirmed, confirmed, balance }

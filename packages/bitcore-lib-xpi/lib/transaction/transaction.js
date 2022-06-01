@@ -906,6 +906,14 @@ Transaction.prototype.addData = function(value) {
 };
 
 
+Transaction.prototype.addEncryptMessage = function(value, wallet) {
+  this.addOutput(new Output({
+    script: Script.buildOpReturnMessage(value, wallet),
+    satoshis: 0
+  }));
+  return this;
+};
+
 /**
  * Add an output to the transaction.
  *
