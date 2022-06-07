@@ -871,6 +871,15 @@ export class ExpressApp {
       });
     });
 
+    router.post('/v1/fetchRencentNotification/', (req, res) => {
+      getServerWithAuth(req, res, server => {
+        server.fetchNotificationsByWalletId(req.body, (err, notifications) => {
+          if (err) return returnError(err, res, req);
+          res.json(notifications);
+        });
+      });
+    });
+
     router.get('/v1/utxos/', (req, res) => {
       const opts: { addresses?: string[] } = {};
       const addresses = req.query.addresses;

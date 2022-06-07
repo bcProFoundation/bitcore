@@ -4,11 +4,11 @@ import _ from 'lodash';
 import 'source-map-support/register';
 
 import request from 'request';
+import { ChainService } from './chain';
 import logger from './logger';
 import { MessageBroker } from './messagebroker';
 import { INotification, IPreferences } from './model';
 import { Storage } from './storage';
-import { ChainService } from './chain';
 
 const Mustache = require('mustache');
 const defaultRequest = require('request');
@@ -453,13 +453,22 @@ export class PushNotificationsService {
           const caculateAmountToken = (amount, decimals) => {
             return amount / Math.pow(10, decimals);
           };
+          notification.data.amount = caculateAmountToken(data.amount, recipient.tokenDecimals);
           data.amount = caculateAmountToken(data.amount, recipient.tokenDecimals) + ' ' + label;
         } else {
+          notification.data.amount = parseFloat(Utils.formatAmount(+data.amount, unit));
           data.amount = Utils.formatAmount(+data.amount, unit) + ' ' + label;
         }
       } catch (ex) {
         return cb(new Error('Could not format amount' + ex));
       }
+    }
+
+    if (notification.type === 'NewIncomingTx') {
+      recipient.tokenId ? notification.data.tokenId : null;
+      this.storage.updateRecordNotification(notification, () => {
+        logger.info('Update record notification success');
+      });
     }
 
     this.storage.fetchWallet(notification.walletId, (err, wallet) => {

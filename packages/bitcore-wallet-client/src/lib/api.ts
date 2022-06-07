@@ -1366,6 +1366,26 @@ export class API extends EventEmitter {
   // *
   // * @param {Function} cb
   // * @param {Object} opts
+  // * @returns {Callback} cb - Return error or the list of utxos
+  // */
+  fetchRecentNotificationsByWalletId(opts, cb) {
+    $.checkState(
+      this.credentials && this.credentials.isComplete(),
+      'Failed state: this.credentials at <fetchRecentNotificationsByWalletId>'
+    );
+    opts = opts || {};
+    var url = '/v1/fetchRencentNotification/';
+    this.request.post(url, opts, (err, data) => {
+      if (err) return cb(err);
+      return cb(null, data);
+    });
+  }
+
+  // /**
+  // * Gets list of utxos
+  // *
+  // * @param {Function} cb
+  // * @param {Object} opts
   // * @param {Array} opts.addresses (optional) - List of addresses from where to fetch UTXOs.
   // * @returns {Callback} cb - Return error or the list of utxos
   // */

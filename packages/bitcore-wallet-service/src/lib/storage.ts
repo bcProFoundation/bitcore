@@ -41,7 +41,7 @@ const collections = {
   TX_CONFIRMATION_SUBS: 'tx_confirmation_subs',
   LOCKS: 'locks',
   DONATION: 'donation',
-  TOKEN_INFO: 'token_info',
+  TOKEN_INFO: 'token_info'
 };
 
 const Common = require('./common');
@@ -677,6 +677,29 @@ export class Storage {
       });
   }
 
+  fetchNotificationsByWalletId(listWalletId, type, limitNumber, cb) {
+    this.db
+      .collection(collections.NOTIFICATIONS)
+      .find({
+        walletId: {
+          $in: listWalletId
+        },
+        type: type
+      })
+      .sort({
+        createdOn: -1
+      })
+      .limit(limitNumber)
+      .toArray((err, result) => {
+        if (err) return cb(err);
+        if (!result) return cb();
+        const notifications = _.map(result, notification => {
+          return Notification.fromObj(notification);
+        });
+        return cb(null, notifications);
+      });
+  }
+
   // TODO: remove walletId from signature
   storeNotification(walletId, notification, cb) {
     // This should only happens in certain tests.
@@ -689,6 +712,28 @@ export class Storage {
       notification,
       {
         w: 1
+      },
+      cb
+    );
+  }
+
+  // Update record notifications
+  updateRecordNotification(notification, cb) {
+    // This should only happens in certain tests.
+    if (!this.db) {
+      logger.warn('Trying to store a notification with close DB', notification);
+      return;
+    }
+
+    this.db.collection(collections.NOTIFICATIONS).updateOne(
+      {
+        id: notification.id,
+        type: notification.type
+      },
+      { $set: {
+        'data.amount': notification.data.amount,
+        'data.tokenId': notification.data.tokenId
+        }
       },
       cb
     );
