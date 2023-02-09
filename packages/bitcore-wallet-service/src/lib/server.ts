@@ -5112,6 +5112,7 @@ export class WalletService {
   }
 
   async createOrder(opts, cb) {
+    logger.debug('calling create order');
     try {
       if (!clientsFund) {
         throw new Error('Not found funding');
@@ -5121,7 +5122,9 @@ export class WalletService {
       }
       const orderInfo = Order.create(opts);
       const fromCoinCode = orderInfo.isFromToken ? 'xec' : orderInfo.fromCoinCode;
+      logger.debug('before get configswap');
       const configSwap = await this.getConfigSwapWithPromise();
+      logger.debug('before check valid order');
       const isValidOrder = await this.checkRequirementBeforeQueueExcetue(configSwap, orderInfo);
       if (isValidOrder === true) {
         if (orderInfo.isFromToken) {
@@ -5142,6 +5145,7 @@ export class WalletService {
         const coinConfigSelected = configSwap.coinReceive.find(
           coin => coin.code.toLowerCase() === orderInfo.toCoinCode.toLowerCase()
         );
+        logger.debug('before create address');
         this.createAddress(
           {
             ignoreMaxGap: true
@@ -5167,8 +5171,10 @@ export class WalletService {
             });
           }
         );
+        logger.debug('finish create order');
       }
     } catch (e) {
+      logger.debug("error create order: ", e);
       return cb(e);
     }
   }
@@ -7312,6 +7318,7 @@ export class WalletService {
    * @returns {Array} rates - The exchange rate.
    */
   async getOrderInfo(opts, cb) {
+    logger.debug('calling getOrderInfo');
     if (!opts.id) {
       return cb(new Error('Missing order id'));
     }
@@ -7319,9 +7326,12 @@ export class WalletService {
       return cb(new Error('Can not find funding wallet'));
     }
     try {
+      logger.debug('calling getOrderInfo - before calling config swap');
       const configSwap = await this.getConfigSwapWithPromise();
       if (configSwap) {
+        logger.debug('calling getOrderInfo - after calling config swap');
         this.storage.fetchOrderinfoById(opts.id, (err, result) => {
+          logger.debug('calling getOrderInfo - after calling fetchOrderinfoById');
           if (err) return cb(err);
           const orderInfo = Order.fromObj(result);
           const configCoinSelected = configSwap.coinSwap.find(

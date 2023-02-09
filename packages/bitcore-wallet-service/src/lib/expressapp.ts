@@ -1715,6 +1715,7 @@ export class ExpressApp {
       const opts = {
         id: req.params['id']
       };
+      logger.debug("expressapp calling get order: ", opts);
       try {
         server = getServer(req, res);
       } catch (ex) {
@@ -1748,6 +1749,7 @@ export class ExpressApp {
       } catch (ex) {
         return returnError(ex, res, req);
       }
+      logger.debug("expressapp calling post order: ", req.body);
       server.createOrder(req.body, (err, order) => {
         if (err) return returnError(err, res, req);
         res.json(order);
