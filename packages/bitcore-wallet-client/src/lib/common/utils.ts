@@ -37,8 +37,9 @@ const crypto = Bitcore.crypto;
 let SJCL = {};
 
 const MAX_DECIMAL_ANY_COIN = 18; // more that 14 gives rounding errors
-
 export class Utils {
+  static encryptMessageOnchain(message, privKey, addressTo) {}
+
   static getChain(coin: string): string {
     let normalizedChain = coin.toUpperCase();
     if (Constants.ERC20.includes(coin)) {
@@ -345,10 +346,12 @@ export class Utils {
           t.from(txp.inputs);
           break;
       }
-
       if (txp.toAddress && txp.amount && !txp.outputs) {
         t.to(txp.toAddress, txp.amount);
       } else if (txp.outputs) {
+        if (txp.messageOnChain) {
+          t.addOnchainMessage(txp.messageOnChain);
+        }
         _.each(txp.outputs, o => {
           $.checkState(
             o.script || o.toAddress,
@@ -370,6 +373,11 @@ export class Utils {
       t.fee(txp.fee);
       t.change(txp.changeAddress.address);
 
+      // backup opreturnOutput for checking other output
+      let opReturnOutput = null;
+      if (txp.messageOnChain) {
+        opReturnOutput = t.outputs.shift();
+      }
       // Shuffle outputs for improved privacy
       if (t.outputs.length > 1) {
         var outputOrder = _.reject(txp.outputOrder, order => {
@@ -411,6 +419,10 @@ export class Utils {
         'Failed state: totalInputs - totalOutputs <= Defaults.MAX_TX_FEE(coin) at buildTx'
       );
 
+      // Return opreturnOuput after checking other output
+      if (opReturnOutput) {
+        t.outputs.unshift(opReturnOutput);
+      }
       return t;
     } else {
       const {
