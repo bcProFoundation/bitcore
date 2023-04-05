@@ -242,7 +242,7 @@ export class Key {
     }
   }
 
-  toObj = function () {
+  toObj = function() {
     const ret = {
       xPrivKey: this.xPrivKey,
       xPrivKeyEncrypted: this.xPrivKeyEncrypted,
@@ -262,11 +262,11 @@ export class Key {
     return _.clone(ret);
   };
 
-  isPrivKeyEncrypted = function () {
+  isPrivKeyEncrypted = function() {
     return !!this.xPrivKeyEncrypted && !this.xPrivKey;
   };
 
-  checkPassword = function (password) {
+  checkPassword = function(password) {
     if (this.isPrivKeyEncrypted()) {
       try {
         sjcl.decrypt(password, this.xPrivKeyEncrypted);
@@ -278,7 +278,7 @@ export class Key {
     return null;
   };
 
-  get = function (password) {
+  get = function(password) {
     let keys: any = {};
     let fingerPrintUpdated = false;
 
@@ -314,7 +314,7 @@ export class Key {
     return keys;
   };
 
-  encrypt = function (password, opts) {
+  encrypt = function(password, opts) {
     if (this.xPrivKeyEncrypted)
       throw new Error('Private key already encrypted');
 
@@ -330,7 +330,7 @@ export class Key {
     this.mnemonic = null;
   };
 
-  decrypt = function (password) {
+  decrypt = function(password) {
     if (!this.xPrivKeyEncrypted)
       throw new Error('Private key is not encrypted');
 
@@ -347,7 +347,7 @@ export class Key {
     }
   };
 
-  derive = function (password, path) {
+  derive = function(password, path) {
     $.checkArgument(path, 'no path at derive()');
     var xPrivKey = new Bitcore.HDPrivateKey(
       this.get(password).xPrivKey,
@@ -359,11 +359,11 @@ export class Key {
     return deriveFn(path);
   };
 
-  _checkCoin = function (coin) {
+  _checkCoin = function(coin) {
     if (!_.includes(Constants.COINS, coin)) throw new Error('Invalid coin');
   };
 
-  _checkNetwork = function (network) {
+  _checkNetwork = function(network) {
     if (!_.includes(['livenet', 'testnet'], network))
       throw new Error('Invalid network');
   };
@@ -374,7 +374,7 @@ export class Key {
    * BIP45
    */
 
-  getBaseAddressDerivationPath = function (opts) {
+  getBaseAddressDerivationPath = function(opts) {
     $.checkArgument(opts, 'Need to provide options');
     $.checkArgument(opts.n >= 1, 'n need to be >=1');
 
@@ -426,7 +426,7 @@ export class Key {
    * opts.n
    */
 
-  createCredentials = function (password, opts) {
+  createCredentials = function(password, opts) {
     opts = opts || {};
 
     if (password) $.shouldBeString(password, 'provide password');
@@ -478,7 +478,7 @@ export class Key {
    * opts.requestPrivKey
    */
 
-  createAccess = function (password, opts) {
+  createAccess = function(password, opts) {
     opts = opts || {};
     $.shouldBeString(opts.path);
 
@@ -495,7 +495,7 @@ export class Key {
     };
   };
 
-  sign = function (rootPath, txp, password, cb) {
+  sign = function(rootPath, txp, password, cb) {
     $.shouldBeString(rootPath);
     if (this.isPrivKeyEncrypted() && !password) {
       return cb(new Errors.ENCRYPTED_PRIVATE_KEY());
@@ -509,7 +509,7 @@ export class Key {
     var t = Utils.buildTx(txp);
 
     if (Constants.UTXO_COINS.includes(txp.coin)) {
-      _.each(txp.inputs, function (i) {
+      _.each(txp.inputs, function(i) {
         $.checkState(
           i.path,
           'Input derivation path not available (signing transaction)'
@@ -520,13 +520,13 @@ export class Key {
         }
       });
 
-      var signatures = _.map(privs, function (priv, i) {
+      var signatures = _.map(privs, function(priv, i) {
         return t.getSignatures(priv, undefined, txp.signingMethod);
       });
 
       signatures = _.map(
         _.sortBy(_.flatten(signatures), 'inputIndex'),
-        function (s) {
+        function(s) {
           return s.signature.toDER(txp.signingMethod).toString('hex');
         }
       );

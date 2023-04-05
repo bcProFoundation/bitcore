@@ -1,3 +1,5 @@
+import * as cluster2 from 'cluster';
+import cluster from 'cluster';
 import { EventEmitter } from 'events';
 import config from '../config';
 import { LoggifyClass } from '../decorators/Loggify';
@@ -5,8 +7,6 @@ import logger from '../logger';
 import { CallbackType } from '../types/Callback';
 import { WorkerType } from '../types/Worker';
 import parseArgv from '../utils/parseArgv';
-import * as cluster2 from 'cluster'
-import cluster from 'cluster';
 
 let args = parseArgv([], ['DEBUG']);
 
