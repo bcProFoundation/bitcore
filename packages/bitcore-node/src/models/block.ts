@@ -2,7 +2,7 @@ import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
 import { StorageService } from '../services/storage';
 import { SpentHeightIndicators } from '../types/Coin';
-import { BitcoinBlockType, BitcoinHeaderObj } from '../types/namespaces/Bitcoin';
+import { BitcoinBlockType2, BitcoinHeaderObj } from '../types/namespaces/Bitcoin';
 import { TransformOptions } from '../types/TransformOptions';
 import { MongoBound } from './base';
 import { BaseBlock, IBlock } from './baseBlock';
@@ -24,7 +24,7 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
   }
 
   async addBlock(params: {
-    block: BitcoinBlockType;
+    block: BitcoinBlockType2;
     parentChain?: string;
     forkHeight?: number;
     initialSyncComplete: boolean;
@@ -43,7 +43,7 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
   }
 
   async processBlock(params: {
-    block: BitcoinBlockType;
+    block: BitcoinBlockType2;
     parentChain?: string;
     forkHeight?: number;
     initialSyncComplete: boolean;
@@ -86,7 +86,7 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
     await this.collection.updateOne({ hash: convertedBlock.hash, chain, network }, { $set: { processed: true } });
   }
 
-  async getBlockOp(params: { block: BitcoinBlockType; chain: string; network: string }) {
+  async getBlockOp(params: { block: BitcoinBlockType2; chain: string; network: string }) {
     const { block, chain, network } = params;
     const header = block.header.toObject();
     const blockTime = header.time * 1000;

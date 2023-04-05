@@ -10,7 +10,7 @@ const services: Array<any> = [];
 
 export const P2pWorker = async () => {
   process.on('unhandledRejection', error => {
-    console.error('Unhandled Rejection at:', error.stack || error);
+    console.error('Unhandled Rejection at:', (error! as any).stack || error);
     stop();
   });
   process.on('SIGTERM', stop);

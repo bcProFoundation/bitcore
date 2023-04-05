@@ -15,7 +15,7 @@ var packageInfo = require('../../../package.json');
  * the type of node. The remote node will respond with its version, and no
  * communication is possible until both peers have exchanged their versions.
  *
- * @see https://en.bitcoin.it/wiki/Protocol_documentation#version
+ * @see https://en.bitcoin.it/wiki/Protocol_documentationversion
  * @param {Object=} arg - properties for the version message
  * @param {Buffer=} arg.nonce - a random 8 byte buffer
  * @param {Number=} arg.version - protocol version of the client

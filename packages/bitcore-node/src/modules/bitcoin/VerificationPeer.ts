@@ -176,8 +176,8 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       return { success, errors };
     }
 
-    const blockTxids = blockTxs.map(t => t.txid);
-    const firstHash = blockTxs[0] ? blockTxs[0].blockHash : block!.hash;
+    const blockTxids = blockTxs ? blockTxs.map(t => t.txid) : null;
+    const firstHash = blockTxs && blockTxs[0] ? blockTxs[0].blockHash : block!.hash;
     const [coinsForTx, mempoolTxs, blocksForHash, blocksForHeight, p2pBlock] = await Promise.all([
       CoinStorage.collection.find({ chain, network, mintTxid: { $in: blockTxids } }).toArray(),
       TransactionStorage.collection.find({ chain, network, blockHeight: -1, txid: { $in: blockTxids } }).toArray(),
@@ -204,13 +204,13 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
     const missingPrevBlockHash = !block.previousBlockHash;
     const missingData = missingNextBlockHash || missingPrevBlockHash || missingLinearData;
 
-    if (!block || block.transactionCount != blockTxs.length || missingData) {
+    if (!block || block.transactionCount != blockTxs!.length || missingData) {
       success = false;
       const error = {
         model: 'block',
         err: true,
         type: 'CORRUPTED_BLOCK',
-        payload: { blockNum, txCount: block.transactionCount, foundTxs: blockTxs.length }
+        payload: { blockNum, txCount: block.transactionCount, foundTxs: blockTxs!.length }
       };
 
       errors.push(error);
@@ -270,7 +270,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
     }
 
     const seenTxCoins = {} as { [txid: string]: ICoin[] };
-    for (let tx of blockTxs) {
+    for (let tx of blockTxs!) {
       if (tx.fee < 0) {
         success = false;
         const error = { model: 'transaction', err: true, type: 'NEG_FEE', payload: { tx, blockNum } };
@@ -383,8 +383,8 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }
     }
     // blocks with same hash
-    if (blockTxs.length > 0) {
-      const hashFromTx = blockTxs[0].blockHash;
+    if (blockTxs!.length > 0) {
+      const hashFromTx = blockTxs![0].blockHash;
       if (blocksForHash > 1) {
         success = false;
         const error = { model: 'block', err: true, type: 'DUPE_BLOCKHASH', payload: { hash: hashFromTx, blockNum } };

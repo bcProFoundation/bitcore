@@ -1,4 +1,4 @@
-import cluster = require('cluster');
+import cluster from 'cluster';
 import 'source-map-support/register';
 import { Modules } from '../modules';
 import { Api } from '../services/api';
@@ -13,7 +13,7 @@ const services: Array<any> = [];
 
 export const FullClusteredWorker = async () => {
   process.on('unhandledRejection', error => {
-    console.error('Unhandled Rejection at:', error.stack || error);
+    console.error('Unhandled Rejection at:', (error as any).stack || error);
     stop();
   });
   process.on('SIGTERM', stop);

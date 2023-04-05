@@ -1,5 +1,5 @@
 import { StorageService } from '../services/storage';
-import { IBlock } from '../types/Block';
+import * as Block from '../types/Block';
 import { ChainNetwork } from '../types/ChainNetwork';
 import { TransformOptions } from '../types/TransformOptions';
 import { BaseModel, MongoBound } from './base';
@@ -20,7 +20,7 @@ export interface IBlock {
   processed: boolean;
 }
 
-export abstract class BaseBlock<T extends IBlock> extends BaseModel<T> {
+export abstract class BaseBlock<T extends Block.IBlock> extends BaseModel<T> {
   constructor(storage?: StorageService) {
     super('blocks', storage);
   }
@@ -47,12 +47,12 @@ export abstract class BaseBlock<T extends IBlock> extends BaseModel<T> {
 
   async getLocalTip({ chain, network }) {
     const tip = await this.collection.findOne({ chain, network, processed: true }, { sort: { height: -1 } });
-    return tip as IBlock;
+    return tip as Block.IBlock;
   }
 
   public async validateLocatorHashes(params: ChainNetwork) {
     const { chain, network } = params;
-    let headers = new Array<IBlock>();
+    let headers = new Array<Block.IBlock>();
     const locatorBlocks = await this.collection
       .find({
         processed: true,

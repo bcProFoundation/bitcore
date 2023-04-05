@@ -1,4 +1,3 @@
-import cluster from 'cluster';
 import { EventEmitter } from 'events';
 import config from '../config';
 import { LoggifyClass } from '../decorators/Loggify';
@@ -6,19 +5,21 @@ import logger from '../logger';
 import { CallbackType } from '../types/Callback';
 import { WorkerType } from '../types/Worker';
 import parseArgv from '../utils/parseArgv';
+import * as cluster2 from 'cluster'
+import cluster from 'cluster';
 
 let args = parseArgv([], ['DEBUG']);
 
 @LoggifyClass
 export class WorkerService extends EventEmitter {
   workers = new Array<{
-    worker: cluster.Worker;
+    worker: cluster2.Worker;
     active: boolean;
     started: Promise<any>;
   }>();
 
   async start() {
-    if (cluster.isMaster) {
+    if (cluster.isPrimary) {
       logger.verbose(`Master ${process.pid} is running`);
       cluster.on('exit', (worker: WorkerType) => {
         logger.warn(`worker ${worker.process.pid} stopped`);
@@ -31,7 +32,7 @@ export class WorkerService extends EventEmitter {
           newWorker.on('message', (msg: any) => {
             this.emit(msg.id, msg);
           });
-          let started = new Promise(resolve => {
+          let started = new Promise<void>(resolve => {
             newWorker.on('listening', () => {
               resolve();
             });

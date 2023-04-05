@@ -7,7 +7,7 @@ import { ChainStateProvider } from '../../providers/chain-state';
 import { Libs } from '../../providers/libs';
 import { BaseP2PWorker } from '../../services/p2p';
 import { SpentHeightIndicators } from '../../types/Coin';
-import { BitcoinBlockType, BitcoinHeaderObj, BitcoinTransaction } from '../../types/namespaces/Bitcoin';
+import { BitcoinBlockType2, BitcoinHeaderObj, BitcoinTransaction } from '../../types/namespaces/Bitcoin';
 import { wait } from '../../utils/wait';
 
 export class DogecoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
@@ -210,8 +210,8 @@ export class DogecoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
   public async getBlock(hash: string) {
     logger.debug('Getting block, hash:', hash);
     let received = false;
-    return new Promise<BitcoinBlockType>(async resolve => {
-      this.events.once(hash, (block: BitcoinBlockType) => {
+    return new Promise<BitcoinBlockType2>(async resolve => {
+      this.events.once(hash, (block: BitcoinBlockType2) => {
         logger.debug('Received block, hash:', hash);
         received = true;
         resolve(block);
@@ -233,7 +233,7 @@ export class DogecoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
     return best;
   }
 
-  async processBlock(block: BitcoinBlockType): Promise<any> {
+  async processBlock(block: BitcoinBlockType2): Promise<any> {
     await this.blockModel.addBlock({
       chain: this.chain,
       network: this.network,

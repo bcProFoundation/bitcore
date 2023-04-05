@@ -7,7 +7,7 @@ const services: Array<any> = [];
 
 export const PruningWorker = async () => {
   process.on('unhandledRejection', error => {
-    console.error('Unhandled Rejection at:', error.stack || error);
+    console.error('Unhandled Rejection at:', (error as any).stack || error);
     stop();
   });
   process.on('SIGTERM', stop);

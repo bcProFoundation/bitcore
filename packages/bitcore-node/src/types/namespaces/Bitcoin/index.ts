@@ -8,10 +8,10 @@ import {
   BitcoinTransactionType
 } from './Transaction';
 
-export type BitcoinBlockType = BitcoinBlockType;
+export type BitcoinBlockType2 = BitcoinBlockType;
 export type BitcoinTransaction = BitcoinTransactionType;
-export type BitcoinScript = BitcoinScript;
-export type BitcoinAddress = BitcoinAddress;
+export type BitcoinScript2 = BitcoinScript;
+export type BitcoinAddress2 = BitcoinAddress;
 
 export type TransactionOutput = BitcoinOutput;
 export type TransactionInput = BitcoinInput;

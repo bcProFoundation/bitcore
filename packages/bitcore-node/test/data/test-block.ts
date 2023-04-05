@@ -1,6 +1,6 @@
-import { BitcoinBlockType } from '../../src/types/namespaces/Bitcoin';
+import { BitcoinBlockType2 } from '../../src/types/namespaces/Bitcoin';
 import { TEST_TX, TEST_TX_1, TEST_TX_2, TEST_TX_3 } from './test-tx';
-export const TEST_BLOCK: BitcoinBlockType = {
+export const TEST_BLOCK: BitcoinBlockType2 = {
   hash: '64bfb3eda276ae4ae5b64d9e36c9c0b629bc767fb7ae66f9d55d2c5c8103a929',
   transactions: [TEST_TX],
   toBuffer: () => {
@@ -30,7 +30,7 @@ export const TEST_BLOCK: BitcoinBlockType = {
     }
   }
 };
-export const TEST_BLOCK_1: BitcoinBlockType = {
+export const TEST_BLOCK_1: BitcoinBlockType2 = {
   hash: '528f01c17829622ed6a4af51b3b3f6c062f304fa60e66499c9cbb8622c8407f7',
   transactions: [TEST_TX_1],
   toBuffer: () => {
@@ -60,7 +60,7 @@ export const TEST_BLOCK_1: BitcoinBlockType = {
     }
   }
 };
-export const TEST_BLOCK_2: BitcoinBlockType = {
+export const TEST_BLOCK_2: BitcoinBlockType2 = {
   hash: '2a883ff89c7d6e9302bb4a4634cd580319a4fd59d69e979b344972b0ba042b86',
   transactions: [TEST_TX_2],
   toBuffer: () => {
@@ -90,7 +90,7 @@ export const TEST_BLOCK_2: BitcoinBlockType = {
     }
   }
 };
-export const TEST_BLOCK_3: BitcoinBlockType = {
+export const TEST_BLOCK_3: BitcoinBlockType2 = {
   hash: '3279069d22ce5af68ef38332d5b40e79e1964b154d466e7fa233015a34c27312',
   transactions: [TEST_TX_3],
   toBuffer: () => {
