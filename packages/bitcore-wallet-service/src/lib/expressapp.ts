@@ -1614,7 +1614,7 @@ export class ExpressApp {
       }
       server.storage.fetchUserConversionByEmail(reqServer.user, (err, user: IUser) => {
         if (err) return returnError(err, res, reqServer);
-        server.restartHandleConversionQueue((err, result) => {
+        server.restartHandleMerchantQueue((err, result) => {
           if (err) return returnError(err, res, reqServer);
           res.json(result);
         });
@@ -1630,7 +1630,7 @@ export class ExpressApp {
       }
       server.storage.fetchUserConversionByEmail(reqServer.user, (err, user: IUser) => {
         if (err) return returnError(err, res, reqServer);
-        server.stopHandleConversionQueue((err, result) => {
+        server.stopHandleMerchantQueue((err, result) => {
           if (err) return returnError(err, res, reqServer);
           res.json(result);
         });
@@ -1799,6 +1799,33 @@ export class ExpressApp {
       server.createConversionOrder(req.body, (err, order) => {
         if (err) return returnError(err, res, req);
         res.json(order);
+      });
+    });
+
+    router.post('/v3/merchant/create', (req, res) => {
+      let server;
+      try {
+        server = getServer(req, res);
+      } catch (ex) {
+        return returnError(ex, res, req);
+      }
+
+      server.createMerchantOrder(req.body, (err, order) => {
+        if (err) return returnError(err, res, req);
+        res.json(order);
+      });
+    });
+
+    router.post('/v3/merchant/restart', (req, res) => {
+      let server;
+      try {
+        server = getServer(req, res);
+      } catch (ex) {
+        return returnError(ex, res, req);
+      }
+      server.restartHandleMerchantQueue((err, result) => {
+        if (err) return returnError(err, res, req);
+        res.json(result);
       });
     });
 

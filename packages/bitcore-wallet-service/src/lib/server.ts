@@ -46,6 +46,8 @@ import { Config } from './model/config-model';
 import { CoinConfig, ConfigSwap } from './model/config-swap';
 import { ConversionOrder, IConversionOrder, Output, TxDetail } from './model/conversionOrder';
 import { CoinDonationToAddress, DonationInfo, DonationStorage } from './model/donation';
+import { MerchantInfo } from './model/merchantinfo';
+import { IMerchantOrder, MerchantOrder, PaymentType } from './model/merchantorder';
 import { Order } from './model/order';
 import { OrderInfoNoti } from './model/OrderInfoNoti';
 import { TokenInfo, TokenItem } from './model/tokenInfo';
@@ -55,6 +57,7 @@ const Client = require('@abcpros/bitcore-wallet-client').default;
 const Key = Client.Key;
 const commonBWC = require('@abcpros/bitcore-wallet-client/ts_build/lib/common');
 const walletLotus = require('../../../../wallet-lotus-donation.json');
+const merchantList = require('../../../../merchant-list.json');
 // const keyFund = require('../../../../key-store.json');
 const { dirname } = require('path');
 const appDir = dirname(require.main.filename);
@@ -72,6 +75,7 @@ const EmailValidator = require('email-validator');
 let checkOrderInSwapQueueInterval = null;
 let swapQueueInterval = null;
 let conversionQueueInterval = null;
+let merchantOrderQueueInterval = null;
 let clientsFundConversion = null;
 let bot = null;
 let botNotification = null;
@@ -2375,6 +2379,37 @@ export class WalletService {
       const outputAddresses = _.uniq(
         _.map(txDetail.outputs, item => {
           return this._convertAddressFormInputScript(item.outputScript, 'xec', !!item.slpToken);
+        })
+      );
+      if (inputAddresses) {
+        txDetail.inputAddresses = inputAddresses;
+        txDetail.outputAddresses = outputAddresses;
+        return cb(null, txDetail);
+      } else {
+        return cb(null, txDetail);
+      }
+    } catch (err) {
+      return cb(err);
+    }
+  }
+
+  /**
+   * @param {string} txId - the transaction id.
+   * @returns {Obejct} tx detail
+   */
+  async getTxDetailForWallet(txId, coin, cb) {
+    try {
+      const chronikClient = ChainService.getChronikClient(coin);
+      const txDetail: any = await chronikClient.tx(txId);
+      if (!txDetail) return cb('no txDetail');
+      const inputAddresses = _.uniq(
+        _.map(txDetail.inputs, item => {
+          return this._convertAddressFormInputScript(item.inputScript, coin, !!item.slpToken);
+        })
+      );
+      const outputAddresses = _.uniq(
+        _.map(txDetail.outputs, item => {
+          return this._convertAddressFormInputScript(item.outputScript, coin, !!item.slpToken);
         })
       );
       if (inputAddresses) {
@@ -4944,6 +4979,205 @@ export class WalletService {
     }, 2000);
   }
 
+  checkQueueHandleMerchantOrder() {
+    merchantOrderQueueInterval = setInterval(() => {
+      if (this.storage && this.storage.merchantOrderQueue) {
+        this.storage.merchantOrderQueue.get(async (err, data) => {
+          const saveError = (merchantOrder: MerchantOrder, data, error, status?) => {
+            if (error.message) {
+              merchantOrder.error = error.message;
+            } else {
+              merchantOrder.error = JSON.stringify(error);
+            }
+            this.storage.updateMerchantOrder(merchantOrder, err => {
+              // send message to channel Failure Convert Alert
+              bot.sendMessage(
+                config.telegram.channelFailId,
+                merchantOrder.userAddress +
+                  ' :: Elps amount: ' +
+                  merchantOrder.amount.toFixed(3) +
+                  ' ' +
+                  config.conversion.tokenCodeUnit +
+                  '\n\n' +
+                  this._addExplorerLinkIntoTxIdWithCoin(merchantOrder.txIdFromUser, 'xec', 'View tx on the Explorer'),
+                { parse_mode: 'HTML' }
+              );
+
+              // send message to channel Debug Convert Alert
+              bot.sendMessage(
+                config.telegram.channelDebugId,
+                new Date().toUTCString() +
+                  ' ::  error: ' +
+                  merchantOrder.error +
+                  '\n\n' +
+                  this._addExplorerLinkIntoTxIdWithCoin(merchantOrder.txIdFromUser, 'xec', 'View tx on the Explorer'),
+                { parse_mode: 'HTML' }
+              );
+              if (err) throw new Error(err);
+            });
+          };
+          if (data) {
+            const merchantOrder = await this._getMerchantOrder({ txIdFromUser: data.payload });
+            try {
+              const amountElps = merchantOrder.amount / 10 ** 2;
+              if (!clientsFundConversion) {
+                saveError(merchantOrder, data, Errors.NOT_FOUND_KEY_CONVERSION);
+                return;
+              } else {
+                const xecWallet = clientsFundConversion.find(
+                  s =>
+                    s.credentials.coin === 'xec' &&
+                    s.credentials.network === 'livenet' &&
+                    (s.credentials.rootPath.includes('1899') || s.credentials.rootPath.includes('145'))
+                );
+                if (!xecWallet) {
+                  saveError(merchantOrder, data, Errors.NOT_FOUND_KEY_CONVERSION);
+                  return;
+                }
+                let xecBalance = null;
+                xecBalance = await this.getBalanceWithPromise({
+                  walletId: xecWallet.credentials.walletId,
+                  coinCode: xecWallet.credentials.coin,
+                  network: xecWallet.credentials.network
+                }).catch(e => {
+                  saveError(merchantOrder, data, e);
+                  return;
+                });
+                const walletEcashAddress = await this._getWalletAddressByWalletId(xecWallet.credentials.walletId);
+                if (xecBalance && xecBalance.balance && _.isNumber(xecBalance.balance.totalAmount)) {
+                  if (xecBalance.balance.totalAmount <= 546) {
+                    saveError(merchantOrder, data, Errors.INSUFFICIENT_FUND_XEC);
+                    this._handleWhenFundIsNotEnough(
+                      Errors.INSUFFICIENT_FUND_XEC.code,
+                      xecBalance.balance.totalAmount / 100,
+                      walletEcashAddress
+                    );
+                    return;
+                  }
+                  if (xecBalance.balance.totalAmount < config.conversion.minXecSatConversion) {
+                    this._handleWhenFundIsNotEnough(
+                      Errors.BELOW_MINIMUM_XEC.code,
+                      xecBalance.balance.totalAmount / 100,
+                      walletEcashAddress
+                    );
+                  }
+                } else {
+                  this._handleWhenFundIsNotEnough(Errors.INSUFFICIENT_FUND_XEC.code, 0, walletEcashAddress);
+                  return;
+                }
+                // get balance of XEC Wallet and token elps
+                let balanceTokenFound = null;
+                balanceTokenFound = await this.getTokensWithPromise({
+                  walletId: xecWallet.credentials.walletId
+                });
+                if (balanceTokenFound && balanceTokenFound.length > 0) {
+                  const listBalanceTokenConverted = _.map(balanceTokenFound, item => {
+                    return {
+                      tokenId: item.tokenId,
+                      tokenInfo: item.tokenInfo,
+                      amountToken: item.amountToken,
+                      utxoToken: item.utxoToken
+                    } as TokenItem;
+                  });
+                  const tokenElps = listBalanceTokenConverted.find(
+                    // TANTODO: replace with tyd token id
+                    s => s.tokenId === config.conversion.tokenId
+                  );
+                  if (tokenElps) {
+                    if (tokenElps.amountToken < amountElps || tokenElps.amountToken < 1) {
+                      this._handleWhenFundIsNotEnough(
+                        Errors.INSUFFICIENT_FUND_TOKEN.code,
+                        tokenElps.amountToken,
+                        walletEcashAddress
+                      );
+                      saveError(merchantOrder, data, Errors.INSUFFICIENT_FUND_TOKEN);
+                      return;
+                    }
+                    // from txId get txDetail
+                    if (tokenElps.amountToken < config.conversion.minTokenConversion) {
+                      this._handleWhenFundIsNotEnough(
+                        Errors.BELOW_MINIMUM_TOKEN.code,
+                        tokenElps.amountToken,
+                        walletEcashAddress
+                      );
+                    } else {
+                      // get merchant info by merchant code
+                      const listMerchant = await this.getListMerchantInfo();
+                      const merchant = listMerchant.find(s => s.code === merchantOrder.merchantCode);
+                      const merchantEtokenAddress = this._convertFromEcashWithPrefixToEtoken(merchant.walletAddress);
+                      if (merchantOrder.paymentType === PaymentType.BURN) {
+                        // burn token right here
+                      } else {
+                        // send elps to merchant address
+                        this._sendSwapWithToken(
+                          'xec',
+                          xecWallet,
+                          mnemonicKeyFundConversion,
+                          tokenElps.tokenId,
+                          tokenElps,
+                          amountElps,
+                          merchantEtokenAddress,
+                          (err, txId) => {
+                            if (err) {
+                              saveError(merchantOrder, data, err);
+                              return;
+                            }
+                            if (txId) {
+                              merchantOrder.txIdMerchantPayment = txId;
+                              bot.sendMessage(
+                                config.telegram.channelSuccessId,
+                                new Date().toUTCString() +
+                                  ' :: ' +
+                                  merchantOrder.userAddress +
+                                  ' :: Converted amount: ' +
+                                  amountElps.toFixed(2) +
+                                  ' ' +
+                                  config.conversion.tokenCodeUnit +
+                                  '\n\n' +
+                                  this._addExplorerLinkIntoTxIdWithCoin(
+                                    merchantOrder.txIdMerchantPayment,
+                                    'xec',
+                                    'View tx on the Explorer'
+                                  ),
+                                { parse_mode: 'HTML' }
+                              );
+                              this.storage.updateMerchantOrder(merchantOrder, (err, result) => {
+                                setTimeout(() => {
+                                  this.checkConversion(walletEcashAddress, (err, result) => {
+                                    if (err) logger.debug('error for checking conversion: ', err);
+                                  });
+                                }, 1000 * 10); // 10 seconds later recheck fund to notify if we don't have enough balance after transaction
+                                if (err) {
+                                  saveError(merchantOrder, data, err);
+                                  return;
+                                } else {
+                                  this.storage.merchantOrderQueue.ack(data.ack, (err, id) => {});
+                                }
+                              });
+                            }
+                          }
+                        );
+                      }
+                    }
+                  } else {
+                    saveError(merchantOrder, data, Errors.NOT_FOUND_TOKEN_WALLET);
+                    return;
+                  }
+                } else {
+                  saveError(merchantOrder, data, Errors.NOT_FOUND_TOKEN_WALLET);
+                  return;
+                }
+              }
+            } catch (e) {
+              saveError(merchantOrder, data, e);
+            }
+          }
+        });
+        this.storage.merchantOrderQueue.clean(err => {});
+      }
+    }, 10000);
+  }
+
   _sendSwapNotificationSuccess(configSwap: ConfigSwap, orderInfo: Order, txId: string) {
     const coinConfigReceive = configSwap.coinReceive.find(coin => coin.code === orderInfo.toCoinCode);
     if (coinConfigReceive) {
@@ -5091,6 +5325,16 @@ export class WalletService {
     });
   }
 
+  _getMerchantOrder(opts): Promise<MerchantOrder> {
+    return new Promise((resolve, reject) => {
+      this.storage.fetchMerchantOrderByTxIdFromUser(opts.txIdFromUser, (err, result) => {
+        if (err) Promise.reject(err);
+        const merchantOrder = MerchantOrder.fromObj(result);
+        Promise.resolve(merchantOrder);
+      });
+    });
+  }
+
   stopHandleSwapQueue(): boolean {
     try {
       clearInterval(swapQueueInterval);
@@ -5168,6 +5412,30 @@ export class WalletService {
   stopHandleConversionQueue(cb): boolean {
     try {
       clearInterval(conversionQueueInterval);
+      return cb(null, true);
+    } catch (e) {
+      logger.debug(e);
+      return cb(e);
+    }
+  }
+
+  restartHandleMerchantQueue(cb) {
+    try {
+      clearInterval(merchantOrderQueueInterval);
+      this.getKeyConversionWithFundMnemonic(err => {
+        if (err) return cb(err);
+        this.checkQueueHandleMerchantOrder();
+        return cb(null, true);
+      });
+    } catch (e) {
+      logger.debug(e);
+      return cb(e);
+    }
+  }
+
+  stopHandleMerchantQueue(cb): boolean {
+    try {
+      clearInterval(merchantOrderQueueInterval);
       return cb(null, true);
     } catch (e) {
       logger.debug(e);
@@ -5508,6 +5776,106 @@ export class WalletService {
       }
     });
   }
+
+  getListMerchantInfo(): MerchantInfo[] {
+    if (merchantList && merchantList.length > 0) {
+      const merchantListConverted = merchantList.map(merchant => MerchantInfo.fromObj(merchant));
+      return merchantListConverted;
+    } else {
+      return null;
+    }
+  }
+
+  createMerchantOrder(opts, cb) {
+    if (
+      !opts.txIdFromUser ||
+      !opts.coin ||
+      !opts.merchantCode ||
+      !opts.userAddress ||
+      !opts.amount ||
+      !opts.paymentInfo
+    ) {
+      return cb(new Error('Missing required parameter'));
+    }
+    const merchantOrder = MerchantOrder.create(opts);
+    if (merchantOrder.isPaidByUser) {
+      merchantOrder.paymentType = PaymentType.SEND;
+      this.storage.storeMerchantOrder(merchantOrder, (err, result) => {
+        if (err) return cb(err);
+        // let order into queue
+        return cb(null, true);
+      });
+    }
+    this.getTxDetailForWallet(merchantOrder.txIdFromUser, merchantOrder.coin, async (err, result: TxDetail) => {
+      if (err) {
+        return cb(err);
+      } else {
+        if (result) {
+          let outputsConverted = _.uniq(
+            _.map(result.outputs, item => {
+              return this._convertOutputScript(item);
+            })
+          );
+          outputsConverted = _.compact(outputsConverted);
+          let accountTo = null;
+          accountTo = outputsConverted.find(output => !result.inputAddresses.includes(output.address));
+          if (!!merchantOrder.tokenId) {
+            accountTo.address = this._convertEtokenAddressToEcashAddress(accountTo.address);
+          }
+          if (!clientsFundConversion) {
+            return cb(Errors.NOT_FOUND_KEY_CONVERSION);
+          } else {
+            const xecWallet = clientsFundConversion.find(
+              s => s.credentials.coin === 'xec' && s.credentials.network === 'livenet'
+            );
+            if (!xecWallet) {
+              return cb(Errors.NOT_FOUND_KEY_CONVERSION);
+              return;
+            }
+            this.storage.fetchAddressByWalletId(
+              xecWallet.credentials.walletId,
+              accountTo.address.replace(/ecash:/, ''),
+              async (err, wallet) => {
+                if (err) {
+                  return cb(err);
+                  return;
+                }
+                if (!wallet) {
+                  return cb(Errors.INVALID_ADDRESS_TO);
+                  return;
+                } else {
+                  this.storage.fetchMerchantOrderByTxIdFromUser(merchantOrder.txIdFromUser, (err, result) => {
+                    if (err) return cb(err);
+                    if (!!result) {
+                      return cb(new Error('Duplicate conversion order info'));
+                    } else {
+                      const listMerchant = this.getListMerchantInfo();
+                      const merchantSelected = listMerchant.find(
+                        merchant => merchant.code === merchantOrder.merchantCode
+                      );
+                      if (!merchantSelected.isElpsAccepted) {
+                        merchantOrder.paymentType = PaymentType.BURN;
+                      } else {
+                        merchantOrder.paymentType = PaymentType.SEND;
+                      }
+                      this.storage.storeMerchantOrder(merchantOrder, (err, result) => {
+                        if (err) return cb(err);
+                        // let order into queue
+                        this.storage.conversionOrderQueue.add(merchantOrder.txIdFromUser, (err, id) => {
+                          if (err) return cb(err);
+                          return cb(null, true);
+                        });
+                      });
+                    }
+                  });
+                }
+              }
+            );
+          }
+        }
+      }
+    });
+  }
   /**
    * checkConversion - Checking if fund is ready for conversion
    *
@@ -5613,6 +5981,15 @@ export class WalletService {
         return cb(Errors.NOT_FOUND_TOKEN_WALLET);
       }
     }
+  }
+
+  _getWalletAddressByWalletId(walletId): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.storage.fetchAddressWithWalletId(walletId, async (err, address) => {
+        if (err) reject(err);
+        return resolve(address.address);
+      });
+    });
   }
 
   createBot(opts, cb) {
