@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "packages": {
+    "@abcpros/bitcore-client": {
+      "version": "8.25.41",
+      "signature": "7a8b2530d02684c4c122ebd3a5e39609",
+      "file": true,
+      "replaced": "^8.25.41"
+    },
+    "@abcpros/bitcore-p2p-xec": {
+      "version": "8.25.41",
+      "signature": "8f95d14371be23fd0be09751f7fbd7df",
+      "file": true,
+      "replaced": "^8.25.41"
+    }
+  }
+}

@@ -18,6 +18,7 @@ module.exports = {
   // CAinter1: '', // ex. 'COMODORSADomainValidationSecureServerCA.crt'
   // CAinter2: '', // ex. 'COMODORSAAddTrustCA.crt'
   // CAroot: '', // ex. 'AddTrustExternalCARoot.crt'
+  sharedKey: 'ajkhjgkloiuyrjkds',
   storageOpts: {
     mongoDb: {
       uri: process.env.DB_URI || 'mongodb://localhost:27017/bws',
@@ -50,7 +51,7 @@ module.exports = {
     },
     xec: {
       livenet: {
-        url: 'http://127.0.0.1:3000'
+        url: 'http://dev.abcpay.cash:3000'
       },
       testnet: {
         url: 'http://127.0.0.1:3000'
@@ -82,7 +83,7 @@ module.exports = {
     },
     xpi: {
       livenet: {
-        url: 'http://127.0.0.1:3000'
+        url: 'http://dev.abcpay.cash:3000'
       },
       testnet: {
         url: 'http://127.0.0.1:3000'
@@ -108,11 +109,17 @@ module.exports = {
   },
   fiatRateServiceOpts: {
     defaultProvider: 'Coingecko',
-    fetchInterval: 5, // in minutes
+    fetchInterval: 1, // in minutes
     lotusProvider: {
       electricityRate: 0.1,
       minerMargin: 0.5,
       miningEfficiency: 3.4
+    },
+    lotusFormula: {
+      ELECTRICITY_RATE: 0.1,
+      MINER_MARGIN: 0.7,
+      RIG_HASHRATE: 5.2,
+      RIG_POWER: 500
     }
   },
   currencyRateServiceOpts: {
@@ -231,19 +238,38 @@ module.exports = {
       code: 'bcpro',
       network: 'livenet',
       isToken: true
+    },
+    {
+      code: 'tyd',
+      network: 'livenet',
+      isToken: true
+    },
+    {
+      code: 'doge',
+      network: 'testnet',
+      isToken: false
     }
   ],
   telegram: {
-    botTokenId: '5906076959:AAH8jiTlnI8PLb1e5EQZ2dPBlfXDmyBK8yQ',
-    channelFailId: '-1001865384547',
-    channelDebugId: '-1001859102214',
-    channelSuccessId: '-1001875496222'
+    botTokenId: '5654885371:AAEzndjPJCAyrm_Cy4L1g84fZ3JCOSQGxnM',
+    channelFailId: '-1001849860737',
+    channelDebugId: '-1001885258230',
+    channelSuccessId: '-1001586799700'
+  },
+  swapTelegram: {
+    botTokenId: '5654885371:AAEzndjPJCAyrm_Cy4L1g84fZ3JCOSQGxnM',
+    channelFailId: '-1001849860737',
+    channelDebugId: '-1001885258230',
+    channelSuccessId: '-1001586799700'
   },
   conversion: {
     tokenId: '3ab9e31d5fab448aaa9db0c9fb4f02f46bae3452d7cdb40127a4b23bcafd8b31',
     tokenCodeLowerCase: 'tyd',
     tokenCodeUnit: 'TYD',
     minXecSatConversion: 10000,
-    minTokenConversion: 0.02
+    minTokenConversion: 0.01
+  },
+  botNotification: {
+    botTokenId: '5871309844:AAFi1QZI0nzwTxPY8xq8TKO81Lh1C1LNAhA'
   }
 };

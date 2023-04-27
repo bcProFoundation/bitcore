@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "packages": {
+    "@abcpros/crypto-wallet-core": {
+      "version": "8.25.43",
+      "signature": "937b1f42f715088a94fb3c0bdda68eb2",
+      "file": true,
+      "replaced": "^8.25.43"
+    },
+    "@abcpros/bitcore-wallet-client": {
+      "version": "8.25.43",
+      "signature": "192a16642f46e22d32afab30324645d3",
+      "file": true,
+      "replaced": "^8.25.43"
+    }
+  }
+}

@@ -33,6 +33,7 @@
     "./scripts/**/*.ts",
     "./src/**/*.ts",
     "./src/**/*.json",
+    "./src/**/*.csv",
     "./tests/**/*.ts"
   ],
   "exclude": [
