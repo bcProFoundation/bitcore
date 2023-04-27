@@ -1829,7 +1829,7 @@ export class ExpressApp {
       });
     });
 
-    router.get('/v3/conversion/check', (req, res) => {
+    router.get('/v3/conversion/check/:coin', (req, res) => {
       let server;
       try {
         server = getServer(req, res);
@@ -1837,9 +1837,22 @@ export class ExpressApp {
         return returnError(ex, res, req);
       }
       // passing null data => only check for fund of wallet is enough for conversion , do not need to notify to user
-      server.checkConversion(null, (err, order) => {
+      server.checkConversion(null, req.params['coin'], (err, order) => {
         if (err) return returnError(err, res, req);
         res.json(order);
+      });
+    });
+
+    router.get('/v3/merchant/qpayinfo', (req, res) => {
+      let server;
+      try {
+        server = getServer(req, res);
+      } catch (ex) {
+        return returnError(ex, res, req);
+      }
+      server.getQpayInfo((err, info) => {
+        if (err) return returnError(err, res, req);
+        res.json(info);
       });
     });
 

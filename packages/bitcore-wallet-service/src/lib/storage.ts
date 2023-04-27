@@ -730,7 +730,8 @@ export class Storage {
       },
       {
         $set: {
-          txIdSentToUser: merchantOrder.txIdMerchantPayment,
+          status: merchantOrder.status,
+          txIdMerchantPayment: merchantOrder.txIdMerchantPayment,
           lastModified: new Date(),
           error: merchantOrder.error
         }
