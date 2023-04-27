@@ -1,11 +1,11 @@
 import { BitcoreLibXec } from '@abcpros/crypto-wallet-core';
+import BN from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 import { ChronikClient } from 'chronik-client';
 import _, { isNumber } from 'lodash';
 import { Token } from 'typescript';
 import { IChain } from '..';
 import { BtcChain } from '../btc';
-import BN from 'bignumber.js';
-import { BigNumber } from 'bignumber.js';
 const config = require('../../../config');
 
 const Errors = require('../../errors/errordefinitions');
@@ -251,11 +251,10 @@ export class XecChain extends BtcChain implements IChain {
     const bchUtxo = this.findBiggestUtxo(bchUtxos);
     // console.log(`bchUtxo: ${JSON.stringify(bchUtxo, null, 2)}`);
 
-
     // Generate the OP_RETURN code.
     TOKENQTY = TOKENQTY / Math.pow(10, tokenInfo.decimals);
     TOKENQTY = _.floor(TOKENQTY, tokenInfo.decimals);
-    const slpData = this.buildBurnOpReturn(tokenInfo.id, new BigNumber(TOKENQTY).times(10**tokenInfo.decimals));
+    const slpData = this.buildBurnOpReturn(tokenInfo.id, new BigNumber(TOKENQTY).times(10 ** tokenInfo.decimals));
     // BEGIN transaction construction.
 
     // instance of transaction builder
@@ -293,17 +292,11 @@ export class XecChain extends BtcChain implements IChain {
     transactionBuilder.sign(0, keyPairCash, redeemScript, transactionBuilder.hashTypes.SIGHASH_ALL, originalAmount);
 
     // Sign each token UTXO being consumed.
-      const thisUtxo = tokenUtxoSelected;
-      const childIndex2 = (thisUtxo.addressInfo.path as string).replace(/m\//gm, '');
-      let changeToken = bchjs.HDNode.derivePath(account, childIndex2);
-      let keyPairToken = bchjs.HDNode.toKeyPair(changeToken);
-      transactionBuilder.sign(
-        1,
-        keyPairToken,
-        redeemScript,
-        transactionBuilder.hashTypes.SIGHASH_ALL,
-        thisUtxo.value
-      );
+    const thisUtxo = tokenUtxoSelected;
+    const childIndex2 = (thisUtxo.addressInfo.path as string).replace(/m\//gm, '');
+    let changeToken = bchjs.HDNode.derivePath(account, childIndex2);
+    let keyPairToken = bchjs.HDNode.toKeyPair(changeToken);
+    transactionBuilder.sign(1, keyPairToken, redeemScript, transactionBuilder.hashTypes.SIGHASH_ALL, thisUtxo.value);
 
     // build tx
     const tx = transactionBuilder.build();
