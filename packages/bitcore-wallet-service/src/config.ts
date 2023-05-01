@@ -271,5 +271,10 @@ module.exports = {
   },
   botNotification: {
     botTokenId: '5871309844:AAFi1QZI0nzwTxPY8xq8TKO81Lh1C1LNAhA'
+  },
+  emailMerchant:{
+    SENDGRID_API_KEY: "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",
+    emailFrom: 'ken.abcpay@gmail.com',
+    listEmailMerchant: ['takyoon90@gmail.com']
   }
 };
