@@ -42,16 +42,16 @@ import { stringify } from 'querystring';
 import { isArrowFunction, isIfStatement, isToken, Token } from 'typescript';
 import { CONNECTING } from 'ws';
 import { CurrencyRateService } from './currencyrate';
+import { Appreciation } from './model/appreciation';
 import { Config } from './model/config-model';
 import { CoinConfig, ConfigSwap } from './model/config-swap';
 import { ConversionOrder, IConversionOrder, Output, TxDetail } from './model/conversionOrder';
 import { CoinDonationToAddress, DonationInfo, DonationStorage } from './model/donation';
+import { LogDevice } from './model/log-devide';
 import { Order } from './model/order';
 import { OrderInfoNoti } from './model/OrderInfoNoti';
 import { TokenInfo, TokenItem } from './model/tokenInfo';
 import { IUser } from './model/user';
-import { LogDevice } from './model/log-devide';
-import { Appreciation } from './model/appreciation';
 import { PushNotificationsService } from './pushnotificationsservice';
 
 const Client = require('@abcpros/bitcore-wallet-client').default;
@@ -71,7 +71,7 @@ const deprecatedServerMessage = require('../deprecated-serverMessages');
 const serverMessages = require('../serverMessages');
 const BCHAddressTranslator = require('./bchaddresstranslator');
 const EmailValidator = require('email-validator');
-const csv = require('csvtojson')
+const csv = require('csvtojson');
 const csvFilePath = `${__dirname}/csv/subLixiList.csv`;
 
 let checkOrderInSwapQueueInterval = null;
@@ -7997,11 +7997,11 @@ export class WalletService {
         next => {
           if (!device || !device.isValid()) {
             device = LogDevice.create({
-              platform: platform,
-              deviceId: deviceId,
-              location: location,
-              token: token,
-              packageName: packageName
+              platform,
+              deviceId,
+              location,
+              token,
+              packageName
             });
             return this.storage.storeLogDevice(device, (err, rs) => {
               if (err) {
@@ -8025,7 +8025,7 @@ export class WalletService {
                 // If have token device => push notification
                 this.pushNotificationAppreciation(token, packageName, appreciationInfo, next);
               }
-            })
+            });
           }
           return cb(null, 'Store successfully!!');
         }
@@ -8073,8 +8073,8 @@ export class WalletService {
         next => {
           if (!device || !device.isValid()) {
             device = LogDevice.create({
-              deviceId: deviceId,
-              location: location
+              deviceId,
+              location
             });
           } else {
             device.touch();
@@ -8109,8 +8109,8 @@ export class WalletService {
    */
   getAllAppreciation(deviceId, cb) {
     const opts = {
-      deviceId: deviceId
-    }
+      deviceId
+    };
     this.storage.fetchAllAppreciation(opts, (err, listAppreciation) => {
       if (err) return cb(err);
       return cb(null, listAppreciation);
@@ -8129,13 +8129,13 @@ export class WalletService {
     const claimCode = opts?.claimCode;
     const deviceId = opts?.deviceId;
     const dateClaim = opts?.dateClaim;
-    
+
     let appreciation;
 
     async.series(
       [
         next => {
-          this.storage.getAppreciationById({deviceId: deviceId, claimCode: claimCode}, (err, appre) => {
+          this.storage.getAppreciationById({ deviceId, claimCode }, (err, appre) => {
             if (err) {
               return next(err);
             }
@@ -8232,9 +8232,11 @@ export class WalletService {
     // HIGH (7)
     const opts = {
       isActive: true
-    }
+    };
     let listDevice;
-    let listLow = [], listMedium = [], listHigh = [];
+    let listLow = [],
+      listMedium = [],
+      listHigh = [];
     let result;
 
     this.storage.fetchAllLogDevice(opts, (err, d) => {
@@ -8244,29 +8246,30 @@ export class WalletService {
       listDevice = d;
       listDevice.forEach(device => {
         if (device.countNumber > 0 && device.countNumber <= 3) {
-            listLow.push(device);
+          listLow.push(device);
         } else if (device.countNumber > 3 && device.countNumber <= 6) {
-            listMedium.push(device);
+          listMedium.push(device);
         } else if (device.countNumber === 7) {
-            listHigh.push(device);
+          listHigh.push(device);
         }
-      })
+      });
       result = {
         listDeviceLow: listLow,
         listDeviceMedium: listMedium,
         listDeviceHigh: listHigh,
         lengthGroupLow: listLow.length,
         lengthGroupMedium: listMedium.length,
-        lengthGroupHight: listHigh.length,
+        lengthGroupHight: listHigh.length
       };
-  
+
       return cb(null, result);
     });
   }
 
   createAppreciationMonthly(cb) {
     // Read file csv monthly to json array => each record array => create appreciation & save to DB
-    let listCodeMonthlyCsv = [], appreciationList = [];
+    let listCodeMonthlyCsv = [],
+      appreciationList = [];
     let countCreatedAppreciation = 0;
 
     async.waterfall(
@@ -8285,7 +8288,7 @@ export class WalletService {
                   type: 'Monthly'
                 });
                 appreciationList.push(appreciation);
-              } 
+              }
             });
             return next(null, appreciationList);
           } else {
@@ -8330,16 +8333,18 @@ export class WalletService {
 
   createAppreciationWeekly(cb) {
     let listDevice;
-    let listDeviceLow = [], listDeviceMedium = [], listDeviceHigh = [];
+    let listDeviceLow = [],
+      listDeviceMedium = [],
+      listDeviceHigh = [];
     const listCodeWeeklyLowCsv = [
       {
-        "id": "2104",
-        "name": "yfsFb",
-        "claimCode": "lixi_CpfVGvasvXPdH",
-        "amount": "1",
-        "package": "2g",
-        "barcode": "00000002104",
-        "claimed": "false"
+        id: '2104',
+        name: 'yfsFb',
+        claimCode: 'lixi_CpfVGvasvXPdH',
+        amount: '1',
+        package: '2g',
+        barcode: '00000002104',
+        claimed: 'false'
       }
     ];
     const listCodeWeeklyMediumCsv = [];
@@ -8398,7 +8403,7 @@ export class WalletService {
 
     const opts = {
       isActive: true
-    }
+    };
 
     async.series(
       [
@@ -8415,11 +8420,11 @@ export class WalletService {
           if (listDevice) {
             listDevice.forEach(device => {
               if (device.countNumber > 0 && device.countNumber <= 3) {
-                  listDeviceLow.push(device);
+                listDeviceLow.push(device);
               } else if (device.countNumber > 3 && device.countNumber <= 6) {
-                  listDeviceMedium.push(device);
+                listDeviceMedium.push(device);
               } else if (device.countNumber === 7) {
-                  listDeviceHigh.push(device);
+                listDeviceHigh.push(device);
               }
             });
             next();
@@ -8429,71 +8434,71 @@ export class WalletService {
           if (listDeviceLow.length === listCodeWeeklyLowCsv.length) {
             listDeviceLow.map((device, i) => {
               listCodeWeeklyLowCsv.map((voucher, j) => {
-                  if (i == j && voucher.claimed === 'false') {
-                    let appreciation = Appreciation.create({
-                      deviceId: device.deviceId,
-                      claimCode: voucher.claimCode,
-                      type: 'Weekly'
-                    });
-                    this.storage.storeAppreciation(appreciation, (err, result) => {
-                      if (err) {
-                        console.log('Not create appreciation!!!', err);
-                      }
-                      if (result) {
-                        console.log('Create appreciation successfully.');
-                      }
-                    });
-                  }
-              })
-            })
+                if (i == j && voucher.claimed === 'false') {
+                  let appreciation = Appreciation.create({
+                    deviceId: device.deviceId,
+                    claimCode: voucher.claimCode,
+                    type: 'Weekly'
+                  });
+                  this.storage.storeAppreciation(appreciation, (err, result) => {
+                    if (err) {
+                      console.log('Not create appreciation!!!', err);
+                    }
+                    if (result) {
+                      console.log('Create appreciation successfully.');
+                    }
+                  });
+                }
+              });
+            });
           } else {
             cb('Number code of LOW not enough to device');
           }
-    
+
           if (listDeviceMedium.length === listCodeWeeklyMediumCsv.length) {
             listDeviceMedium.map((device, i) => {
               listCodeWeeklyMediumCsv.map((voucher, j) => {
-                  if (i == j && voucher.claimed === 'false') {
-                    let appreciation = Appreciation.create({
-                      deviceId: device.deviceId,
-                      claimCode: voucher.claimCode,
-                      type: 'Weekly'
-                    });
-                    this.storage.storeAppreciation(appreciation, (err, result) => {
-                      if (err) {
-                        console.log('Not create appreciation!!!', err);
-                      }
-                      if (result) {
-                        console.log('Create appreciation successfully.');
-                      }
-                    });
-                  }
-              })
-            })
+                if (i == j && voucher.claimed === 'false') {
+                  let appreciation = Appreciation.create({
+                    deviceId: device.deviceId,
+                    claimCode: voucher.claimCode,
+                    type: 'Weekly'
+                  });
+                  this.storage.storeAppreciation(appreciation, (err, result) => {
+                    if (err) {
+                      console.log('Not create appreciation!!!', err);
+                    }
+                    if (result) {
+                      console.log('Create appreciation successfully.');
+                    }
+                  });
+                }
+              });
+            });
           } else {
             cb('Number code of MEDIUM not enough to device');
           }
-    
+
           if (listDeviceHigh.length === listCodeWeeklyHighCsv.length) {
             listDeviceHigh.map((device, i) => {
               listCodeWeeklyHighCsv.map((voucher, j) => {
-                  if (i == j && voucher.claimed === 'false') {
-                    let appreciation = Appreciation.create({
-                      deviceId: device.deviceId,
-                      claimCode: voucher.claimCode,
-                      type: 'Weekly'
-                    });
-                    this.storage.storeAppreciation(appreciation, (err, appreciationInfo) => {
-                      if (err) {
-                        console.log('Not create appreciation!!!', err);
-                      }
-                      if (appreciationInfo) {
-                        console.log('Create appreciation successfully.');
-                      }
-                    });
-                  }
-              })
-            })
+                if (i == j && voucher.claimed === 'false') {
+                  let appreciation = Appreciation.create({
+                    deviceId: device.deviceId,
+                    claimCode: voucher.claimCode,
+                    type: 'Weekly'
+                  });
+                  this.storage.storeAppreciation(appreciation, (err, appreciationInfo) => {
+                    if (err) {
+                      console.log('Not create appreciation!!!', err);
+                    }
+                    if (appreciationInfo) {
+                      console.log('Create appreciation successfully.');
+                    }
+                  });
+                }
+              });
+            });
           } else {
             cb('Number code of HIGH not enough to device');
           }
@@ -8529,28 +8534,27 @@ export class WalletService {
   }
 
   pushNotificationAppreciation(token, packageName, appreciationInfo, cb) {
-    let title = appreciationInfo.type === 'Monthly' 
-    ? 'Welcome to AbcPay wallet !' 
-    : 'Thanks for checking in !';
+    let title = appreciationInfo.type === 'Monthly' ? 'Welcome to AbcPay wallet !' : 'Thanks for checking in !';
 
-    let body = appreciationInfo.type === 'Monthly' 
-    ? 'Thanks for using our app. Here our small appreciation to you to start using the app.' 
-    : 'Here a small gift for checking around! Give it to someone who is in need.';
+    let body =
+      appreciationInfo.type === 'Monthly'
+        ? 'Thanks for using our app. Here our small appreciation to you to start using the app.'
+        : 'Here a small gift for checking around! Give it to someone who is in need.';
 
     const notification = {
       to: token,
       priority: 'high',
       restricted_package_name: packageName,
       data: {
-        title: title,
-        body: body,
+        title,
+        body,
         claimCode: appreciationInfo.claimCode,
         status: appreciationInfo.status,
         createdOn: appreciationInfo.createdOn,
         type: appreciationInfo.type,
         notification: {
-          title: title,
-          body: body,
+          title,
+          body,
           sound: 'default',
           click_action: 'FCM_PLUGIN_ACTIVITY',
           icon: 'fcm_push_icon'
@@ -8558,20 +8562,20 @@ export class WalletService {
       }
     };
     this.pushNotifications._makeRequest(notification, (err, rs) => {
-      if (err) return cb(err)
-      if (rs) return cb(null, 'Push notification successfully!')
+      if (err) return cb(err);
+      if (rs) return cb(null, 'Push notification successfully!');
     });
   }
 
   readDataCvs(cb) {
     csv()
-    .fromFile(csvFilePath)
-    .then((jsonObj) => {
-        return cb(null, jsonObj)
-    })
-    .catch(err => {
-      return cb(err);
-    })
+      .fromFile(csvFilePath)
+      .then(jsonObj => {
+        return cb(null, jsonObj);
+      })
+      .catch(err => {
+        return cb(err);
+      });
   }
 
   /**
