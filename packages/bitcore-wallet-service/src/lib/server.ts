@@ -9275,7 +9275,7 @@ export class WalletService {
                 let body =
                   appreciation.type === 'Weekly'
                     ? 'Here a small gift for checking around! Give it to someone who is in need.'
-                    : 'Thanks for using our app. Here our small appreciation to you to start using the app. Claim it now!';
+                    : 'You are received a gift. Thanks for using our app. Here our small appreciation to you to start using the app. Claim it now!';
                 const notification = {
                   to: device.token,
                   priority: 'high',
@@ -9859,7 +9859,7 @@ export class WalletService {
 
   pushNotificationAppreciationMonthly(token, packageName, appreciationInfo, cb) {
     let title = 'Welcome to AbcPay wallet !';
-    let body = 'Thanks for using our app. Here our small appreciation to you to start using the app. Claim it now!';
+    let body = 'You are received a gift. Thanks for using our app. Here our small appreciation to you to start using the app. Claim it now!';
 
     const notification = {
       to: token,
