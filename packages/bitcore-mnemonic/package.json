@@ -47,7 +47,7 @@
     "unorm": "^1.4.1"
   },
   "peerDependencies": {
-    "@abcpros/bitcore-lib": "^8.25.32"
+    "@abcpros/bitcore-lib": "*"
   },
   "publishConfig": {
     "access": "public"
