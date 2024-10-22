@@ -5151,7 +5151,6 @@ export class WalletService {
                   // }
                   // const messageSignature =
                   //   merchantOrder.txIdFromUser + '-' + merchantOrder.merchantCode + '-' + merchantOrder.amount;
-
                   // let messagePrefix = '';
                   // let bchAddress = '';
                   // if (merchantOrder.coin === 'xec') {
@@ -6255,13 +6254,7 @@ export class WalletService {
   }
 
   async createMerchantOrder(opts, cb) {
-    if (
-      !opts.txIdFromUser ||
-      !opts.coin ||
-      !opts.merchantCode ||
-      !opts.userAddress ||
-      !opts.amount
-    ) {
+    if (!opts.txIdFromUser || !opts.coin || !opts.merchantCode || !opts.userAddress || !opts.amount) {
       // TANTMP: temp not check email list and subject.
       return cb(new Error('Missing required parameter'));
     }
