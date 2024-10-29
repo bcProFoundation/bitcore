@@ -1,18 +1,13 @@
 'use strict';
 
 var _ = require('lodash');
-var $ = require('preconditions').singleton();
 var chai = require('chai');
 chai.config.includeStack = true;
 var sinon = require('sinon');
 var should = chai.should();
 var async = require('async');
-var request = require('supertest');
 var Uuid = require('uuid');
-var sjcl = require('sjcl');
 var log = require('../ts_build/lib/log');
-var mongodb = require('mongodb');
-var config = require('./test-config');
 var oldCredentials = require('./legacyCredentialsExports');
 
 var CWC = require('@abcpros/crypto-wallet-core');
@@ -25,7 +20,6 @@ var Bitcore_ = {
 
 var BWS = require('@abcpros/bitcore-wallet-service');
 
-var { Constants } = require('../ts_build/lib/common');
 var Client = require('../ts_build').default;
 var Key = Client.Key;
 var { Request } = require('../ts_build/lib/request.js');
@@ -65,66 +59,6 @@ var createTxsV8 = (nr, bcHeight, txs) => {
     }
   }
   return txs;
-};
-
-blockchainExplorerMock.getTransactions = (wallet, startBlock, cb) => {
-  var list = [].concat(blockchainExplorerMock.txHistory);
-  // -1 = mempool, always included in server' s v8.js
-  list = _.filter(list, x => {
-    return x.height >= startBlock || x.height == -1;
-  });
-  return cb(null, list);
-};
-
-blockchainExplorerMock.getAddressActivity = (address, cb) => {
-  var activeAddresses = _.map(blockchainExplorerMock.utxos || [], 'address');
-  return cb(null, _.includes(activeAddresses, address));
-};
-
-blockchainExplorerMock.setFeeLevels = levels => {
-  blockchainExplorerMock.feeLevels = levels;
-};
-
-blockchainExplorerMock.estimateFee = (nbBlocks, cb) => {
-  var levels = {};
-  _.each(nbBlocks, nb => {
-    var feePerKb = blockchainExplorerMock.feeLevels[nb];
-    levels[nb] = _.isNumber(feePerKb) ? feePerKb / 1e8 : -1;
-  });
-
-  return cb(null, levels);
-};
-
-blockchainExplorerMock.estimateGas = (nbBlocks, cb) => {
-  return cb(null, '20000000000');
-};
-
-blockchainExplorerMock.getBalance = (nbBlocks, cb) => {
-  return cb(null, {
-    unconfirmed: 0,
-    confirmed: 20000000000 * 5,
-    balance: 20000000000 * 5
-  });
-};
-
-blockchainExplorerMock.getTransactionCount = (addr, cb) => {
-  return cb(null, 0);
-};
-
-blockchainExplorerMock.reset = () => {
-  blockchainExplorerMock.utxos = [];
-  blockchainExplorerMock.txHistory = [];
-  blockchainExplorerMock.feeLevels = [];
-};
-
-helpers.newDb = (extra, cb) => {
-  extra = extra || '';
-  mongodb.MongoClient.connect(config.mongoDb.uri + extra, (err, in_db) => {
-    if (err) return cb(err);
-    in_db.dropDatabase(err => {
-      return cb(err, in_db);
-    });
-  });
 };
 
 var db;
@@ -7147,7 +7081,7 @@ describe('client API', function() {
               should.not.exist(err);
               should.exist(addr);
               Client.serverAssistedImport(
-                { words },
+                { words, includeTestnetWallets: true },
                 {
                   clientFactory: () => {
                     return helpers.newClient(app);
@@ -7190,7 +7124,7 @@ describe('client API', function() {
               should.not.exist(err);
               should.exist(addr);
               Client.serverAssistedImport(
-                { words },
+                { words, includeTestnetWallets: true},
                 {
                   clientFactory: () => {
                     return helpers.newClient(app);
@@ -7221,6 +7155,176 @@ describe('client API', function() {
         });
       });
 
+      it('should be able to gain access to three btc 1-1 accounts of a single wallet from mnemonic and add wallet info correctly to all of them', done => {
+        let key = new Key({ seedType: 'new' });
+        helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key }, () => {
+          helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 1 }, () => {
+            helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 2 }, () => {
+              var words = keys[0].get(null, true).mnemonic;
+              var walletName = clients[0].credentials.walletName;
+              var copayerName = clients[0].credentials.copayerName;
+              clients[0].createAddress((err, addr) => {
+                should.not.exist(err);
+                should.exist(addr);
+                Client.serverAssistedImport(
+                  { words, includeTestnetWallets: true },
+                  {
+                    clientFactory: () => {
+                      return helpers.newClient(app);
+                    }
+                  },
+                  (err, k, c) => {
+                    should.not.exist(err);
+                    c.length.should.equal(3);
+                    c[0].credentials.coin.should.equal('btc');
+                    c[1].credentials.coin.should.equal('btc');
+                    c[2].credentials.coin.should.equal('btc');
+                    c[0].credentials.account.should.equal(0);
+                    c[1].credentials.account.should.equal(1);
+                    c[2].credentials.account.should.equal(2);
+                    c[0].credentials.copayerId.should.not.equal(c[1].credentials.copayerId);
+                    c[0].credentials.copayerId.should.not.equal(c[2].credentials.copayerId);
+                    c[1].credentials.copayerId.should.not.equal(c[2].credentials.copayerId);
+                    should.exist(c[0].credentials.walletId);
+                    should.exist(c[1].credentials.walletId);
+                    should.exist(c[2].credentials.walletId);
+                    let recoveryClient = c[2];
+                    recoveryClient.openWallet(err => {
+                      should.not.exist(err);
+                      recoveryClient.credentials.walletName.should.equal(walletName);
+                      recoveryClient.credentials.copayerName.should.equal(copayerName);
+                      recoveryClient.getMainAddresses({}, (err, list) => {
+                        should.not.exist(err);
+                        should.exist(list);
+                        list[0].address.should.equal(addr.address);
+                        done();
+                      });
+                    });
+                  }
+                );
+              });
+            });
+          });
+        });
+      });
+
+      it('should be able to gain access to seven btc 1-1 accounts of a single wallet from mnemonic', done => {
+        let key = new Key({ seedType: 'new' });
+        helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key }, () => {
+          helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 1 }, () => {
+            helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 2 }, () => {
+              helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 3 }, () => {
+                helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 4 }, () => {
+                  helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 5 }, () => {
+                    helpers.createAndJoinWallet(clients, keys, 1, 1, { key: key, account: 6 }, () => {
+                      var words = keys[0].get(null, true).mnemonic;
+                      var walletName = clients[0].credentials.walletName;
+                      var copayerName = clients[0].credentials.copayerName;
+                      clients[0].createAddress((err, addr) => {
+                        should.not.exist(err);
+                        should.exist(addr);
+                        Client.serverAssistedImport(
+                          { words, includeTestnetWallets: true },
+                          {
+                            clientFactory: () => {
+                              return helpers.newClient(app);
+                            }
+                          },
+                          (err, k, c) => {
+                            should.not.exist(err);
+                            c.length.should.equal(7);
+                            // check the following data on each of the clients
+                            for (let i = 0; i < c.length; i++) {
+                              c[i].credentials.coin.should.equal('btc');
+                              c[i].credentials.account.should.equal(i);
+                            }
+                            // make sure only one client has each copayerId
+                            c.every(client => {
+                              let copayerId = client.credentials.copayerId;
+                              return c.filter(x => x.credentials.copayerId === copayerId).length === 1;
+                            }).should.equal(true);
+
+
+                            let recoveryClient = c[6];
+                            recoveryClient.openWallet(err => {
+                              should.not.exist(err);
+                              recoveryClient.credentials.walletName.should.equal(walletName);
+                              recoveryClient.credentials.copayerName.should.equal(copayerName);
+                              recoveryClient.getMainAddresses({}, (err, list) => {
+                                should.not.exist(err);
+                                should.exist(list);
+                                list[0].address.should.equal(addr.address);
+                                done();
+                              });
+                            });
+                          }
+                        );
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+
+      it('should be able to gain access to three arb accounts from mnemonic and add wallet info correctly to all of them', done => {
+        let key = new Key({ seedType: 'new' });
+        helpers.createAndJoinWallet(clients, keys, 1, 1, {key, coin: 'eth', chain: 'arb'}, () => {
+          helpers.createAndJoinWallet(clients, keys, 1, 1, {key, coin: 'eth', chain: 'arb', account: 1}, () => {
+            helpers.createAndJoinWallet(clients, keys, 1, 1, {key, coin: 'eth', chain: 'arb', account: 2}, () => {
+              var words = keys[0].get(null, true).mnemonic;
+              var walletName = clients[0].credentials.walletName;
+              var copayerName = clients[0].credentials.copayerName;
+              clients[0].createAddress((err, addr) => {
+                should.not.exist(err);
+                should.exist(addr);
+                Client.serverAssistedImport(
+                  { words, includeTestnetWallets: true },
+                  {
+                    clientFactory: () => {
+                      return helpers.newClient(app);
+                    }
+                  },
+                  (err, k, c) => {
+                    should.not.exist(err);
+                    c.length.should.equal(3);
+                    c[0].credentials.coin.should.equal('eth');
+                    c[1].credentials.coin.should.equal('eth');
+                    c[2].credentials.coin.should.equal('eth');
+                    c[0].credentials.chain.should.equal('arb');
+                    c[1].credentials.chain.should.equal('arb');
+                    c[2].credentials.chain.should.equal('arb');
+                    c[0].credentials.account.should.equal(0);
+                    c[1].credentials.account.should.equal(1);
+                    c[2].credentials.account.should.equal(2);
+                    c[0].credentials.copayerId.should.not.equal(c[1].credentials.copayerId);
+                    c[0].credentials.copayerId.should.not.equal(c[2].credentials.copayerId);
+                    c[1].credentials.copayerId.should.not.equal(c[2].credentials.copayerId);
+                    should.exist(c[0].credentials.walletId);
+                    should.exist(c[1].credentials.walletId);
+                    should.exist(c[2].credentials.walletId);
+                    let recoveryClient = c[2];
+                    recoveryClient.openWallet(err => {
+                      should.not.exist(err);
+                      recoveryClient.credentials.walletName.should.equal(walletName);
+                      recoveryClient.credentials.copayerName.should.equal(copayerName);
+                      recoveryClient.getMainAddresses({}, (err, list) => {
+                        should.not.exist(err);
+                        should.exist(list);
+                        list[0].address.should.equal(addr.address);
+                        done();
+                      });
+                    });
+                  }
+                );
+              });
+            });
+          });
+        });
+      });
+
       it('should be able to gain access to a 1-1 wallet from mnemonic with passphrase', done => {
         let passphrase = 'xxx';
         helpers.createAndJoinWallet(clients, keys, 1, 1, { passphrase }, () => {
@@ -7231,7 +7335,7 @@ describe('client API', function() {
             should.not.exist(err);
             should.exist(addr);
             Client.serverAssistedImport(
-              { words, passphrase },
+              { words, passphrase, includeTestnetWallets: true },
               {
                 clientFactory: () => {
                   return helpers.newClient(app);
@@ -7268,7 +7372,7 @@ describe('client API', function() {
             should.not.exist(err);
             should.exist(addr);
             Client.serverAssistedImport(
-              { xPrivKey },
+              { xPrivKey, includeTestnetWallets: true },
               {
                 clientFactory: () => {
                   return helpers.newClient(app);
@@ -7309,7 +7413,7 @@ describe('client API', function() {
             should.not.exist(err);
             should.exist(addr);
             Client.serverAssistedImport(
-              { words },
+              { words, includeTestnetWallets: true },
               {
                 clientFactory: () => {
                   return helpers.newClient(app);
@@ -7378,7 +7482,7 @@ describe('client API', function() {
               should.not.exist(err);
               should.exist(addr);
               Client.serverAssistedImport(
-                { words },
+                { words, includeLegacyWallets: true, includeTestnetWallets: true },
                 {
                   clientFactory: () => {
                     return helpers.newClient(app);
@@ -7432,7 +7536,7 @@ describe('client API', function() {
               should.not.exist(err);
               should.exist(addr);
               Client.serverAssistedImport(
-                { words },
+                { words, includeLegacyWallets: true, includeTestnetWallets: true },
                 {
                   clientFactory: () => {
                     return helpers.newClient(app);
@@ -7468,6 +7572,51 @@ describe('client API', function() {
         );
       });
 
+      it('should be able to restore with equal keyid an old bch wallet and an old multisig btc wallet', function(done) {  
+        var words = 'famous ship happy oyster retire sponsor disease friend parent wise grunt voyage';
+        let k1 = new Key({ seedData: words, seedType: 'mnemonic', useLegacyCoinType: false, useLegacyPurpose: true}); // old bch wallets: /[44,48]/[0,0]'/
+        let k2 = new Key({ seedData: words, seedType: 'mnemonic', useLegacyCoinType: true,  useLegacyPurpose: false });  // old BTC/BCH  multisig wallets: /[44]/[0,145]'/
+        helpers.createAndJoinWallet(clients, keys, 2, 2, { key: k1, network: 'livenet'}, () => {
+        // first create a "old" bch wallet (coin = 0).
+        clients[1].fromString(
+          k2.createCredentials(null, {
+            coin: 'bch',
+            network: 'livenet',
+            account: 0,
+            n: 1
+          })
+        );
+        clients[1].createWallet(
+          'mywallet',
+          'creator',
+          1,
+          1,
+          {
+            coin: 'bch',
+            network: 'livenet'
+          },
+          (err, secret) => {
+            should.not.exist(err);
+              Client.serverAssistedImport(
+                { words, includeTestnetWallets: false, includeLegacyWallets: true },
+                {
+                  clientFactory: () => {
+                    return helpers.newClient(app);
+                  }
+                },
+                (err, k, c) => {
+                  should.not.exist(err);
+                  should.exist(k);
+                  should.exist(c[0]);
+                  should.exist(c[1]);
+                  c[0].credentials.keyId.should.equal(c[1].credentials.keyId);
+                  c.length.should.equal(2);
+                  done();
+                });
+            });
+          });
+        });
+
       it('should be able to see txp messages after gaining access', done => {
         helpers.createAndJoinWallet(clients, keys, 1, 1, {}, () => {
           var xPrivKey = keys[0].get().xPrivKey;
@@ -7485,7 +7634,7 @@ describe('client API', function() {
               should.not.exist(err);
 
               Client.serverAssistedImport(
-                { xPrivKey },
+                { xPrivKey, includeTestnetWallets: true },
                 {
                   clientFactory: () => {
                     return helpers.newClient(app);

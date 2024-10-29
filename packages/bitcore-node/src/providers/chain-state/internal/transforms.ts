@@ -39,7 +39,6 @@ export class ListTransactionsStream extends Transform {
               id: transaction._id,
               txid: transaction.txid,
               fee: transaction.fee,
-              inputs: transaction.inputs,
               size: transaction.size,
               category: 'send',
               satoshis: -output.value,
@@ -55,7 +54,6 @@ export class ListTransactionsStream extends Transform {
               id: transaction._id,
               txid: transaction.txid,
               fee: transaction.fee,
-              inputs: transaction.inputs,
               size: transaction.size,
               category: 'move',
               satoshis: -output.value,
@@ -72,7 +70,6 @@ export class ListTransactionsStream extends Transform {
           JSON.stringify({
             id: transaction._id,
             txid: transaction.txid,
-            inputs: transaction.inputs,
             category: 'fee',
             satoshis: -transaction.fee,
             height: transaction.blockHeight,
@@ -102,13 +99,11 @@ export class ListTransactionsStream extends Transform {
               txid: transaction.txid,
               fee: transaction.fee,
               size: transaction.size,
-              inputs: transaction.inputs,
               category: 'receive',
               satoshis: output.value,
               height: transaction.blockHeight,
               address: output.address,
               outputIndex: output.mintIndex,
-              coinbase: transaction.coinbase,
               blockTime: transaction.blockTimeNormalized
             }) + '\n'
           );

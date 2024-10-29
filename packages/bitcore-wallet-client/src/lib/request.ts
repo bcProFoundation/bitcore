@@ -65,7 +65,6 @@ export class Request {
         if (privKey) {
           headers['x-signature'] = this._signRequest({ ...params, privKey });
         }
-        headers['x-signature'] = reqSignature;
       }
     }
   }
