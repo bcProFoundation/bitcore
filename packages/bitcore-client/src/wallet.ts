@@ -1,13 +1,13 @@
-import { Deriver, Transactions } from '@abcpros/crypto-wallet-core';
 import * as Bcrypt from 'bcrypt';
+import { BitcoreLib, BitcoreLibCash, BitcoreLibDoge, BitcoreLibLtc, Deriver, ethers, Transactions, Web3, xrpl } from '@bcpros/crypto-wallet-core';
 import 'source-map-support/register';
 import { Client } from './client';
 import { Encryption } from './encryption';
 import { Storage } from './storage';
-const { PrivateKey, HDPrivateKey } = require('@abcpros/crypto-wallet-core').BitcoreLib;
 const Mnemonic = require('bitcore-mnemonic');
 const { ParseApiStream } = require('./stream-util');
 
+const { PrivateKey, HDPrivateKey } = BitcoreLib;
 const chainLibs = {
   BTC: BitcoreLib,
   BCH: BitcoreLibCash,
