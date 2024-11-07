@@ -1,6 +1,6 @@
 {
-  "name": "@abcpros/bitcore-lib-xec",
-  "version": "8.25.43",
+  "name": "@bcpros/bitcore-lib-xec",
+  "version": "9.0.0",
   "description": "A pure and powerful JavaScript Ecash library.",
   "author": "BitPay <dev@bitpay.com>",
   "main": "index.js",
@@ -44,7 +44,7 @@
     "lodash": "^4.17.20"
   },
   "devDependencies": {
-    "@abcpros/bitcore-build": "^8.25.30",
+    "@bcpros/bitcore-build": "^9.0.0",
     "base-x": "=3.0.4",
     "brfs": "^2.0.1",
     "chai": "^4.2.0",
