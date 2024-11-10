@@ -1,5 +1,5 @@
 {
-  "name": "@abcpros/bitcore-p2p-xec",
+  "name": "@bcpros/bitcore-p2p-xec",
   "version": "8.25.44",
   "description": "Interface to the bitcoin P2P network for ecash",
   "author": "Viet <vince.tran8x@gmail.com>",
@@ -61,13 +61,13 @@
   },
   "dependencies": {
     "@bcpros/bitcore-lib": "^9.0.0",
-    "@abcpros/bitcore-lib-xec": "^8.25.43",
+    "@bcpros/bitcore-lib-xec": "^9.0.0",
     "bloom-filter": "^0.2.0",
     "buffers": "bitpay/node-buffers#v0.1.2-bitpay",
     "socks5-client": "^0.3.6"
   },
   "devDependencies": {
-    "@abcpros/bitcore-build": "^8.25.30",
+    "@bcpros/bitcore-build": "^9.0.0",
     "brfs": "^1.2.0",
     "chai": "~1.10.0",
     "gulp": "^4.0.0",

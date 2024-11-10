@@ -1,6 +1,6 @@
 {
-  "name": "@abcpros/bitcore-p2p-cash",
-  "version": "8.25.43",
+  "name": "@bcpros/bitcore-p2p-cash",
+  "version": "9.0.0",
   "description": "Interface to the bitcoin P2P network for bitcore",
   "author": "BitPay <dev@bitpay.com>",
   "main": "index.js",
@@ -67,7 +67,7 @@
     "socks5-client": "^0.3.6"
   },
   "devDependencies": {
-    "@abcpros/bitcore-build": "^8.25.30",
+    "@bcpros/bitcore-build": "^9.0.0",
     "brfs": "^1.2.0",
     "chai": "~1.10.0",
     "gulp": "^4.0.0",

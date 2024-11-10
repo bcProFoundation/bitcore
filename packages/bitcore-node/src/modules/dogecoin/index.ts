@@ -7,7 +7,7 @@ import { DogecoinP2PWorker } from './p2p';
 export default class DOGEModule extends BaseModule {
   constructor(services: BaseModule['bitcoreServices'], chain: string, network: string, _config: IUtxoNetworkConfig) {
     super(services);
-    services.Libs.register(chain, '@abcpros/bitcore-lib-doge', 'bitcore-p2p-doge');
+    services.Libs.register(chain, '@bcpros/bitcore-lib-doge', 'bitcore-p2p-doge');
     services.P2P.register(chain, network, DogecoinP2PWorker);
     services.CSP.registerService(chain, network, new DOGEStateProvider());
     services.Verification.register(chain, network, VerificationPeer);

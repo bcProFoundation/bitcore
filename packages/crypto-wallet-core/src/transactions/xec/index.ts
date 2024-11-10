@@ -1,7 +1,7 @@
 import { BTCTxProvider } from '../btc';
 
 export class XECTxProvider extends BTCTxProvider {
-  lib = require('@abcpros/bitcore-lib-xec');
+  lib = require('@bcpros/bitcore-lib-xec');
   create({ recipients, utxos = [], change, fee = 20000 }) {
     const filteredUtxos = this.selectCoins(recipients, utxos, fee);
     const btcUtxos = filteredUtxos.map(utxo => {

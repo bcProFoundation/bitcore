@@ -1,7 +1,7 @@
 import { BTCTxProvider } from '../btc';
 
 export class DOGETxProvider extends BTCTxProvider {
-  lib = require('@abcpros/bitcore-lib-doge');
+  lib = require('@bcpros/bitcore-lib-doge');
   create({ recipients, utxos = [], change, feeRate, fee = 20000 }) {
     const filteredUtxos = this.selectCoins(recipients, utxos, fee);
     const btcUtxos = filteredUtxos.map(utxo => {

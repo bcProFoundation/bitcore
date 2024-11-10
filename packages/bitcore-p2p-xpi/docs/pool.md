@@ -7,7 +7,7 @@ The quickest way to get connected is to run the following:
 ```javascript
 
 var Pool = require('@abcpros/bitcore-p2p-xpi').Pool;
-var Networks = require('@abcpros/bitcore-lib-xpi').Networks;
+var Networks = require('@bcpros/bitcore-lib-xpi').Networks;
 
 var pool = new Pool({network: Networks.livenet});
 

@@ -7,7 +7,7 @@ import { VerificationPeer } from '../bitcoin/VerificationPeer';
 export default class XECModule extends BaseModule {
   constructor(services: BaseModule['bitcoreServices'], chain: string, network: string, _config: IUtxoNetworkConfig) {
     super(services);
-    services.Libs.register(chain, '@abcpros/bitcore-lib-xec', '@abcpros/bitcore-p2p-xec');
+    services.Libs.register(chain, '@bcpros/bitcore-lib-xec', '@abcpros/bitcore-p2p-xec');
     services.P2P.register(chain, network, BitcoinP2PWorker);
     services.CSP.registerService(chain, network, new XECStateProvider());
     services.Verification.register(chain, network, VerificationPeer);

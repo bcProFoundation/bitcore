@@ -1,5 +1,5 @@
-import * as Bcrypt from 'bcrypt';
 import { BitcoreLib, BitcoreLibCash, BitcoreLibDoge, BitcoreLibLtc, Deriver, ethers, Transactions, Web3, xrpl } from '@bcpros/crypto-wallet-core';
+import * as Bcrypt from 'bcrypt';
 import 'source-map-support/register';
 import { Client } from './client';
 import { Encryption } from './encryption';
