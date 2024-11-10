@@ -1,6 +1,6 @@
 {
-  "version": "8.25.29",
-  "name": "abcpros-bitcore",
+  "version": "9.0.0",
+  "name": "bcpros-bitcore",
   "prettier": {
     "singleQuote": true,
     "printWidth": 120

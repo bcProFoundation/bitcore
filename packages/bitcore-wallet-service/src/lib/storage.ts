@@ -4,8 +4,8 @@ import _ from 'lodash';
 import moment from 'moment';
 import { Db } from 'mongodb';
 import * as mongodb from 'mongodb';
-import { TokenInfo } from './chain/xec';
 import { BCHAddressTranslator } from './bchaddresstranslator'; // only for migration
+import { TokenInfo } from './chain/xec';
 import { Common } from './common';
 import logger from './logger';
 import {
