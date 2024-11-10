@@ -1,6 +1,6 @@
 'use strict';
 
-import * as CWC from '@abcpros/crypto-wallet-core';
+import * as CWC from '@bcpros/crypto-wallet-core';
 import { EventEmitter } from 'events';
 import _ from 'lodash';
 import sjcl from 'sjcl';
@@ -29,7 +29,7 @@ var Bitcore_ = {
   xpi: CWC.BitcoreLibXpi,
   ltc: CWC.BitcoreLibLtc
 };
-var Mnemonic = require('@abcpros/bitcore-mnemonic');
+var Mnemonic = require('@bcpros/bitcore-mnemonic');
 var url = require('url');
 var querystring = require('querystring');
 

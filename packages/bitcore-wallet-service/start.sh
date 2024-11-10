@@ -2,6 +2,7 @@
 
 mkdir -p logs
 mkdir -p pids
+
 # run_program (nodefile, pidfile, logfile)
 run_program ()
 {

@@ -1,4 +1,4 @@
-import { BitcoreLib } from '@abcpros/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import * as async from 'async';
 import _ from 'lodash';
 import { WalletService } from 'src/lib/server';

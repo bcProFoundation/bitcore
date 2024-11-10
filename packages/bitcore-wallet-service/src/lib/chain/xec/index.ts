@@ -1,4 +1,4 @@
-import { BitcoreLibXec } from '@abcpros/crypto-wallet-core';
+import { BitcoreLibXec } from '@bcpros/crypto-wallet-core';
 import BN from 'bignumber.js';
 import { BigNumber } from 'bignumber.js';
 import { ChronikClient } from 'chronik-client';

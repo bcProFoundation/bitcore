@@ -10,16 +10,16 @@ import logger from '../logger';
 import { Client } from './v8/client';
 
 const $ = require('preconditions').singleton();
-const Bitcore = require('@abcpros/bitcore-lib');
+const Bitcore = require('@bcpros/bitcore-lib');
 const Bitcore_ = {
   btc: Bitcore,
-  bch: require('@abcpros/bitcore-lib-cash'),
+  bch: require('@bcpros/bitcore-lib-cash'),
   xec: require('@bcpros/bitcore-lib-xec'),
   eth: Bitcore,
   xrp: Bitcore,
   doge: require('@bcpros/bitcore-lib-doge'),
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@abcpros/bitcore-lib-ltc')
+  ltc: require('@bcpros/bitcore-lib-ltc')
 };
 
 const Constants = Common.Constants,

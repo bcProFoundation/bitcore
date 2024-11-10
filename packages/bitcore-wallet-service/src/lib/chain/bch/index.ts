@@ -1,4 +1,4 @@
-import { BitcoreLibCash } from '@abcpros/crypto-wallet-core';
+import { BitcoreLibCash } from '@bcpros/crypto-wallet-core';
 import { IChain } from '..';
 import config from '../../../config';
 import { Errors } from '../../errors/errordefinitions';

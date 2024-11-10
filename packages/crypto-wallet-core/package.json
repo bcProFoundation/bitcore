@@ -24,7 +24,7 @@
   "license": "MIT",
   "dependencies": {
     "@bcpros/bitcore-lib": "^9.0.0",
-    "@abcpros/bitcore-lib-cash": "9.0.0",
+    "@bcpros/bitcore-lib-cash": "9.0.0",
     "@bcpros/bitcore-lib-doge": "^9.0.0",
     "@bcpros/bitcore-lib-ltc": "^9.0.0",
     "@bcpros/bitcore-lib-xec": "9.0.0",

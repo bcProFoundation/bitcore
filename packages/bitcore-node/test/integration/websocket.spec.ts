@@ -8,7 +8,7 @@ import { Api } from '../../src/services/api';
 import { Event } from '../../src/services/event';
 import { IUtxoNetworkConfig } from '../../src/types/Config';
 import { resetDatabase } from '../helpers';
-const { PrivateKey } = require('@abcpros/bitcore-lib');
+const { PrivateKey } = require('@bcpros/bitcore-lib');
 
 const chain = 'BTC';
 const network = 'regtest';

@@ -1,21 +1,21 @@
-import * as CWC from '@abcpros/crypto-wallet-core';
+import * as CWC from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import Config from '../../config';
 import { logger } from '../logger';
 import { Constants } from './constants';
 
 const $ = require('preconditions').singleton();
-const bitcore = require('@abcpros/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 const crypto = bitcore.crypto;
 const secp256k1 = require('secp256k1');
-const Bitcore = require('@abcpros/bitcore-lib');
+const Bitcore = require('@bcpros/bitcore-lib');
 const Bitcore_ = {
   btc: Bitcore,
-  bch: require('@abcpros/bitcore-lib-cash'),
+  bch: require('@bcpros/bitcore-lib-cash'),
   xec: require('@bcpros/bitcore-lib-xec'),
   doge: require('@bcpros/bitcore-lib-doge'),
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@abcpros/bitcore-lib-ltc')
+  ltc: require('@bcpros/bitcore-lib-ltc')
 };
 
 export class Utils {

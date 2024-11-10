@@ -16,7 +16,7 @@ var config = require('../test-config');
 //   memStore: true
 // });
 
-var Bitcore = require('@abcpros/bitcore-lib');
+var Bitcore = require('@bcpros/bitcore-lib');
 var Bitcore_ = {
   btc: Bitcore,
   bch: require('@bcpros/bitcore-lib-cash'),
@@ -24,7 +24,7 @@ var Bitcore_ = {
   xec: require('@bcpros/bitcore-lib-xec'),
   doge: require('@bcpros/bitcore-lib-doge'),
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@abcpros/bitcore-lib-ltc')
+  ltc: require('@bcpros/bitcore-lib-ltc')
 };
 
 var { ChainService } = require('../../ts_build/lib/chain/index');

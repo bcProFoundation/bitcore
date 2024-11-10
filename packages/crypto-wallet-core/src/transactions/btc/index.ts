@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import { Key } from '../../derivation';
 
 export class BTCTxProvider {
-  lib = require('@abcpros/bitcore-lib');
+  lib = require('@bcpros/bitcore-lib');
 
   selectCoins(
     recipients: Array<{ amount: number }>,

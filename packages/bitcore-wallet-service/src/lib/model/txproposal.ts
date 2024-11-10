@@ -1,4 +1,4 @@
-import { Transactions } from '@abcpros/crypto-wallet-core';
+import { Transactions } from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { ChainService } from '../chain/index';
 import { Common } from '../common';

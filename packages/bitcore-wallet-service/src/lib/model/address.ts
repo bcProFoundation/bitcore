@@ -1,4 +1,4 @@
-import { Deriver } from '@abcpros/crypto-wallet-core';
+import { Deriver } from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { ChainService } from '../chain/index';
 import { Common } from '../common';
@@ -43,12 +43,12 @@ export class Address {
   beRegistered: boolean;
 
   static Bitcore = {
-    btc: require('@abcpros/bitcore-lib'),
-    bch: require('@abcpros/bitcore-lib-cash'),
+    btc: require('@bcpros/bitcore-lib'),
+    bch: require('@bcpros/bitcore-lib-cash'),
     xec: require('@bcpros/bitcore-lib-xec'),
     doge: require('@bcpros/bitcore-lib-doge'),
     xpi: require('@bcpros/bitcore-lib-xpi'),
-    ltc: require('@abcpros/bitcore-lib-ltc')
+    ltc: require('@bcpros/bitcore-lib-ltc')
   };
 
   static create(opts) {

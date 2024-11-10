@@ -9,7 +9,7 @@ var should = chai.should();
 var log = require('npmlog');
 log.debug = log.verbose;
 
-var Bitcore = require('@abcpros/bitcore-lib');
+var Bitcore = require('@bcpros/bitcore-lib');
 var Bitcore_ = {
   btc: Bitcore,
   bch: require('@bcpros/bitcore-lib-cash'),

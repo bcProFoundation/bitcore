@@ -20,7 +20,7 @@ config.moralis = config.moralis ?? {
   whitelist: []
 };
 
-const Bitcore = require('@abcpros/bitcore-lib');
+const Bitcore = require('@bcpros/bitcore-lib');
 const Bitcore_ = {
   btc: Bitcore,
   bch: require('@bcpros/bitcore-lib-cash'),
@@ -29,7 +29,7 @@ const Bitcore_ = {
   xrp: Bitcore,
   doge: require('@bcpros/bitcore-lib-doge'),
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@abcpros/bitcore-lib-ltc')
+  ltc: require('@bcpros/bitcore-lib-ltc')
 };
 
 const { WalletService } = require('../../ts_build/lib/server');

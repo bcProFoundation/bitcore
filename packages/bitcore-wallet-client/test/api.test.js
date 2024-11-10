@@ -18,7 +18,7 @@ var Bitcore_ = {
   bch: CWC.BitcoreLibCash
 };
 
-var BWS = require('@abcpros/bitcore-wallet-service');
+var BWS = require('@bcpros/bitcore-wallet-service');
 
 var Client = require('../ts_build').default;
 var Key = Client.Key;

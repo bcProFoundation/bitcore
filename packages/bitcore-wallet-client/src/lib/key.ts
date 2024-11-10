@@ -6,14 +6,14 @@ import {
   BitcoreLibCash,
   Deriver,
   Transactions
-} from '@abcpros/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import * as _ from 'lodash';
 import 'source-map-support/register';
 import { Constants, Utils } from './common';
 import { Credentials } from './credentials';
 
 var Bitcore = BitcoreLib;
-var Mnemonic = require('@abcpros/bitcore-mnemonic');
+var Mnemonic = require('@bcpros/bitcore-mnemonic');
 var sjcl = require('sjcl');
 var log = require('./log');
 const async = require('async');

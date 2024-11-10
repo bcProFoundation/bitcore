@@ -1,5 +1,5 @@
 'use strict';
-import * as CWC from '@abcpros/crypto-wallet-core';
+import * as CWC from '@bcpros/crypto-wallet-core';
 
 export const Constants = {
   CHAINS: {
@@ -7,15 +7,13 @@ export const Constants = {
     BCH: 'bch',
     XEC: 'xec',
     ETH: 'eth',
+    MATIC: 'matic',
+    ARB: 'arb',
+    BASE: 'base',
+    OP: 'op',
     XRP: 'xrp',
     DOGE: 'doge',
     LTC: 'ltc',
-    USDC: 'usdc',
-    PAX: 'pax',
-    GUSD: 'gusd',
-    BUSD: 'busd',
-    DAI: 'dai',
-    WBTC: 'wbtc',
     XPI: 'xpi'
   },
 

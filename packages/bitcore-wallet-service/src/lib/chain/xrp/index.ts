@@ -1,4 +1,4 @@
-import { Transactions, Validation } from '@abcpros/crypto-wallet-core';
+import { Transactions, Validation } from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { IWallet } from 'src/lib/model';
 import { IAddress } from 'src/lib/model/address';
@@ -47,6 +47,13 @@ export class XrpChain implements IChain {
   getInputSizeSafetyMargin() {
     return 0;
   }
+
+  convertAddressToScriptPayload(address) {}
+  sendToken(wallet, mnemonic, tokenId, token, TOKENQTY, etokenAddress) {}
+  burnToken(wallet, mnemonic, tokenId, TOKENQTY, splitTxId) {}
+
+  getChronikClient() {}
+  getTokenInfo(tokenId) {}
 
   getWalletBalance(server: WalletService, wallet: IWallet, opts, cb) {
     const bc = server._getBlockchainExplorer(wallet.chain || wallet.coin, wallet.network);

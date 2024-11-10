@@ -7,7 +7,7 @@ import {
   BitcoreLibCash,
   BitcoreLibXec,
   BitcoreLibXpi
-} from '@abcpros/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 
 var Bitcore = BitcoreLib;
 var BCHAddress = BitcoreLibCash.Address;

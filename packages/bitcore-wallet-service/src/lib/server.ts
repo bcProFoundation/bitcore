@@ -1,4 +1,4 @@
-import { UNITS } from '@abcpros/crypto-wallet-core/ts_build/src/constants/units';
+import { UNITS } from '@bcpros/crypto-wallet-core/ts_build/src/constants/units';
 import * as async from 'async';
 import * as _ from 'lodash';
 import 'source-map-support/register';
@@ -30,7 +30,7 @@ import { Storage } from './storage';
 import cuid from 'cuid';
 import * as forge from 'node-forge';
 
-import { Validation } from '@abcpros/crypto-wallet-core';
+import { Validation } from '@bcpros/crypto-wallet-core';
 import messageLib from 'bitcoinjs-message';
 import moment from 'moment';
 import { CurrencyRateService } from './currencyrate';
@@ -48,9 +48,9 @@ import { RaipayFee } from './model/raipayfee';
 import { TokenInfo, TokenItem } from './model/tokenInfo';
 import { PushNotificationsService } from './pushnotificationsservice';
 
-const Client = require('@abcpros/bitcore-wallet-client').default;
+const Client = require('@bcpros/bitcore-wallet-client').default;
 const Key = Client.Key;
-const commonBWC = require('@abcpros/bitcore-wallet-client/ts_build/lib/common');
+const commonBWC = require('@bcpros/bitcore-wallet-client/ts_build/lib/common');
 const walletLotus = require('../../../../wallet-lotus-donation.json');
 const merchantList = require('../../../../merchant-list.json');
 const raipayFee = require('../../../../raipay-fee.json');
@@ -113,16 +113,16 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 let txIdHandled = [];
 let ws = null;
-const Bitcore = require('@abcpros/bitcore-lib');
+const Bitcore = require('@bcpros/bitcore-lib');
 const Bitcore_ = {
   btc: Bitcore,
-  bch: require('@abcpros/bitcore-lib-cash'),
+  bch: require('@bcpros/bitcore-lib-cash'),
   xec: require('@bcpros/bitcore-lib-xec'),
   eth: Bitcore,
   xrp: Bitcore,
   doge: require('@bcpros/bitcore-lib-doge'),
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@abcpros/bitcore-lib-ltc')
+  ltc: require('@bcpros/bitcore-lib-ltc')
 };
 
 const Common = require('./common');

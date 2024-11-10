@@ -5,7 +5,7 @@ import { URL } from 'url';
 import * as utils from './utils';
 let usingBrowser = (global as any).window;
 const URLClass = usingBrowser ? usingBrowser.URL : URL;
-const bitcoreLib = require('@abcpros/crypto-wallet-core').BitcoreLib;
+const bitcoreLib = require('@bcpros/crypto-wallet-core').BitcoreLib;
 
 export class Client {
   apiUrl: string;

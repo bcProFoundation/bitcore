@@ -13,14 +13,14 @@ const Constants = Common.Constants,
   Defaults = Common.Defaults,
   Utils = Common.Utils;
 const Bitcore = {
-  btc: require('@abcpros/bitcore-lib'),
-  bch: require('@abcpros/bitcore-lib-cash'),
+  btc: require('@bcpros/bitcore-lib'),
+  bch: require('@bcpros/bitcore-lib-cash'),
   xec: require('@bcpros/bitcore-lib-xec'),
-  eth: require('@abcpros/bitcore-lib'),
-  xrp: require('@abcpros/bitcore-lib'),
+  eth: require('@bcpros/bitcore-lib'),
+  xrp: require('@bcpros/bitcore-lib'),
   doge: require('@bcpros/bitcore-lib-doge'),
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@abcpros/bitcore-lib-ltc')
+  ltc: require('@bcpros/bitcore-lib-ltc')
 };
 
 export interface IWallet {

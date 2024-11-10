@@ -1,4 +1,4 @@
-import { Validation } from '@abcpros/crypto-wallet-core';
+import { Validation } from '@bcpros/crypto-wallet-core';
 import { Request, Response, Router } from 'express';
 import logger from '../../logger';
 import { ChainStateProvider } from '../../providers/chain-state';

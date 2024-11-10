@@ -1,4 +1,4 @@
-import { BitcoreLibDoge } from '@abcpros/crypto-wallet-core';
+import { BitcoreLibDoge } from '@bcpros/crypto-wallet-core';
 import * as async from 'async';
 import _ from 'lodash';
 import { IChain } from '..';
