@@ -237,11 +237,11 @@ export class FiatRateService {
   _retrieveLotus(cb) {
     logger.debug('Fetching data for lotus');
     const bc = BlockChainExplorer({
-      coin: 'xpi',
+      chain: 'xpi',
       network: 'livenet',
       url: config.blockchainExplorerOpts.xpi.livenet.url
     });
-    bc.getBlockBits((err, bits) => {
+    bc.getBlockchainHeight((err, bits) => {
       if (err) return cb(err);
       const currentDiff = Bitcore.BlockHeader({ bits }).getDifficulty();
       let lotusPrice = 0;

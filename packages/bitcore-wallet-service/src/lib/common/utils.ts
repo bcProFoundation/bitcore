@@ -106,7 +106,7 @@ export class Utils {
     }
   }
 
-  static formatAmount(satoshis, unit, opts) {
+  static formatAmount(satoshis, unit, opts?) {
     const UNITS = Object.entries(CWC.Constants.UNITS).reduce((units, [currency, currencyConfig]) => {
       units[currency] = {
         toSatoshis: currencyConfig.toSatoshis,

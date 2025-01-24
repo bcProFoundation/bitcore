@@ -102,7 +102,8 @@ export class Address {
     $.checkArgument(Utils.checkValueInCollection(scriptType, Constants.SCRIPT_TYPES));
 
     if (hardwareSourcePublicKey) {
-      const bitcoreAddress = Deriver.getAddress(chain.toUpperCase(), network, hardwareSourcePublicKey, scriptType);
+      const { addressIndex, isChange } = new AddressManager().parseDerivationPath(path);
+      const bitcoreAddress = Deriver.deriveAddress(chain.toUpperCase(), network, hardwareSourcePublicKey, addressIndex, isChange);
       return {
         address: bitcoreAddress.toString(),
         path,

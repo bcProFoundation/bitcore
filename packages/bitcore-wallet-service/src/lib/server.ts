@@ -85,9 +85,9 @@ const appDir = dirname(require.main.filename);
 
 const Uuid = require('uuid');
 const $ = require('preconditions').singleton();
-const deprecatedServerMessage = require('../deprecated-serverMessages');
-const serverMessages = require('../serverMessages');
-const BCHAddressTranslator = require('./bchaddresstranslator');
+// const deprecatedServerMessage = require('../deprecated-serverMessages');
+// const serverMessages = require('../serverMessages');
+// const BCHAddressTranslator = require('./bchaddresstranslator');
 const EmailValidator = require('email-validator');
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(config.emailMerchant.SENDGRID_API_KEY);
@@ -153,7 +153,7 @@ const Defaults = Common.Defaults;
 const Services = Common.Services;
 
 
-const Errors = require('./errors/errordefinitions');
+// const Errors = require('./errors/errordefinitions');
 
 const shell = require('shelljs');
 
@@ -2363,7 +2363,7 @@ export class WalletService implements IWalletService {
         },
         next => {
           if (this._isSupportToken(wallet)) {
-            this.storage.fetchAddresses(walletId, async (err, addresses) => {
+            this.storage.fetchAddresses(this.walletId, async (err, addresses) => {
               if (err) return next(err);
               if (_.size(addresses) < 1 || !addresses[0].address) return next('no addresss');
               let promiseList = [];
@@ -2508,7 +2508,8 @@ export class WalletService implements IWalletService {
 
       this._getBlockchainHeight(wallet.chain, wallet.network, (err, height, hash) => {
         if (err) return cb(err);
-        bc.getAddressUtxos(address, height, wallet.chain, async (err, allUtxos) => {
+        // bc.getAddressUtxos(address, height, wallet.chain, async (err, allUtxos) => {
+        bc.getAddressUtxos(address, height, async (err, allUtxos) => {
           if (err) return cb(err);
           let promiseList = [];
           if (wallet.isTokenSupport) {
@@ -2852,7 +2853,7 @@ export class WalletService implements IWalletService {
     const setWallet = cb1 => {
       const walletIdDonation = config.donationWalletId;
       if (wallet) return cb1();
-      this.getWalletFromId(walletIdDonation, (err, ret) => {
+      this.getWalletFromIdentifier(walletIdDonation, (err, ret) => {
         if (err) return cb(err);
         wallet = ret;
         return cb1(null, wallet);
@@ -4226,7 +4227,7 @@ export class WalletService implements IWalletService {
     if (!checkRequired(opts, ['network', 'rawTx'], cb)) return;
     const ischronik = opts.ischronik ? opts.ischronik : undefined;
     opts.coin = opts.coin || Defaults.COIN;
-    if (!Utils.checkValueInCollection(opts.coin, Constants.COINS)) return cb(new ClientError('Invalid coin'));
+    if (!Utils.checkValueInCollection(opts.coin, Constants.CHAINS)) return cb(new ClientError('Invalid coin'));
 
     opts.chain = opts.chain || opts.coin || Defaults.COIN;
     if (!Utils.checkValueInCollection(opts.chain, Constants.CHAINS)) return cb(new ClientError('Invalid chain'));
@@ -6354,18 +6355,18 @@ export class WalletService implements IWalletService {
     let listCoinSwapCode = [];
     if (orderInfo) {
       if (!(orderInfo.fromCoinCode && orderInfo.toCoinCode && orderInfo.createdRate && orderInfo.addressUserReceive)) {
-        throw new Error(Errors.MISSING_REQUIRED_FIELD);
+        throw new Error(Errors.MISSING_REQUIRED_FIELD as unknown as string);
       }
 
       if (
         orderInfo.isFromToken &&
         (!orderInfo.fromTokenId || !(orderInfo.fromTokenInfo && orderInfo.fromTokenInfo.decimals))
       ) {
-        throw new Error(Errors.MISSING_REQUIRED_FIELD);
+        throw new Error(Errors.MISSING_REQUIRED_FIELD as unknown as string);
       }
 
       if (orderInfo.isToToken && (!orderInfo.toTokenId || !(orderInfo.toTokenInfo && orderInfo.toTokenInfo.decimals))) {
-        throw new Error(Errors.MISSING_REQUIRED_FIELD);
+        throw new Error(Errors.MISSING_REQUIRED_FIELD as unknown as string);
       }
 
       const now = new Date();
@@ -6386,7 +6387,7 @@ export class WalletService implements IWalletService {
         config => config.network === orderInfo.fromNetwork && config.code === orderInfo.fromCoinCode
       );
       if (indexCoinReceiveFound < 0 || indexCoinSwapfound < 0) {
-        throw new Error(Errors.NOT_FOUND_COIN_IN_CONFIG);
+        throw new Error(Errors.NOT_FOUND_COIN_IN_CONFIG as unknown as string);
       }
     } else throw new Error('Not found config swap');
     return true;
@@ -7704,7 +7705,7 @@ export class WalletService implements IWalletService {
     return { address, amount };
   }
 
-  _normalizeTxHistory(walletId, txs: any[], dustThreshold, bcHeight, cb) {
+  _normalizeTxHistory(walletId, txs: any[], dustThreshold, bcHeight, wallet, cb) {
     if (_.isEmpty(txs)) return cb(null, txs);
 
     // console.log('[server.js.2915:txs:] IN NORMALIZE',txs); //TODO
@@ -8560,7 +8561,7 @@ export class WalletService implements IWalletService {
           bc.getTransactions(wallet, startBlock, (err, txs) => {
             if (err) return cb(err);
             const dustThreshold = ChainService.getDustAmountValue(wallet.chain);
-            this._normalizeTxHistory(walletCacheKey, txs, dustThreshold, bcHeight, (err, inTxs: any[]) => {
+            this._normalizeTxHistory(walletCacheKey, txs, dustThreshold, bcHeight, wallet, async (err, inTxs: any[]) => {
               if (err) return cb(err);
                 if (err) return cb(err);
                 if (this._isSupportToken(wallet) && addressesToken && _.size(inTxs) > 0) {
@@ -10929,7 +10930,7 @@ export class WalletService implements IWalletService {
       };
 
       let qs = [];
-      qs.push('categories=' + req?.body?.categories ?? 'all');
+      qs.push('categories=' + (req?.body?.categories ?? 'all'));
 
       const uriPath: string = req?.body?.includeDetails ? '/tokenlist/utils/currencies/details' : '/tokenlist/utils/currencies';
       const URL: string = API + `${uriPath}?${qs.join('&')}`;

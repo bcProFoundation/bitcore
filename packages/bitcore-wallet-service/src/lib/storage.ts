@@ -34,7 +34,7 @@ import { ICoinConfigFilter } from './server';
 // import { Order } from './model/order';
 const mongoDbQueue = require('../../node_modules/mongodb-queue');
 
-const BCHAddressTranslator = require('./bchaddresstranslator'); // only for migration
+// const BCHAddressTranslator = require('./bchaddresstranslator'); // only for migration
 const $ = require('preconditions').singleton();
 
 const collections = {

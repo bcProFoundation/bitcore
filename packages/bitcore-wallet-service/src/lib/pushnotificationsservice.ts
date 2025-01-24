@@ -18,7 +18,7 @@ const Utils = Common.Utils;
 const Defaults = Common.Defaults;
 const Constants = Common.Constants;
 const sjcl = require('sjcl');
-const config = require('../config');
+// const config = require('../config');
 const admin = require('firebase-admin');
 const serviceAccount = require('../../config/serviceAccountKey.json');
 admin.initializeApp({
@@ -500,7 +500,7 @@ export class PushNotificationsService {
       usdp: 'USDP',
       gusd: 'GUSD',
       busd: 'BUSD',
-      wbtc: 'WBTC',
+      // wbtc: 'WBTC',
       dai: 'DAI',
       wbtc: 'WBTC',
       shib: 'SHIB',
