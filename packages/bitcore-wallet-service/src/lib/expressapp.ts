@@ -38,35 +38,6 @@ const passport = require('passport');
 import listAccount from '../accounts.json';
 import cron from 'node-cron';
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    const allowedOrigins = ['https://wallet.abcpay.test'];
-
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'x-signature',
-    'x-identity',
-    'x-identities',
-    'x-session',
-    'x-client-version',
-    'x-wallet-id',
-    'X-Requested-With',
-    'Content-Type',
-    'Authorization'
-  ],
-  credentials: true, // Allow credentials
-  maxAge: 86400 // Cache preflight requests for 24 hours
-};
-
 export class ExpressApp {
   app: express.Express;
 
@@ -84,6 +55,35 @@ export class ExpressApp {
    */
   start(opts, cb) {
     opts = opts || {};
+
+    const allowedOrigins = opts.allowedOrigins || ['*'];
+    const corsOptions = {
+      origin: (origin, callback) => {
+
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'x-signature',
+        'x-identity',
+        'x-identities',
+        'x-session',
+        'x-client-version',
+        'x-wallet-id',
+        'X-Requested-With',
+        'Content-Type',
+        'Authorization'
+      ],
+      credentials: true, // Allow credentials
+      maxAge: 86400 // Cache preflight requests for 24 hours
+    };
 
     // Add cors middleware before other middleware
     this.app.use(cors(corsOptions));
@@ -109,7 +109,7 @@ export class ExpressApp {
     this.app.use(require('express-session')({ secret: 'keyboard cat', resave: true, saveUninitialized: true }));
     this.app.use(passport.initialize());
     this.app.use(passport.session());
-    passport.serializeUser(function(user, done) {
+    passport.serializeUser(function (user, done) {
       done(null, user);
     });
 
@@ -124,7 +124,7 @@ export class ExpressApp {
         {
           clientID: '287411092309-vovtceqbolmrn2krv8knpt0ovpa4u4ta.apps.googleusercontent.com'
         },
-        function(parsedToken, googleId, done) {
+        function (parsedToken, googleId, done) {
           // User.findOrCreate({ googleId: googleId }, function (err, user) {
           //   return done(err, user);
           // });

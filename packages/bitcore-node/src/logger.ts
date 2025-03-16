@@ -50,4 +50,37 @@ export const formatTimestamp = (date: Date) =>
 
 export const timestamp = () => formatTimestamp(new Date());
 
+// Function to get call stack at any point
+export function captureCallStack(skipFrames = 1): string {
+  const stack = new Error().stack || '';
+  return stack.split('\n').slice(skipFrames + 1).join('\n');
+}
+
+// Log with explicit call stack even for non-errors
+export function logWithCallStack(level: string, message: string): void {
+  const stack = captureCallStack(2); // Skip this function and caller
+  logger.log(level, `${message}\nCall Stack:\n${stack}`);
+}
+
+// Error handler for global exceptions
+process.on('uncaughtException', (error) => {
+  const message = typeof error === 'string' ? error : error.message;
+  logger.error({
+    message: `Uncaught Exception: ${message}`,
+    error,
+    timestamp: timestamp()
+  });
+});
+
+// Error handler for unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  console.log(error);
+  logger.error({
+    message: 'Unhandled Promise Rejection',
+    error,
+    timestamp: timestamp()
+  });
+});
+
 export default logger;

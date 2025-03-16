@@ -577,8 +577,11 @@ importers:
         specifier: 1.7.1
         version: 1.7.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       winston:
-        specifier: 3.2.0
-        version: 3.2.0
+        specifier: 3.3.3
+        version: 3.3.3
+      winston-daily-rotate-file:
+        specifier: 4.5.5
+        version: 4.5.5(winston@3.3.3)
       xrpl:
         specifier: 2.13.0
         version: 2.13.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -2506,9 +2509,6 @@ packages:
   async@2.5.0:
     resolution: {integrity: sha512-e+lJAJeNWuPCNyxZKOBdaJGyLGHugXVQtrAwtuAe2vhxTYxFTKE73p8JuTmdH0qdQZtDvI4dhJwjZc5zsfIsYw==}
 
-  async@2.6.4:
-    resolution: {integrity: sha512-mzo5dfJYwAn29PeiJ0zvwTo04zj8HDJj0Mn8TD7sno7q12prdbnasKJHhkm2c1LgrhlJ0teaea8860oxi51mGA==}
-
   async@3.2.4:
     resolution: {integrity: sha512-iAB+JbDEGXhyIUavoDl9WP/Jj106Kz9DEn1DPgYw5ruDn0e3Wgi3sKFm55sASdGBNOQB8F59d9qQ7deqrHA8wQ==}
 
@@ -3190,9 +3190,6 @@ packages:
   color@3.2.1:
     resolution: {integrity: sha512-aBl7dZI9ENN6fUGC7mWpMTPNHmWUSNan9tuWN6ahh5ZLNk9baLJOnSMlrQkHcrfFgz2/RigjUVAjdx36VcemKA==}
 
-  colornames@1.1.1:
-    resolution: {integrity: sha512-/pyV40IrsdulWv+wFPmERh9k/mjsPZ64yUMDmWrtj/k1nmgrzzIENWKdaVKyBbvFdQWqkcaRxr+polCo3VMe7A==}
-
   colors@0.6.2:
     resolution: {integrity: sha512-OsSVtHK8Ir8r3+Fxw/b4jS1ZLPXkV6ZxDRJQzeD7qo0SqMXWrHDM71DgYzPMHY8SFJ0Ao+nNU2p1MmwdzKqPrw==}
     engines: {node: '>=0.1.90'}
@@ -3677,9 +3674,6 @@ packages:
   di@0.0.1:
     resolution: {integrity: sha512-uJaamHkagcZtHPqCIHZxnFrXlunQXgBOsZSUOWwFw31QJCAbyTBoHMW75YOTur5ZNx8pIeAKgf6GWIgaqqiLhA==}
 
-  diagnostics@1.1.1:
-    resolution: {integrity: sha512-8wn1PmdunLJ9Tqbx+Fx/ZEuHfJf4NKSN2ZBj7SJC/OWRWha843+WsTjqMe1B5E3p28jqBlp+mJ2fPVxPyNgYKQ==}
-
   dicer@0.3.1:
     resolution: {integrity: sha512-ObioMtXnmjYs3aRtpIJt9rgQSPCIhKVkFPip+E9GUDyWl8N435znUxK/JfNwGZJ2wnn5JKQ7Ly3vOK5Q5dylGA==}
     engines: {node: '>=10.0.0'}
@@ -3809,9 +3803,6 @@ packages:
     resolution: {integrity: sha512-/kyM18EfinwXZbno9FyUGeFh87KC8HRQBQGildHZbEuRyWFOmv1U10o9BBp8XVZDVNNuQKyIGIu5ZYAAXJ0V2Q==}
     engines: {node: '>= 4'}
 
-  enabled@1.0.2:
-    resolution: {integrity: sha512-nnzgVSpB35qKrUN8358SjO1bYAmxoThECTWw9s3J0x5G8A9hokKHVDFzBjVpCoSryo6MhN8woVyascN5jheaNA==}
-
   enabled@2.0.0:
     resolution: {integrity: sha512-AKrN98kuwOzMIdAizXGI86UFBoo26CL21UM763y1h/GMSJ4/OHU9k2YlsmBpyScFo/wbLzWQJBMCW4+IO3/+OQ==}
 
@@ -3855,9 +3846,6 @@ packages:
 
   entities@2.1.0:
     resolution: {integrity: sha512-hCx1oky9PFrJ611mf0ifBLBRW8lUUVRlFolb5gWRfIELabBlbp9xZvrqZLZAs+NxFnbfQoeGd8wDkygjg7U85w==}
-
-  env-variable@0.0.6:
-    resolution: {integrity: sha512-bHz59NlBbtS0NhftmR8+ExBEekE7br0e01jw+kk0NDro7TtZzBYZ5ScGPs3OmwnpyfHTHOtr1Y6uedCdrIldtg==}
 
   errno@0.1.8:
     resolution: {integrity: sha512-dJ6oBr5SQ1VSd9qkk7ByRgb/1SH4JZjCHSW/mr63/QcXO9zLVxvJ6Oy13nio03rxpSnVDDjFor75SjVeZWPW/A==}
@@ -4463,7 +4451,7 @@ packages:
     resolution: {integrity: sha512-oWb1Z6mkHIskLzEJ/XWX0srkpkTQ7vaopMQkyaEIoq0fmtFVxOthb8cCxeT+p3ynTdkk/RZwbgG4brR5BeWECw==}
     engines: {node: '>= 4.0'}
     os: [darwin]
-    deprecated: The v1 package contains DANGEROUS / INSECURE binaries. Upgrade to safe fsevents v2
+    deprecated: Upgrade to fsevents v2 to mitigate potential security issues
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -5599,9 +5587,6 @@ packages:
   klaw@3.0.0:
     resolution: {integrity: sha512-0Fo5oir+O9jnXu5EefYbVK+mHMBeEVEy2cmctR1O1NECcCkPRreJKrS6Qt/j3KC2C148Dfo9i3pCmCMsdqGr0g==}
 
-  kuler@1.0.1:
-    resolution: {integrity: sha512-J9nVUucG1p/skKul6DU3PUZrhs0LPulNaeUOox0IyXDi8S4CztTHs1gQphhuZmzXG7VOQSf6NJfKuzteQLv9gQ==}
-
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
 
@@ -6545,9 +6530,6 @@ packages:
 
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
-
-  one-time@0.0.4:
-    resolution: {integrity: sha512-qAMrwuk2xLEutlASoiPiAMW3EN3K96Ka/ilSXYr6qR1zSVXw2j7+yDSqGTC4T9apfLYxM3tLLjKvgPdAUK7kYQ==}
 
   one-time@1.0.0:
     resolution: {integrity: sha512-5DXOiRKwuSEcQ/l0kGCF6Q3jcADFv5tSmRaJck/OqkVFcOzutB134KRSfF0xDrL39MNnqxbHBbUUcjZIhTgb2g==}
@@ -8798,10 +8780,6 @@ packages:
     resolution: {integrity: sha512-fPoamsHq8leJ62D1M9V/f15mjQ1UHe4+7j1wpAT3fqgA5JqhJkk4aIfPEjfMTI9x6ZTjaLOpMAjluLtmgO5b6g==}
     engines: {node: '>= 0.6.0'}
 
-  winston@3.2.0:
-    resolution: {integrity: sha512-r2e2ufodByh8U1infSXNLViN7ekqVRoSkcJgpS6AzAyKve0uiUkeQq0kxdSDr8bwaM1rGXprvvoC1B+ocy5L0w==}
-    engines: {node: '>= 6.4.0'}
-
   winston@3.3.3:
     resolution: {integrity: sha512-oEXTISQnC8VlSAKf1KYSSd7J6IWuRPQqDdo8eoRNaYKLvwSb5+79Z3Yi1lrl6KDpU6/VWaxpakDAtb1oQ4n9aw==}
     engines: {node: '>= 6.4.0'}
@@ -10923,10 +10901,6 @@ snapshots:
     dependencies:
       lodash: 4.17.20
 
-  async@2.6.4:
-    dependencies:
-      lodash: 4.17.20
-
   async@3.2.4: {}
 
   async@3.2.6: {}
@@ -11838,8 +11812,6 @@ snapshots:
       color-convert: 1.9.3
       color-string: 1.9.1
 
-  colornames@1.1.1: {}
-
   colors@0.6.2: {}
 
   colors@1.0.3: {}
@@ -12372,12 +12344,6 @@ snapshots:
 
   di@0.0.1: {}
 
-  diagnostics@1.1.1:
-    dependencies:
-      colorspace: 1.1.4
-      enabled: 1.0.2
-      kuler: 1.0.1
-
   dicer@0.3.1:
     dependencies:
       streamsearch: 1.1.0
@@ -12528,10 +12494,6 @@ snapshots:
 
   emojis-list@3.0.0: {}
 
-  enabled@1.0.2:
-    dependencies:
-      env-variable: 0.0.6
-
   enabled@2.0.0: {}
 
   encodeurl@1.0.2: {}
@@ -12644,8 +12606,6 @@ snapshots:
       safe-regex-test: 1.1.0
 
   entities@2.1.0: {}
-
-  env-variable@0.0.6: {}
 
   errno@0.1.8:
     dependencies:
@@ -15050,10 +15010,6 @@ snapshots:
     dependencies:
       graceful-fs: 4.2.11
 
-  kuler@1.0.1:
-    dependencies:
-      colornames: 1.1.1
-
   kuler@2.0.0: {}
 
   labeled-stream-splicer@2.0.2:
@@ -16154,8 +16110,6 @@ snapshots:
   once@1.4.0:
     dependencies:
       wrappy: 1.0.2
-
-  one-time@0.0.4: {}
 
   one-time@1.0.0:
     dependencies:
@@ -19025,18 +18979,6 @@ snapshots:
       isstream: 0.1.2
       pkginfo: 0.3.1
       stack-trace: 0.0.10
-
-  winston@3.2.0:
-    dependencies:
-      async: 2.6.4
-      diagnostics: 1.1.1
-      is-stream: 1.1.0
-      logform: 2.7.0
-      one-time: 0.0.4
-      readable-stream: 3.6.2
-      stack-trace: 0.0.10
-      triple-beam: 1.4.1
-      winston-transport: 4.9.0
 
   winston@3.3.3:
     dependencies:

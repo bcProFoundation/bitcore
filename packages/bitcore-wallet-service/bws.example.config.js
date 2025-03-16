@@ -26,6 +26,7 @@ module.exports = {
       dbname: 'bws'
     }
   },
+  allowedOrigins: ['*'],
   messageBrokerOpts: {
     //  To use message broker server, uncomment this:
     messageBrokerServer: {
@@ -111,7 +112,7 @@ module.exports = {
         regtestEnabled: false
       }
     },
-    socketApiKey: 'socketApiKey'
+    socketApiKey: '123456'
   },
   pushNotificationsOpts: {
     templatePath: 'templates',
