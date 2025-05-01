@@ -67,6 +67,7 @@ import { RaipayFee } from './model/raipayfee';
 import { TokenInfo, TokenItem } from './model/tokenInfo';
 import axios, { AxiosInstance } from 'axios';
 import { PushNotificationsService } from './pushnotificationsservice';
+import { TelegramBotService } from './telegrambot';
 
 const Client = require('@bcpros/bitcore-wallet-client').default;
 const Key = Client.Key;
@@ -98,9 +99,6 @@ let swapQueueInterval = null;
 let conversionQueueInterval = null;
 let merchantOrderQueueInterval = null;
 let clientsFundConversion = null;
-let bot = null;
-let botNotification = null;
-let botSwap = null;
 let clientsFund = null;
 let clientsReceive = null;
 let keyFund = null;
@@ -127,7 +125,6 @@ let swapNotiCount = 0;
 
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
-let txIdHandled = [];
 let ws = null;
 const Bitcore = require('@bcpros/bitcore-lib');
 const Bitcore_ = {
@@ -151,7 +148,6 @@ const Defaults = Common.Defaults;
 const Services = Common.Services;
 
 
-
 // const BCHJS = require('@bcpros/xpi-js');
 // const bchURL = config.supportToken.xec.bchUrl;
 // const bchjs = new BCHJS({ restURL: bchURL });
@@ -170,6 +166,7 @@ let blockchainExplorerOpts;
 let messageBroker: MessageBroker;
 let pushNotifications;
 let fiatRateService: FiatRateService;
+let telegramBotService: TelegramBotService;
 let currencyRateService: any;
 let serviceVersion: string;
 let fundingWalletClients: any;
@@ -190,6 +187,7 @@ export interface IWalletService {
   blockchainExplorerOpts: any;
   messageBroker: MessageBroker;
   fiatRateService: FiatRateService;
+  telegramBotService: TelegramBotService;
   notifyTicker: number;
   userAgent: string;
   walletId: string;
@@ -230,6 +228,7 @@ export class WalletService implements IWalletService {
   messageBroker: MessageBroker;
   pushNotifications: PushNotificationsService;
   fiatRateService: FiatRateService;
+  telegramBotService: TelegramBotService;
   notifyTicker: number;
   userAgent: string;
   walletId: string;
@@ -254,6 +253,7 @@ export class WalletService implements IWalletService {
     this.messageBroker = messageBroker;
     this.pushNotifications = pushNotifications;
     this.fiatRateService = fiatRateService;
+    this.telegramBotService = telegramBotService;
     this.notifyTicker = 0;
     // for testing
     //
@@ -261,6 +261,7 @@ export class WalletService implements IWalletService {
   }
 
   _checkingValidAddress(address): boolean {
+    // This method is now also available in TelegramBotService
     try {
       const { prefix, type, hash } = ecashaddr.decode(address);
       if (prefix === 'ecash' || prefix === 'etoken') {
@@ -364,6 +365,18 @@ export class WalletService implements IWalletService {
       }
     };
 
+    const initTelegramBotService = cb => {
+      try {
+        // Initialize the Telegram bot service
+        telegramBotService = new TelegramBotService({ storage });
+        telegramBotService.initialize();
+        return cb();
+      } catch (err) {
+        logger.error('Error initializing Telegram bot service:', err);
+        return cb(err);
+      }
+    };
+
     async.series(
       [
         next => {
@@ -381,6 +394,9 @@ export class WalletService implements IWalletService {
         },
         next => {
           initCurrencyRateService(next);
+        },
+        next => {
+          initTelegramBotService(next);
         }
       ],
       err => {
@@ -397,7 +413,7 @@ export class WalletService implements IWalletService {
   }
 
   static handleIncomingNotifications(notification, cb) {
-    cb = cb || function() { };
+    cb = cb || function () { };
 
     // do nothing here....
     // bc height cache is cleared on bcmonitor
@@ -1024,7 +1040,7 @@ export class WalletService implements IWalletService {
 
     // this.logi('Notification', type);
 
-    cb = cb || function() { };
+    cb = cb || function () { };
 
     const walletId = this.walletId || data.walletId;
     const copayerId = this.copayerId || data.copayerId;
@@ -4999,7 +5015,7 @@ export class WalletService implements IWalletService {
                     this.storage.storeOrderInfoNoti(OrderInfoNoti.create(orderInfoNotiOpts), (err, result) => {
                       if (err) logger.debug(err);
                       // send message to channel Failure Convert Alert
-                      botSwap.sendMessage(
+                      this.telegramBotService.sendSwapNotification(
                         config.swapTelegram.channelFailId,
                         'Order no.' + orderInfo.id + ' :: Failure reason :: ' + orderInfo.error,
                         {
@@ -5282,7 +5298,7 @@ export class WalletService implements IWalletService {
             }
             this.storage.updateConversionOrder(conversionOrderInfo, err => {
               // send message to channel Failure Convert Alert
-              bot.sendMessage(
+              this.telegramBotService.sendMessage(
                 config.telegram.channelFailId,
                 conversionOrderInfo.addressFrom +
                 ' :: Converted amount: ' +
@@ -5299,7 +5315,7 @@ export class WalletService implements IWalletService {
               );
 
               // send message to channel Debug Convert Alert
-              bot.sendMessage(
+              this.telegramBotService.sendMessage(
                 config.telegram.channelDebugId,
                 new Date().toUTCString() +
                 ' ::  error: ' +
@@ -5463,7 +5479,7 @@ export class WalletService implements IWalletService {
                                           if (txId) {
                                             conversionOrderInfo.status = 'complete';
                                             conversionOrderInfo.txIdSentToUser = txId;
-                                            bot.sendMessage(
+                                            this.telegramBotService.sendMessage(
                                               config.telegram.channelSuccessId,
                                               new Date().toUTCString() +
                                               ' :: ' +
@@ -5550,7 +5566,7 @@ export class WalletService implements IWalletService {
               // send message to channel Failure Convert Alert
               const failMessage = `${merchantOrder.userAddress} :: Elps amount: ${merchantOrder.amount.toFixed(3)} ${config.conversion.tokenCodeUnit
                 } ${stringConvert} ${actualAmountConverted}`;
-              bot.sendMessage(
+              this.telegramBotService.sendMessage(
                 config.merchantOrder.channelFailId,
                 failMessage +
                 '\n\n' +
@@ -5561,7 +5577,7 @@ export class WalletService implements IWalletService {
               // send message to channel Debug Convert Alert
               const dateStr = new Date().toUTCString();
               const debugMessage = `${dateStr} :: error: ${merchantOrder.error} ${stringConvert} ${actualAmountConverted}`;
-              bot.sendMessage(
+              this.telegramBotService.sendMessage(
                 config.merchantOrder.channelDebugId,
                 debugMessage +
                 '\n\n' +
@@ -5902,7 +5918,7 @@ export class WalletService implements IWalletService {
     isPaidByUser = false
   ) {
     if (amountCoinUserSentToServer > 0) {
-      bot.sendMessage(
+      this.telegramBotService.sendMessage(
         config.merchantOrder.channelSuccessId,
         merchantOrder.userAddress +
         ' :: Converted ' +
@@ -5926,7 +5942,7 @@ export class WalletService implements IWalletService {
         { parse_mode: 'HTML' }
       );
     } else {
-      bot.sendMessage(
+      this.telegramBotService.sendMessage(
         config.merchantOrder.channelSuccessId,
         merchantOrder.userAddress +
         ' :: ' +
@@ -5949,7 +5965,7 @@ export class WalletService implements IWalletService {
     }
     if (!!merchantOrder.listEmailContent && merchantOrder.listEmailContent.length > 2) {
       let contentEmail = merchantOrder.listEmailContent[2];
-      bot.sendMessage(config.merchantOrder.channelSuccessId, contentEmail, { parse_mode: 'HTML' });
+      this.telegramBotService.sendMessage(config.merchantOrder.channelSuccessId, contentEmail, { parse_mode: 'HTML' });
     }
     await this._handleEmailNotificationForMerchantOrder(merchantOrder);
   }
@@ -5984,7 +6000,7 @@ export class WalletService implements IWalletService {
       const balanceTo = coinConfigReceive.fundConvertToSat / orderInfo.toSatUnit - orderInfo.actualReceived;
       const unitFrom = orderInfo.isFromToken ? orderInfo.fromTokenInfo.symbol : orderInfo.fromCoinCode.toUpperCase();
       const unitTo = orderInfo.isToToken ? orderInfo.toTokenInfo.symbol : orderInfo.toCoinCode.toUpperCase();
-      botSwap.sendMessage(
+      this.telegramBotService.sendSwapNotification(
         config.swapTelegram.channelSuccessId,
         'Completed :: ' +
         'Order no.' +
@@ -6011,7 +6027,7 @@ export class WalletService implements IWalletService {
       const balanceToSat = balanceTo * orderInfo.toSatUnit;
       if (balanceToSat < coinConfigReceive.minConvertToSat) {
         const moneyWithWingsIcon = '\u{1F4B8}';
-        botSwap.sendMessage(
+        this.telegramBotService.sendSwapNotification(
           config.swapTelegram.channelFailId,
           moneyWithWingsIcon +
           ' FUND ' +
@@ -6051,7 +6067,7 @@ export class WalletService implements IWalletService {
     const addressTopupEtoken = this._convertFromEcashWithPrefixToEtoken(addressTopupEcash);
     const moneyWithWingsIcon = '\u{1F4B8}';
     if (!isNotiFundXecBelowMinimumToTelegram && pendingReason === Errors.BELOW_MINIMUM_XEC.code) {
-      bot.sendMessage(
+      this.telegramBotService.sendMessage(
         config.telegram.channelFailId,
         moneyWithWingsIcon +
         ' FUND XEC REACHED THRESHOLD LIMIT, PLEASE TOP UP! - Remaining: ' +
@@ -6064,7 +6080,7 @@ export class WalletService implements IWalletService {
         isNotiFundXecBelowMinimumToTelegram = false;
       }, 1000 * 60 * 30);
     } else if (!isNotiFundTokenBelowMinimumToTelegram && pendingReason === Errors.BELOW_MINIMUM_TOKEN.code) {
-      bot.sendMessage(
+      this.telegramBotService.sendMessage(
         config.telegram.channelFailId,
         moneyWithWingsIcon +
         ' FUND TOKEN REACHED THRESHOLD LIMIT, PLEASE TOP UP! - Remaining: ' +
@@ -6080,7 +6096,7 @@ export class WalletService implements IWalletService {
       }, 1000 * 60 * 30);
     }
     if (!isNotiFundXecInsufficientMinimumToTelegram && pendingReason === Errors.INSUFFICIENT_FUND_XEC.code) {
-      bot.sendMessage(
+      this.telegramBotService.sendMessage(
         config.telegram.channelFailId,
         moneyWithWingsIcon +
         ' INSUFFICIENT XEC FUND. SWAP SERVICE IS PENDING PLEASE TOP UP! - Remaining: ' +
@@ -6093,7 +6109,7 @@ export class WalletService implements IWalletService {
         isNotiFundXecInsufficientMinimumToTelegram = false;
       }, 1000 * 60 * 30);
     } else if (!isNotiFundTokenInsufficientMinimumToTelegram && pendingReason === Errors.INSUFFICIENT_FUND_TOKEN.code) {
-      bot.sendMessage(
+      this.telegramBotService.sendMessage(
         config.telegram.channelFailId,
         moneyWithWingsIcon +
         ' INSUFFICIENT TOKEN FUND. SWAP SERVICE IS PENDING PLEASE TOP UP! - Remaining: ' +
@@ -6187,7 +6203,7 @@ export class WalletService implements IWalletService {
           merchantNotiCount += 1;
           // notification to telegram
           if (merchantNotiCount < MAXIMUM_NOTI + 1) {
-            botSwap.sendMessage(
+            this.telegramBotService.sendSwapNotification(
               config.queueNoti.channelId,
               `Merchant service is not running. Try to restart (${merchantNotiCount})…`
             );
@@ -6199,7 +6215,9 @@ export class WalletService implements IWalletService {
         }
       } else {
         if (merchantQueueFailed > 0) {
-          botSwap.sendMessage(config.queueNoti.channelId, 'Merchant service is running');
+          if (telegramBotService) {
+            telegramBotService.sendSwapNotification(config.queueNoti.channelId, 'Merchant service is running');
+          }
         }
         merchantNotiCount = 0;
         merchantQueueFailed = 0;
@@ -6216,7 +6234,7 @@ export class WalletService implements IWalletService {
           conversionNotiCount += 1;
           // notification to telegram
           if (conversionNotiCount < MAXIMUM_NOTI + 1) {
-            botSwap.sendMessage(
+            this.telegramBotService.sendSwapNotification(
               config.queueNoti.channelId,
               `Conversion service is not running. Try to restart (${conversionNotiCount})…`
             );
@@ -6228,7 +6246,7 @@ export class WalletService implements IWalletService {
         }
       } else {
         if (conversionQueueFailed > 0) {
-          botSwap.sendMessage(config.queueNoti.channelId, 'Conversion service is running');
+          this.telegramBotService.sendSwapNotification(config.queueNoti.channelId, 'Conversion service is running');
         }
         conversionNotiCount = 0;
         conversionQueueFailed = 0;
@@ -6245,7 +6263,7 @@ export class WalletService implements IWalletService {
           swapNotiCount += 1;
           // notification to telegram
           if (swapNotiCount < MAXIMUM_NOTI + 1) {
-            botSwap.sendMessage(
+            this.telegramBotService.sendSwapNotification(
               config.queueNoti.channelId,
               `Swap service is not running. Try to restart (${swapNotiCount})…`
             );
@@ -6257,7 +6275,7 @@ export class WalletService implements IWalletService {
         }
       } else {
         if (swapQueueFailed > 0) {
-          botSwap.sendMessage(config.queueNoti.channelId, 'Swap service is running');
+          this.telegramBotService.sendSwapNotification(config.queueNoti.channelId, 'Swap service is running');
         }
         swapNotiCount = 0;
         swapQueueFailed = 0;
@@ -7121,100 +7139,6 @@ export class WalletService implements IWalletService {
     });
   }
 
-  createBot(opts, cb) {
-    logger.debug('run create Bot: ');
-    bot = opts.bot;
-    botNotification = opts.botNotification;
-    botSwap = opts.botSwap;
-    this.startBotNotificationForUser();
-    return cb(true);
-  }
-
-  initializeBot() {
-    // if user click start => if not , store user into db , if yes, checking user address
-    botNotification.onText(/\/start/, msg => {
-      botNotification.sendMessage(
-        msg.chat.id,
-        'Welcome to Chronik watcher, please use /help to display general and other commands.'
-      );
-    });
-
-    botNotification.onText(/\/list/, msg => {
-      this.storage.fetchAllAddressByMsgId(msg.chat.id, (err, listAddress) => {
-        if (!err) {
-          if (listAddress && listAddress.length > 0) {
-            if (listAddress && listAddress.length > 0) {
-              let count = 0;
-              let message = '';
-              listAddress.forEach(address => {
-                count++;
-                message += count + '. ' + address + '\n';
-              });
-              botNotification.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
-            } else {
-              botNotification.sendMessage(
-                msg.chat.id,
-                'Your addresses are empty. Please add new address by using command /add [ecash address]!'
-              );
-            }
-          } else {
-            botNotification.sendMessage(
-              msg.chat.id,
-              'Your addresses are empty. Please add new address by using command /add [ecash address]!'
-            );
-          }
-        } else {
-          botNotification.sendMessage(msg.chat.id, 'Errors occured on Chronik watcher, please try again.');
-        }
-      });
-    });
-
-    botNotification.onText(/\/help/, msg => {
-      let message =
-        '/add - Add watching address i.e. /add ecash:qq2ml325qrc3t2dxhtkjaq3qyr0rrjs43sgs7n1234 \n' +
-        '/remove - Remove watched address i.e /remove ecash:qq2ml325qrc3t2dxhtkjaq3qyr0rrjs43sgs7n1234 \n' +
-        '/list - Display all watched addresses \n';
-      botNotification.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
-    });
-
-    botNotification.onText(/\/add\secash:\w+/, msg => {
-      const address = msg.text.toString().replace(/\/add\s/, '');
-      if (this._checkingValidAddress(address)) {
-        this.addAddressToUser(msg.chat.id, address);
-      } else {
-        botNotification.sendMessage(msg.chat.id, 'Invalid address format, please check and try again!');
-      }
-    });
-
-    botNotification.onText(/\/remove\secash:\w+/, msg => {
-      this.storage.fetchAllAddressByMsgId(msg.chat.id, (err, listAddress) => {
-        if (!err) {
-          if (listAddress && listAddress.length > 0) {
-            const address = msg.text.toString().replace(/\/remove\s/, '');
-            if (this._checkingValidAddress(address)) {
-              this.storage.removeUserWatchAddress({ msgId: msg.chat.id, address }, (err, result) => {
-                if (!err) {
-                  botNotification.sendMessage(
-                    msg.chat.id,
-                    '[ ' + address.substr(address.length - 8) + ' ] has been removed!'
-                  );
-                } else {
-                  botNotification.sendMessage(msg.chat.id, 'Error while remove. Please try again!');
-                }
-              });
-            } else {
-              botNotification.sendMessage(msg.chat.id, 'Invalid address format, please check and try again!');
-            }
-          } else {
-            botNotification.sendMessage(msg.chat.id, 'Your list address has been empty');
-          }
-        } else {
-          botNotification.sendMessage(msg.chat.id, 'Error while fetching your address. Please try again!');
-        }
-      });
-    });
-  }
-
   async updateOrder(opts, cb) {
     try {
       const orderInfo = Order.fromObj(opts);
@@ -7296,28 +7220,31 @@ export class WalletService implements IWalletService {
           }
         }
 
-        botSwap.sendMessage(
-          config.swapTelegram.channelSuccessId,
-          'Manually completed :: ' +
-          'Order no.' +
-          orderInfo.id +
-          ' :: ' +
-          stringUserSentToDepositAddress +
-          ' ' +
-          unitFrom +
-          ' to ' +
-          stringUserReceived +
-          ' ' +
-          unitTo +
-          ' :: ' +
-          'Balance: ' +
-          balanceFinal.toLocaleString('en-US') +
-          ' ' +
-          unitTo,
-          {
-            parse_mode: 'HTML'
-          }
-        );
+        // Use TelegramBotService to send messages
+        if (telegramBotService) {
+          telegramBotService.sendSwapNotification(
+            config.swapTelegram.channelSuccessId,
+            'Manually completed :: ' +
+            'Order no.' +
+            orderInfo.id +
+            ' :: ' +
+            stringUserSentToDepositAddress +
+            ' ' +
+            unitFrom +
+            ' to ' +
+            stringUserReceived +
+            ' ' +
+            unitTo +
+            ' :: ' +
+            'Balance: ' +
+            balanceFinal.toLocaleString('en-US') +
+            ' ' +
+            unitTo,
+            {
+              parse_mode: 'HTML'
+            }
+          );
+        }
         return cb(null, { isUpdated: true });
       });
     } catch (e) {
@@ -11827,36 +11754,28 @@ export class WalletService implements IWalletService {
   }
 
   addAddressToUser(msgId, address) {
-    this.storage.fetchAllAddressByMsgId(msgId, (err, listAddress) => {
-      if (!err) {
-        let listAddressToSubcribe = [];
-        if (listAddress && listAddress.length > 0) {
-          // handle case address is already in db , does not need to add any more
-          if (listAddress.includes(address)) {
-            botNotification.sendMessage(msgId, 'Address has already registered!');
-          } else {
-            this._storeUserWatchAddress(msgId, address);
-          }
-        } else {
-          this._storeUserWatchAddress(msgId, address);
-        }
-      } else {
-        botNotification.sendMessage(msgId, 'Error while fetching your address. Please try again!');
-      }
-    });
+    // Use the TelegramBotService to handle address management
+    if (telegramBotService) {
+      telegramBotService.addAddressToUser(msgId, address);
+    } else {
+      logger.error('TelegramBotService not initialized');
+    }
   }
 
   _storeUserWatchAddress(msgId, address) {
-    const user = {
-      msgId,
-      address
-    };
-    this.storage.storeUserWatchAddress(user, (err, result) => {
-      if (!err) {
-        botNotification.sendMessage(msgId, '[ ' + address.substr(address.length - 8) + ' ] is registered!');
-        this.handleSubcribeNewAddress(msgId, address);
-      }
-    });
+    // This method is now handled by TelegramBotService
+    if (telegramBotService) {
+      const user = {
+        msgId,
+        address
+      };
+      this.storage.storeUserWatchAddress(user, (err, result) => {
+        if (!err) {
+          telegramBotService.sendNotification(msgId, '[ ' + address.substr(address.length - 8) + ' ] is registered!');
+          this.handleSubcribeNewAddress(msgId, address);
+        }
+      });
+    }
   }
 
   handleSubcribeNewAddress(msgId, address) {
@@ -11866,153 +11785,6 @@ export class WalletService implements IWalletService {
     }
   }
 
-  async startBotNotificationForUser() {
-    const chronikClient = ChainService.getChronikClient('xec');
-    ws = chronikClient.ws({
-      onMessage: msg => {
-        if (msg.type === 'Tx' && !txIdHandled.includes(msg.txid) && msg.msgType === 'TX_ADDED_TO_MEMPOOL') {
-          txIdHandled.push(msg.txid);
-          this.getTxDetailForXecWallet(msg.txid, (err, result: TxDetail) => {
-            if (err) {
-              logger.debug('error while getting txdetail', err);
-            } else {
-              if (result) {
-                let outputsConverted = _.uniq(
-                  _.map(result.outputs, item => {
-                    return this._convertOutputScript('xec', item);
-                  })
-                );
-                outputsConverted = _.compact(outputsConverted);
-                let addressSelected = null;
-                let outputSelected = null;
-                // get output contains look up address
-                if (result.slpTxData) {
-                  // etokenCase
-                  outputSelected = outputsConverted.find(
-                    output => !result.inputAddresses.includes(output.address) && output.address.includes('etoken:')
-                  );
-                  if (outputSelected)
-                    addressSelected = this._convertEtokenAddressToEcashAddress(outputSelected.address);
-                } else {
-                  // ecash case
-                  outputSelected = outputsConverted.find(
-                    output => !result.inputAddresses.includes(output.address) && output.address.includes('ecash:')
-                  );
-                  if (outputSelected) addressSelected = outputSelected.address;
-                }
-                if (outputsConverted) {
-                  // hard code specific case to notify to channel
-                  if (['ecash:qz7r06eys9aggs4j8t56qmxyqhy0mu08cspyq02pq4'].includes(addressSelected)) {
-                    if (result.slpTxData) {
-                      // etoken case
-                      const tokenInfo = this._getAndStoreTokenInfo('xec', result.slpTxData.slpMeta.tokenId);
-                      tokenInfo.then((tokenInfoReturn: TokenInfo) => {
-                        // hard code specific case to notify to channel
-                        botNotification.sendMessage(
-                          '@bcProTX',
-                          '[ ' +
-                          addressSelected.substr(addressSelected.length - 8) +
-                          ' ] has received a payment of ' +
-                          (outputSelected.amount / 10 ** tokenInfoReturn.decimals).toLocaleString('en-US') +
-                          ' ' +
-                          tokenInfoReturn.symbol +
-                          ' from ' +
-                          result.inputAddresses.find(input => input.indexOf('etoken') === 0) +
-                          '\n\n' +
-                          this._addExplorerLinkIntoTxIdWithCoin(result.txid, 'xec', 'View tx on the Explorer'),
-                          { parse_mode: 'HTML' }
-                        );
-                      });
-                    } else {
-                      // ecash case
-                      botNotification.sendMessage(
-                        '@bcProTX',
-                        '[ ' +
-                        addressSelected.substr(addressSelected.length - 8) +
-                        ' ] has received a payment of ' +
-                        (outputSelected.amount / 100).toLocaleString('en-US') +
-                        ' XEC from ' +
-                        result.inputAddresses.find(input => input.indexOf('ecash') === 0) +
-                        '\n\n' +
-                        this._addExplorerLinkIntoTxIdWithCoin(result.txid, 'xec', 'View tx on the Explorer'),
-                        { parse_mode: 'HTML' }
-                      );
-                    }
-                  }
-                  // fetch all msgId by address (  )
-                  this.storage.fetchAllMsgIdByAddress(addressSelected, (err, listMsgId) => {
-                    if (!err) {
-                      if (!!listMsgId && listMsgId.length > 0) {
-                        // if found user watch this address => send message to all user
-                        listMsgId.forEach(msgId => {
-                          if (result.slpTxData) {
-                            // etoken case
-                            const tokenInfo = this._getAndStoreTokenInfo('xec', result.slpTxData.slpMeta.tokenId);
-                            tokenInfo.then((tokenInfoReturn: TokenInfo) => {
-                              botNotification.sendMessage(
-                                msgId,
-                                '[ ' +
-                                addressSelected.substr(addressSelected.length - 8) +
-                                ' ] has received a payment of ' +
-                                (outputSelected.amount / 10 ** tokenInfoReturn.decimals).toLocaleString('en-US') +
-                                ' ' +
-                                tokenInfoReturn.symbol +
-                                ' from ' +
-                                result.inputAddresses.find(input => input.indexOf('etoken') === 0) +
-                                '\n\n' +
-                                this._addExplorerLinkIntoTxIdWithCoin(result.txid, 'xec', 'View tx on the Explorer'),
-                                { parse_mode: 'HTML' }
-                              );
-                            });
-                          } else {
-                            // ecash case
-                            botNotification.sendMessage(
-                              msgId,
-                              '[ ' +
-                              addressSelected.substr(addressSelected.length - 8) +
-                              ' ] has received a payment of ' +
-                              (outputSelected.amount / 100).toLocaleString('en-US') +
-                              'XEC from ' +
-                              result.inputAddresses.find(input => input.indexOf('ecash') === 0) +
-                              '\n\n' +
-                              this._addExplorerLinkIntoTxIdWithCoin(result.txid, 'xec', 'View tx on the Explorer'),
-                              { parse_mode: 'HTML' }
-                            );
-                          }
-                        });
-                      } else {
-                        if (!!addressSelected) {
-                          const scriptPayload = ChainService.convertAddressToScriptPayload(
-                            'xec',
-                            addressSelected.replace(/ecash:/, '')
-                          );
-                          ws.unsubscribe('p2pkh', scriptPayload);
-                        }
-                      }
-                    }
-                  });
-                }
-              }
-            }
-          });
-        }
-      },
-      onReconnect: e => { },
-      onConnect: e => { },
-      onError: e => { }
-    });
-    await ws.waitForOpen();
-    this.storage.fetchAllAddressInUserWatchAddress((err, listAddress) => {
-      if (!err) {
-        if (listAddress && listAddress.length > 0) {
-          listAddress.forEach(address => {
-            const scriptPayload = ChainService.convertAddressToScriptPayload('xec', address.replace(/ecash:/, ''));
-            ws.subscribe('p2pkh', scriptPayload);
-          });
-        }
-      }
-    });
-  }
 }
 
 function checkRequired(obj, args, cb?: (e: any) => void) {
