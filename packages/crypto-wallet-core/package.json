@@ -11,7 +11,7 @@
     "precommit": "pnpm run fix",
     "lint": "tslint -c ../../tslint.json 'src/**/*.ts'",
     "fix": "tslint --fix -c ../../tslint.json 'src/**/*.ts'",
-    "test": "pnpm run compile && mocha -r ts-node/register test/*.ts",
+    "test": "pnpm run compile && mocha -r tsx test/*.ts",
     "pub": "pnpm run compile && npm publish"
   },
   "keywords": [

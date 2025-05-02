@@ -10,6 +10,7 @@ import { OpDeriver } from './op';
 import { Paths } from './paths';
 import { XecDeriver } from './xec';
 import { XpiDeriver } from './xpi';
+import { SolDeriver } from './sol';
 import { XrpDeriver } from './xrp';
 
 export interface Key {
@@ -43,6 +44,7 @@ const derivers: { [chain: string]: IDeriver } = {
   ARB: new ArbDeriver(),
   BASE: new BaseDeriver(),
   OP: new OpDeriver(),
+  SOL: new SolDeriver()
 };
 
 export class DeriverProxy {
@@ -119,7 +121,7 @@ export class DeriverProxy {
    * @param addressType
    * @returns
    */
-  getAddress(chain, network, pubKey, addressType) {
+  getAddress(chain, network, pubKey, addressType?) {
     return this.get(chain).getAddress(network, pubKey, addressType);
   }
 

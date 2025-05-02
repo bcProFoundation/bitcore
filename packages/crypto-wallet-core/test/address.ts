@@ -1,3 +1,4 @@
+import 'mocha';
 import { expect } from 'chai';
 import { Deriver } from '../src';
 import { encoding } from '@bcpros/bitcore-lib';
@@ -170,7 +171,7 @@ describe('Address Derivation', () => {
   it('should get SOL address from public key string', () => {
     const expectedResult = '7EWwMxKQa5Gru7oTcS1Wi3AaEgTfA6MU3z7MaLUT6hnD';
     // public key with zero byte padding
-    const a1 = Deriver.getAddress('SOL', 'mainnet', '005c9c85b20525ee81d3cc56da1f8307ec169086ae41458c5458519aced7683b66'); 
+    const a1 = Deriver.getAddress('SOL', 'mainnet', '005c9c85b20525ee81d3cc56da1f8307ec169086ae41458c5458519aced7683b66');
     expect(a1).to.equal(expectedResult);
     const a2 = Deriver.getAddress('SOL', 'mainnet', '5c9c85b20525ee81d3cc56da1f8307ec169086ae41458c5458519aced7683b66');
     expect(a2).to.equal(expectedResult);
