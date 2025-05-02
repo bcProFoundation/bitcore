@@ -1,13 +1,15 @@
 import { ethers } from 'ethers';
 import Web3 from 'web3';
-import { AbiItem, toHex, toBN } from 'web3-utils';
+import { AbiItem } from 'web3-utils';
 import { Constants } from '../../constants';
-import {
+import { 
   EVM_CHAIN_DEFAULT_TESTNET as defaultTestnet,
-  EVM_CHAIN_NETWORK_TO_CHAIN_ID as chainIds
+  EVM_CHAIN_NETWORK_TO_CHAIN_ID as chainIds 
 } from '../../constants/chains';
 import { Key } from '../../derivation';
 import { MULTISENDAbi } from '../erc20/abi';
+const utils = require('web3-utils');
+const { toBN } = Web3.utils;
 export class ETHTxProvider {
   chain: string;
 
@@ -26,8 +28,9 @@ export class ETHTxProvider {
     contractAddress?: string;
     maxGasFee?: number;
     priorityGasFee?: number;
+    txType?: number;
   }) {
-    const { recipients, nonce, gasPrice, gasLimit, network, contractAddress, maxGasFee, priorityGasFee } = params;
+    const { recipients, nonce, gasPrice, gasLimit, network, contractAddress, maxGasFee, priorityGasFee, txType } = params;
     let { data } = params;
     let to;
     let amount;
@@ -40,35 +43,49 @@ export class ETHTxProvider {
       amount = toBN(0);
       for (let recipient of recipients) {
         addresses.push(recipient.address);
-        amounts.push(toBN(recipient.amount));
-        amount = amount.add(toBN(recipient.amount));
+        amounts.push(toBN(this._valueToString(recipient.amount)));
+        amount = amount.add(toBN(this._valueToString(recipient.amount)));
       }
       const multisendContract = this.getMultiSendContract(contractAddress);
       data = data || multisendContract.methods.sendEth(addresses, amounts).encodeABI();
       to = contractAddress;
     } else {
       to = recipients[0].address;
-      amount = recipients[0].amount;
+      amount = toBN(this._valueToString(recipients[0].amount));
     }
     let { chainId } = params;
     chainId = chainId || this.getChainId(network);
     let txData: any = {
-      nonce: toHex(nonce),
-      gasLimit: toHex(gasLimit),
+      nonce: utils.toHex(nonce),
+      gasLimit: utils.toHex(gasLimit),
       to,
       data,
-      value: toHex(amount),
+      value: utils.toHex(amount),
       chainId
     };
-    if (maxGasFee) {
-      txData.maxFeePerGas = toHex(maxGasFee);
-      txData.maxPriorityFeePerGas = toHex(priorityGasFee || this.getPriorityFeeMinimum(chainId));
+    if (maxGasFee && (txType == null || txType >= 2)) {
+      txData.maxFeePerGas = utils.toHex(maxGasFee);
+      txData.maxPriorityFeePerGas = utils.toHex(priorityGasFee || this.getPriorityFeeMinimum(chainId));
       txData.type = 2;
     } else {
-      txData.gasPrice = toHex(gasPrice);
+      txData.gasPrice = utils.toHex(gasPrice);
+      txData.type = txType || 0;
     }
 
-    return ethers.utils.serializeTransaction(txData);
+    return ethers.Transaction.from(txData).unsignedSerialized;
+  }
+
+  _valueToString(value) {
+    const type = typeof value;
+    if (type === 'number') {
+      return (value).toLocaleString('fullwide', { useGrouping: false });
+    } else if (type === 'bigint') {
+      return value.toString()
+    } else if (type === 'string') {
+      return value;
+    } else {
+      throw new Error(`Unexpected type of: ${type}`);
+    }
   }
 
   getMultiSendContract(tokenContractAddress: string) {
@@ -90,49 +107,58 @@ export class ETHTxProvider {
 
   getSignatureObject(params: { tx: string; key: Key }) {
     const { tx, key } = params;
-    // To complain with new ethers
+    // To comply with new ethers
     let k = key.privKey;
-    if (k.substr(0, 2) != '0x') {
+    if (k.substring(0, 2) != '0x') {
       k = '0x' + k;
     }
 
-    const signingKey = new ethers.utils.SigningKey(k);
-    const signDigest = signingKey.signDigest.bind(signingKey);
-    return signDigest(ethers.utils.keccak256(tx));
+    const signingKey = new ethers.SigningKey(k);
+    return signingKey.sign(ethers.keccak256(tx));
   }
 
   getSignature(params: { tx: string; key: Key }) {
-    const signatureHex = ethers.utils.joinSignature(this.getSignatureObject(params));
+    const signatureHex = this.getSignatureObject(params).serialized;
     return signatureHex;
   }
 
   getHash(params: { tx: string }) {
     const { tx } = params;
-    // tx must be signed, for hash to exist
-    return ethers.utils.parseTransaction(tx).hash;
+    // tx must be signed for hash to exist
+    return ethers.Transaction.from(tx).hash;
   }
 
   applySignature(params: { tx: string; signature: any }) {
     let { tx, signature } = params;
-    const parsedTx = ethers.utils.parseTransaction(tx);
-    const { nonce, gasPrice, gasLimit, to, value, data, chainId, maxFeePerGas, maxPriorityFeePerGas } = parsedTx;
-    let txData: any = { nonce, gasPrice, gasLimit, to, value, data, chainId };
+    const parsedTx = ethers.Transaction.from(tx);
+    const { gasPrice, maxFeePerGas, maxPriorityFeePerGas } = parsedTx;
+    // backwards compatibility
     if (maxFeePerGas) {
-      txData.maxFeePerGas = maxFeePerGas;
-      txData.maxPriorityFeePerGas = maxPriorityFeePerGas;
-      txData.type = 2;
-    } else if (!gasPrice || !gasPrice.toNumber()) {
+      parsedTx.maxFeePerGas = maxFeePerGas;
+      parsedTx.maxPriorityFeePerGas = maxPriorityFeePerGas;
+      parsedTx.type = 2;
+    } else if (!gasPrice) {
       throw new Error('either gasPrice or maxFeePerGas is required');
     }
-    if (typeof signature == 'string') {
-      signature = ethers.utils.splitSignature(signature);
+
+    // Verify the signature
+    let valid = false;
+    let signedTx;
+    try {
+      parsedTx.signature = ethers.Signature.from(signature);    
+      signedTx = ethers.Transaction.from(parsedTx);
+
+      if (signedTx.hash) {
+        const recoveredAddress = ethers.recoverAddress(ethers.keccak256(tx), signature);
+        const expectedAddress = parsedTx.from;
+        valid = recoveredAddress === expectedAddress
+      }
+    } catch {}
+    if (!valid) {
+      throw new Error('invalid signature');
     }
-    const signedTx = ethers.utils.serializeTransaction(txData, signature);
-    const parsedTxSigned = ethers.utils.parseTransaction(signedTx);
-    if (!parsedTxSigned.hash) {
-      throw new Error('Signature invalid');
-    }
-    return signedTx;
+
+    return signedTx.serialized;
   }
 
   sign(params: { tx: string; key: Key }) {

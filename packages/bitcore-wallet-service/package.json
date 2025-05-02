@@ -119,7 +119,7 @@
     "@types/lodash": "^4.14.123",
     "@types/moment": "^2.13.0",
     "@types/mongodb": "^4.0.7",
-    "@types/node": "^22.10.10",
+    "@types/node": "^18.11.18",
     "@types/nodemailer": "^4.6.6",
     "@types/request": "^2.48.1",
     "chai": "^1.9.1",

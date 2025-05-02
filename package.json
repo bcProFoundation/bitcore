@@ -75,7 +75,7 @@
     "browserify": "^16.2.3"
   },
   "dependencies": {
-    "typescript": "4.9.4"
+    "typescript": "5.7.3"
   },
   "resolutions": {
     "ecashaddrjs": "npm:ecashaddrjs@^2.0.0",

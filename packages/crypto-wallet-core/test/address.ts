@@ -1,5 +1,7 @@
 import { expect } from 'chai';
 import { Deriver } from '../src';
+import { encoding } from '@bcpros/bitcore-lib';
+import { createKeyPairFromPrivateKeyBytes, getAddressDecoder } from '@solana/kit'
 
 describe('Address Derivation', () => {
   it('should be able to generate a valid BTC address', () => {
@@ -120,26 +122,57 @@ describe('Address Derivation', () => {
     expect(result.pubKey).to.equal(expectedResult.pubKey.toUpperCase());
   });
 
-  it('should be able to generate a valid XPI address', () => {
-    const xPub = 'xpub6D8rChqkgFuaZULuq2n6VrS4zB5Cmv24gcRc889dFRRgYAH1CGQmQZ9kcPfMAfWGPnyMd1X5foBYFmJ5ZPfvwhm6tXjaY13ao1rQHRtkKDv';
-    // 'select scout crash enforce riot rival spring whale hollow radar rule sentence';
-
-    const path = Deriver.pathFor('XPI', 'mainnet');
-    expect(path).to.equal("m/44'/10605'/0'");
-
-    const address = Deriver.deriveAddress('XPI', 'mainnet', xPub, 0, false);
-    const expectedAddress = 'lotus_16PSJKPkEQBaJvbbViTqyfwiM4C1y7QMM4jj4VDgP';
-    expect(address).to.equal(expectedAddress);
+  it('should be able to get a valid XRP address from pubKey', () => {
+    const pubKey = '03dbeec5e9e76da09c5b502a67136bc2d73423e8902a7c35a8cbc0c5a6ac0469e8';
+    const result = Deriver.getAddress('XRP', 'mainnet', pubKey, 'asd');
+    const expectedResult = 'r9dmAJBfBe7JL2RRLiFWGJ8kM4CHEeTpgN';
+    expect(result).to.equal(expectedResult);
   });
 
-  it('should be able to generate a valid XEC address', () => {
-    const xPub = 'xpub6D8rChqkgFuaZULuq2n6VrS4zB5Cmv24gcRc889dFRRgYAH1CGQmQZ9kcPfMAfWGPnyMd1X5foBYFmJ5ZPfvwhm6tXjaY13ao1rQHRtkKDv';
+  it('should be able to generate a valid MATIC address, privKey, pubKey', () => {
+    const privKey = 'xprv9ypBjKErGMqCdzd44hfSdy1Vk6PGtU3si8ogZcow7rA23HTxMi9XfT99EKmiNdLMr9BAZ9S8ZKCYfN1eCmzYSmXYHje1jnYQseV1VJDDfdS';
 
-    const path = Deriver.pathFor('XEC', 'mainnet');
-    expect(path).to.equal("m/44'/899'/0'");
+    const path = Deriver.pathFor('MATIC', 'mainnet');
+    expect(path).to.equal("m/44'/60'/0'");
 
-    const address = Deriver.deriveAddress('XEC', 'mainnet', xPub, 0, false);
-    const expectedAddress = 'qp98kjdc22329k0a8hvvtexaqtuhygm94saq45dkx4';
-    expect(address).to.equal(expectedAddress);
+    const result = Deriver.derivePrivateKey('MATIC', 'mainnet', privKey, 0, false);
+    const expectedResult = {
+      address: '0xb497281830dE4F19a3482AbF3D5C35c514e6fB36',
+      privKey: '62b8311c71f355c5c07f6bffe9b1ae60aa20d90e2e2ec93ec11b6014b2ae6340',
+      pubKey: '0386d153aad9395924631dbc78fa560107123a759eaa3e105958248c60cd4472ad'
+    };
+    expect(result.address).to.equal(expectedResult.address);
+    expect(result.privKey).to.equal(expectedResult.privKey);
+    expect(result.pubKey).to.equal(expectedResult.pubKey);
+  });
+
+  it('should be able to generate a valid SOL address, privKey', async () => {
+    // crush desk brain index action subject tackle idea trim unveil lawn live
+    const privKey = 'xprv9s21ZrQH143K3aKdQ6kXF1vj7R6LtkoLCiUXfM5bdbGXmhQkC1iXdnFfrxAAtaTunPUCCLwUQ3cpNixGLMbLAH1gzeCr8VZDe4gPgmKLb2X';
+    const result = Deriver.derivePrivateKey('SOL', 'mainnet', privKey, 0, false);
+    const expectedResult = {
+      address: '7EWwMxKQa5Gru7oTcS1Wi3AaEgTfA6MU3z7MaLUT6hnD',
+      privKey: 'E4Tp4nTgMCa5dtGwqvkWoMGrJC7FKRNjcpeFFXi4nNb9',
+      pubKey: '5c9c85b20525ee81d3cc56da1f8307ec169086ae41458c5458519aced7683b66'
+    };
+    expect(result.address).to.equal(expectedResult.address);
+    expect(result.privKey).to.equal(expectedResult.privKey);
+    expect(result.pubKey).to.equal(expectedResult.pubKey);
+    const a = Deriver.getAddress('SOL', 'mainnet', result.pubKey);
+    expect(a).to.equal(expectedResult.address);
+    const keypair = await createKeyPairFromPrivateKeyBytes(encoding.Base58.decode(result.privKey), true);
+    const publicKeyBytes = await crypto.subtle.exportKey("raw", keypair.publicKey);
+    const publicKey = Buffer.from(publicKeyBytes).toString('hex');
+    expect(result.pubKey).to.equal(publicKey);
+    expect(result.address).to.equal(getAddressDecoder().decode(new Uint8Array(publicKeyBytes)));
+  });
+
+  it('should get SOL address from public key string', () => {
+    const expectedResult = '7EWwMxKQa5Gru7oTcS1Wi3AaEgTfA6MU3z7MaLUT6hnD';
+    // public key with zero byte padding
+    const a1 = Deriver.getAddress('SOL', 'mainnet', '005c9c85b20525ee81d3cc56da1f8307ec169086ae41458c5458519aced7683b66'); 
+    expect(a1).to.equal(expectedResult);
+    const a2 = Deriver.getAddress('SOL', 'mainnet', '5c9c85b20525ee81d3cc56da1f8307ec169086ae41458c5458519aced7683b66');
+    expect(a2).to.equal(expectedResult);
   });
 });

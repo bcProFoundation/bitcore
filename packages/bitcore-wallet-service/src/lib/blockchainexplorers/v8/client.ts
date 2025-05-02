@@ -47,7 +47,6 @@ export class Client {
   }
 
   async getBalance(params) {
-    logger.warn("DEBUGPRINT[33]: client.ts:49: params=", params)
     const { payload, pubKey, tokenAddress, multisigContractAddress } = params;
     let query = '';
     let apiUrl = `${this.baseUrl}/wallet/${pubKey}/balance`;

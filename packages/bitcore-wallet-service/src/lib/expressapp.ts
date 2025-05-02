@@ -411,8 +411,6 @@ export class ExpressApp {
             } else {
               try {
                 const htmlString = await axios.get(options.uri, { headers: options.headers }).then(response => response.data);
-                logger.warn("DEBUGPRINT[30]: expressapp.ts:441: htmlString=");
-                logger.warn( htmlString);
                 if (htmlString['tag_name']) {
                   server.storage.storeGlobalCache('latest-copay-version', htmlString['tag_name'], err => {
                     res.json({ version: htmlString['tag_name'] });

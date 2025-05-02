@@ -44,8 +44,7 @@
   },
   "dependencies": {
     "@bcpros/bitcore-lib": "workspace:*",
-    "unorm": "^1.4.1",
-    "browserify": "^16.2.3"
+    "unorm": "^1.4.1"
   },
   "peerDependencies": {
     "@bcpros/bitcore-lib": "*"

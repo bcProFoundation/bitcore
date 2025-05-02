@@ -35,7 +35,7 @@ const $ = bitcore.util.preconditions;
  * @returns {Mnemonic} A new instance of Mnemonic
  * @constructor
  */
-var Mnemonic = function(data, wordlist) {
+const Mnemonic = function(data, wordlist) {
   if (!(this instanceof Mnemonic)) {
     return new Mnemonic(data, wordlist);
   }
