@@ -7690,7 +7690,6 @@ describe('client API', function() {
               () => {
                 newApp = expressApp.app;
 
-
                 var recoveryClient = helpers.newClient(newApp);
                 recoveryClient.fromString(clients[0].toString());
 

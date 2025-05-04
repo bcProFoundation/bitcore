@@ -62,18 +62,18 @@
   },
   "scripts": {
     "coverage": "./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha -- --reporter spec test",
-    "test": "npm run compile && mocha --exit",
-    "test:ci": "npm run test",
+    "test": "pnpm run compile && mocha --exit",
+    "test:ci": "pnpm run test",
     "docs": "TODO ./node_modules/.bin/tsdoc src/lib/* src/lib/common src/lib/errors -o docs && cat README.header.md  docs/*.md LICENSE > README.md",
     "coveralls": "./node_modules/.bin/istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
-    "compile": "npm run tsc",
-    "tsc": "npm run clean && tsc",
-    "build": "tsc && npm run lint",
+    "compile": "pnpm run tsc",
+    "tsc": "pnpm run clean && tsc",
+    "build": "tsc && pnpm run lint",
     "clean": "rm -rf ./ts_build",
     "lint": "tslint -c ../../tslint.json 'src/**/*.ts'",
     "fix": "tslint --fix -c ../../tslint.json 'src/**/*.ts'",
-    "pub": "npm run build && npm publish",
-    "precommit": "npm run fix && npm run lint"
+    "pub": "pnpm run build && npm publish",
+    "precommit": "pnpm run fix && pnpm run lint"
   },
   "publishConfig": {
     "access": "public"

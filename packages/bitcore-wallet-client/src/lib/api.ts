@@ -1,7 +1,7 @@
 'use strict';
-import async from 'async';
 import Mnemonic from '@bcpros/bitcore-mnemonic';
 import * as CWC from '@bcpros/crypto-wallet-core';
+import async from 'async';
 import { EventEmitter } from 'events';
 import { singleton } from 'preconditions';
 import querystring from 'querystring';
@@ -3006,7 +3006,7 @@ export class API extends EventEmitter {
       return { credentials: credBatch, accountKeyCredentialIndex };
     };
 
-    const checkForOtherAccounts = foundWallets => {
+    const checkForOtherAccounts = (foundWallets: { key: any; opts: any; status: any; credentials: any }[]) => {
       let addtFoundWallets = [];
       async.each(
         foundWallets,
