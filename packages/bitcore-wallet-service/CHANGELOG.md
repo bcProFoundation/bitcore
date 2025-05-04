@@ -1,5 +1,19 @@
 # Change Log
 
+## 9.0.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @bcpros/bitcore-lib@9.0.9
+  - @bcpros/bitcore-lib-cash@9.0.9
+  - @bcpros/bitcore-lib-doge@9.0.9
+  - @bcpros/bitcore-lib-ltc@9.0.9
+  - @bcpros/bitcore-lib-xec@9.0.9
+  - @bcpros/bitcore-lib-xpi@9.0.9
+  - @bcpros/bitcore-wallet-client@9.0.12
+  - @bcpros/crypto-wallet-core@9.0.9
+
 ## 9.0.11
 
 ### Patch Changes
