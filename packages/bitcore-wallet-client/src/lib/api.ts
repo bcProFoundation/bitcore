@@ -2840,12 +2840,6 @@ export class API extends EventEmitter {
         ['bch', 'bch', 'livenet', false, true], // check for prefork bch wallet
         ['xec', 'xec', 'livenet'],
         ['xpi', 'xpi', 'livenet'],
-        ['eth', 'eth', 'livenet'],
-        ['matic', 'matic', 'livenet'],
-        ['eth', 'arb', 'livenet'],
-        ['eth', 'base', 'livenet'],
-        ['eth', 'op', 'livenet'],
-        ['xrp', 'xrp', 'livenet'],
         ['doge', 'doge', 'livenet'],
         ['ltc', 'ltc', 'livenet'],
         ['btc', 'btc', 'livenet', true],
@@ -2863,9 +2857,7 @@ export class API extends EventEmitter {
 
       if (key.use0forBCH) {
         //  testing BCH, old coin=0 wallets
-        opts = opts.filter(x => {
-          return x[0] == 'bch';
-        });
+        opts = opts.filter(x => x[0] == 'bch');
       }
 
       if (!key.nonCompliantDerivation && includeTestnetWallets) {

@@ -78,8 +78,7 @@
     "typescript": "4.9.4"
   },
   "resolutions": {
-    "ecashaddrjs": "npm:ecashaddrjs@^2.0.0",
-    "web3-utils": "1.10.4"
+    "ecashaddrjs": "npm:ecashaddrjs@^2.0.0"
   },
   "husky": {
     "hooks": {}
