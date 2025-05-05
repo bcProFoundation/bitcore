@@ -69,12 +69,11 @@
     "ecashaddrjs": "^1.0.7",
     "email-validator": "^1.2.3",
     "engine.io": "^3.4.2",
-    "ethers": "4.0.0-beta.3",
     "express": "^4.19.2",
     "express-notify-telegram": "^1.6.2",
     "express-rate-limit": "^2.14.2",
     "express-session": "^1.17.3",
-    "firebase-admin": "7.4.0",
+    "firebase-admin": "13.3.0",
     "googleapis": "^122.0.0",
     "inherits": "^2.0.4",
     "istanbul": "^0.4.5",
@@ -119,7 +118,7 @@
     "@types/lodash": "^4.14.123",
     "@types/moment": "^2.13.0",
     "@types/mongodb": "^4.0.7",
-    "@types/node": "^18.11.18",
+    "@types/node": "22.13.1",
     "@types/nodemailer": "^4.6.6",
     "@types/request": "^2.48.1",
     "chai": "^1.9.1",
@@ -153,6 +152,9 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "resolutions": {
+    "@types/node": "22.13.1"
   },
   "gitHead": "169e28b0b13c25c386faccf38a2fdc4e1275a5db"
 }
