@@ -1,5 +1,11 @@
 # Change Log
 
+## 9.0.13
+
+### Patch Changes
+
+- Update bitcore-wallet-service
+
 ## 9.0.12
 
 ### Patch Changes
