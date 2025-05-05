@@ -82,5 +82,10 @@
   },
   "husky": {
     "hooks": {}
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/node": "22.13.1"
+    }
   }
 }
