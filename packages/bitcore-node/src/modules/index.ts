@@ -50,14 +50,11 @@ class ModuleManager extends BaseModule {
   // Chain names -> module paths map
   DEFAULT_MODULE_PATHS = {
     BTC: './bitcoin',
-    ETH: './ethereum',
-    MATIC: './matic',
     BCH: './bitcoin-cash',
     XEC: './xec',
     XPI: './xpi',
     DOGE: './dogecoin',
     LTC: './litecoin',
-    XRP: './ripple'
   };
 
   loadConfigured(params: Partial<ChainNetwork> = {}) {
