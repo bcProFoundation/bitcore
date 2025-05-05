@@ -6,19 +6,21 @@ settings:
 
 overrides:
   ecashaddrjs: npm:ecashaddrjs@^2.0.0
-  '@types/node': 22.13.1
 
 importers:
 
   .:
     dependencies:
       typescript:
-        specifier: 4.9.4
-        version: 4.9.4
+        specifier: 5.7.3
+        version: 5.7.3
     devDependencies:
       '@changesets/cli':
         specifier: ^2.26.2
         version: 2.29.3
+      '@types/node':
+        specifier: 22.13.1
+        version: 22.13.1
       browserify:
         specifier: ^16.2.3
         version: 16.5.2
@@ -42,7 +44,7 @@ importers:
         version: 1.19.1
       tslint:
         specifier: ^5.20.1
-        version: 5.20.1(typescript@4.9.4)
+        version: 5.20.1(typescript@5.7.3)
       tslint-config-prettier:
         specifier: ^1.18.0
         version: 1.18.0
@@ -54,7 +56,7 @@ importers:
         version: 0.15.8
       typescript-eslint-parser:
         specifier: ^15.0.0
-        version: 15.0.0(typescript@4.9.4)
+        version: 15.0.0(typescript@5.7.3)
 
   packages/bitcore-build:
     dependencies:
@@ -903,8 +905,8 @@ importers:
         version: 5.7.3
     devDependencies:
       '@bcpros/bitcore-wallet-service':
-        specifier: ^9.0.12
-        version: 9.0.13(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@16.8.6(react@16.8.6))(react@16.8.6)(typescript@5.7.3)(utf-8-validate@5.0.10)(ws@8.18.2(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+        specifier: ^9.0.14
+        version: 9.0.14(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@16.8.6(react@16.8.6))(react@16.8.6)(typescript@5.7.3)(utf-8-validate@5.0.10)(ws@8.18.2(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@types/lodash':
         specifier: ^4.14.136
         version: 4.17.16
@@ -1394,8 +1396,8 @@ packages:
     resolution: {integrity: sha512-taGPnFDXRx4yQJI7i7PbVEhs6Jd2cb5EeldYL5Vn/uMraPjRmTz3jOwfvwzZ5B3iRQ6j9lu9xEnF5i6+6faW1Q==}
     engines: {node: '>=18.0.0'}
 
-  '@bcpros/bitcore-wallet-service@9.0.13':
-    resolution: {integrity: sha512-wOr/6c4Ps6B1OJUQk4UxLJ5OaOTnc1Ol4AnJo4DQDUlq//mg8DYzmNVe2W5kohj9LXG7Xq/+YUFvuRAklJs2bA==}
+  '@bcpros/bitcore-wallet-service@9.0.14':
+    resolution: {integrity: sha512-HgOEZdoGnfNQsxQ+2meBjlPr+GFcqeRW8S//6NNS1V3307+OLM/DF9HAwSsnuEvKECRjzPlJhyVlIzZ9Kh+T7A==}
 
   '@bcpros/coininfo@5.2.1':
     resolution: {integrity: sha512-tPrLuji/1Azb7EWHt1G9XQQ7tnuhXKcZLvJuRJViVrDrU8JK0CyVh7Qa1U8O+7gRVRkGEEbIvzJJ6i8ICuBxzw==}
@@ -3004,8 +3006,23 @@ packages:
   '@types/mute-stream@0.0.4':
     resolution: {integrity: sha512-CPM9nzrCPPJHQNA9keH9CVkVI+WR5kMa+7XEs5jcGQ0VoAGnLv242w8lIVgwAEfmE4oufJRaTc9PNLQl0ioAow==}
 
+  '@types/node@10.12.18':
+    resolution: {integrity: sha512-fh+pAqt4xRzPfqA6eh3Z2y6fyZavRIumvjhaCL753+TVkGKGhpPeyrJG2JftD0T9q4GF00KjefsQ+PQNDdWQaQ==}
+
+  '@types/node@12.20.55':
+    resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
+
+  '@types/node@20.17.32':
+    resolution: {integrity: sha512-zeMXFn8zQ+UkjK4ws0RiOC9EWByyW1CcVmLe+2rQocXRsGEDxUCwPEIVgpsGcLHS/P8JkT0oa3839BRABS0oPw==}
+
+  '@types/node@20.8.4':
+    resolution: {integrity: sha512-ZVPnqU58giiCjSxjVUESDtdPk4QR5WQhhINbc9UBrKLU68MX5BF6kbQzTrkwbolyr0X8ChBpXfavr5mZFKZQ5A==}
+
   '@types/node@22.13.1':
     resolution: {integrity: sha512-jK8uzQlrvXqEU91UxiK5J7pKHyzgnI1Qnl0QDHIgVGuolJhRb9EEl28Cj9b3rGR8B2lhFCtvIm5os8lFnO/1Ew==}
+
+  '@types/node@22.7.5':
+    resolution: {integrity: sha512-jML7s2NAzMWc//QSJ1a3prpk78cOPchGvXJsC3C6R6PSMoooztvRVQEz89gmBTBY1SPMaqo5teB4uNHPdetShQ==}
 
   '@types/nodemailer@4.6.8':
     resolution: {integrity: sha512-IX1P3bxDP1VIdZf6/kIWYNmSejkYm9MOyMEtoDFi4DVzKjJ3kY4GhOcOAKs6lZRjqVVmF9UjPOZXuQczlpZThw==}
@@ -10540,11 +10557,6 @@ packages:
     engines: {node: '>=4.2.0'}
     hasBin: true
 
-  typescript@4.9.4:
-    resolution: {integrity: sha512-Uz+dTXYzxXXbsFpM86Wh3dKCxrQqUcVMxwU54orwlJjOpO3ao8L7j5lH+dWfTwgCwIuM9GQ2kvVotzYJMXTBZg==}
-    engines: {node: '>=4.2.0'}
-    hasBin: true
-
   typescript@5.7.3:
     resolution: {integrity: sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==}
     engines: {node: '>=14.17'}
@@ -10611,6 +10623,12 @@ packages:
   undertaker@1.3.0:
     resolution: {integrity: sha512-/RXwi5m/Mu3H6IHQGww3GNt1PNXlbeCuclF2QYR14L/2CHPz3DFZkvB5hZ0N/QUkiXWCACML2jXViIQEQc2MLg==}
     engines: {node: '>= 0.10'}
+
+  undici-types@5.25.3:
+    resolution: {integrity: sha512-Ga1jfYwRn7+cP9v8auvEXN1rX3sWqlayd4HP7OKk4mZWylEmu3KzXDUGrQUN6Ol7qo1gPvB2e5gX6udnyEPgdA==}
+
+  undici-types@6.19.8:
+    resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
   undici-types@6.20.0:
     resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
@@ -10830,7 +10848,7 @@ packages:
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
     peerDependencies:
-      '@types/node': 22.13.1
+      '@types/node': ^18.0.0 || >=20.0.0
       less: '*'
       lightningcss: ^1.21.0
       sass: '*'
@@ -11656,7 +11674,7 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@bcpros/bitcore-wallet-service@9.0.13(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@16.8.6(react@16.8.6))(react@16.8.6)(typescript@5.7.3)(utf-8-validate@5.0.10)(ws@8.18.2(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
+  '@bcpros/bitcore-wallet-service@9.0.14(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@16.8.6(react@16.8.6))(react@16.8.6)(typescript@5.7.3)(utf-8-validate@5.0.10)(ws@8.18.2(bufferutil@4.0.9)(utf-8-validate@5.0.10))':
     dependencies:
       '@abcpros/xpi-js': 4.0.7
       '@bcpros/bitcore-lib': 9.0.9
@@ -12838,7 +12856,7 @@ snapshots:
   '@manypkg/find-root@1.1.0':
     dependencies:
       '@babel/runtime': 7.27.1
-      '@types/node': 22.13.1
+      '@types/node': 12.20.55
       find-up: 4.1.0
       fs-extra: 8.1.0
 
@@ -13888,9 +13906,25 @@ snapshots:
     dependencies:
       '@types/node': 22.13.1
 
+  '@types/node@10.12.18': {}
+
+  '@types/node@12.20.55': {}
+
+  '@types/node@20.17.32':
+    dependencies:
+      undici-types: 6.19.8
+
+  '@types/node@20.8.4':
+    dependencies:
+      undici-types: 5.25.3
+
   '@types/node@22.13.1':
     dependencies:
       undici-types: 6.20.0
+
+  '@types/node@22.7.5':
+    dependencies:
+      undici-types: 6.19.8
 
   '@types/nodemailer@4.6.8':
     dependencies:
@@ -14134,7 +14168,7 @@ snapshots:
 
   '@wdio/cli@9.12.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
       '@vitest/snapshot': 2.1.9
       '@wdio/config': 9.12.6
       '@wdio/globals': 9.12.7(@wdio/logger@9.4.4)(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -14197,7 +14231,7 @@ snapshots:
 
   '@wdio/local-runner@9.12.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
       '@wdio/logger': 9.4.4
       '@wdio/repl': 9.4.4
       '@wdio/runner': 9.12.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -14222,7 +14256,7 @@ snapshots:
   '@wdio/mocha-framework@9.12.6':
     dependencies:
       '@types/mocha': 10.0.10
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
       '@wdio/logger': 9.4.4
       '@wdio/types': 9.12.6
       '@wdio/utils': 9.12.6
@@ -14235,11 +14269,11 @@ snapshots:
 
   '@wdio/repl@9.4.4':
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
 
   '@wdio/reporter@9.12.6':
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
       '@wdio/logger': 9.4.4
       '@wdio/types': 9.12.6
       diff: 7.0.0
@@ -14247,7 +14281,7 @@ snapshots:
 
   '@wdio/runner@9.12.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
       '@wdio/config': 9.12.6
       '@wdio/dot-reporter': 9.12.6
       '@wdio/globals': 9.12.7(@wdio/logger@9.4.4)(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -14275,7 +14309,7 @@ snapshots:
 
   '@wdio/types@9.12.6':
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
 
   '@wdio/utils@9.12.6':
     dependencies:
@@ -14898,7 +14932,7 @@ snapshots:
 
   bip32@2.0.6:
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 10.12.18
       bs58check: 2.1.2
       create-hash: 1.2.0
       create-hmac: 1.1.7
@@ -17256,7 +17290,7 @@ snapshots:
       '@adraffy/ens-normalize': 1.10.1
       '@noble/curves': 1.2.0
       '@noble/hashes': 1.3.2
-      '@types/node': 22.13.1
+      '@types/node': 22.7.5
       aes-js: 4.0.0-beta.5
       tslib: 2.7.0
       ws: 8.17.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -19631,7 +19665,7 @@ snapshots:
     dependencies:
       '@grpc/grpc-js': 1.9.5
       '@grpc/proto-loader': 0.7.10
-      '@types/node': 22.13.1
+      '@types/node': 20.8.4
       '@types/request': 2.48.10
       '@types/ws': 8.5.7
       async: 3.2.4
@@ -23145,23 +23179,6 @@ snapshots:
       tsutils: 2.29.0(typescript@5.7.3)
       typescript: 5.7.3
 
-  tslint@5.20.1(typescript@4.9.4):
-    dependencies:
-      '@babel/code-frame': 7.27.1
-      builtin-modules: 1.1.1
-      chalk: 2.4.2
-      commander: 2.20.3
-      diff: 4.0.2
-      glob: 7.2.3
-      js-yaml: 3.14.1
-      minimatch: 3.1.2
-      mkdirp: 0.5.1
-      resolve: 1.22.10
-      semver: 5.7.2
-      tslib: 1.14.1
-      tsutils: 2.29.0(typescript@4.9.4)
-      typescript: 4.9.4
-
   tslint@5.20.1(typescript@5.7.3):
     dependencies:
       '@babel/code-frame': 7.27.1
@@ -23178,11 +23195,6 @@ snapshots:
       tslib: 1.14.1
       tsutils: 2.29.0(typescript@5.7.3)
       typescript: 5.7.3
-
-  tsutils@2.29.0(typescript@4.9.4):
-    dependencies:
-      tslib: 1.14.1
-      typescript: 4.9.4
 
   tsutils@2.29.0(typescript@5.7.3):
     dependencies:
@@ -23363,12 +23375,6 @@ snapshots:
 
   typeforce@1.18.0: {}
 
-  typescript-eslint-parser@15.0.0(typescript@4.9.4):
-    dependencies:
-      lodash.unescape: 4.0.1
-      semver: 5.5.0
-      typescript: 4.9.4
-
   typescript-eslint-parser@15.0.0(typescript@5.7.3):
     dependencies:
       lodash.unescape: 4.0.1
@@ -23390,8 +23396,6 @@ snapshots:
       typescript: 5.7.3
 
   typescript@3.7.7: {}
-
-  typescript@4.9.4: {}
 
   typescript@5.7.3: {}
 
@@ -23458,6 +23462,10 @@ snapshots:
       object.defaults: 1.1.0
       object.reduce: 1.0.1
       undertaker-registry: 1.0.1
+
+  undici-types@5.25.3: {}
+
+  undici-types@6.19.8: {}
 
   undici-types@6.20.0: {}
 
@@ -23770,7 +23778,7 @@ snapshots:
 
   web3-bzz@1.4.0(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 12.20.55
       got: 9.6.0
       swarm-js: 0.1.42(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       underscore: 1.12.1
@@ -23781,7 +23789,7 @@ snapshots:
 
   web3-bzz@1.7.1(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 12.20.55
       got: 9.6.0
       swarm-js: 0.1.42(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
@@ -23798,7 +23806,7 @@ snapshots:
   web3-core-helpers@1.7.1:
     dependencies:
       web3-eth-iban: 1.7.1
-      web3-utils: 1.10.4
+      web3-utils: 1.7.1
 
   web3-core-method@1.4.0:
     dependencies:
@@ -23815,7 +23823,7 @@ snapshots:
       web3-core-helpers: 1.7.1
       web3-core-promievent: 1.7.1
       web3-core-subscriptions: 1.7.1
-      web3-utils: 1.10.4
+      web3-utils: 1.7.1
 
   web3-core-promievent@1.4.0:
     dependencies:
@@ -23860,7 +23868,7 @@ snapshots:
   web3-core@1.4.0:
     dependencies:
       '@types/bn.js': 4.11.5
-      '@types/node': 22.13.1
+      '@types/node': 12.20.55
       bignumber.js: 9.3.0
       web3-core-helpers: 1.4.0
       web3-core-method: 1.4.0
@@ -23872,7 +23880,7 @@ snapshots:
   web3-core@1.7.1:
     dependencies:
       '@types/bn.js': 4.11.5
-      '@types/node': 22.13.1
+      '@types/node': 12.20.55
       bignumber.js: 9.3.0
       web3-core-helpers: 1.7.1
       web3-core-method: 1.7.1
@@ -23996,7 +24004,7 @@ snapshots:
 
   web3-eth-personal@1.4.0:
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 12.20.55
       web3-core: 1.4.0
       web3-core-helpers: 1.4.0
       web3-core-method: 1.4.0
@@ -24007,7 +24015,7 @@ snapshots:
 
   web3-eth-personal@1.7.1:
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 12.20.55
       web3-core: 1.7.1
       web3-core-helpers: 1.7.1
       web3-core-method: 1.7.1
@@ -24185,7 +24193,7 @@ snapshots:
 
   webdriver@9.12.6(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
       '@types/ws': 8.18.1
       '@wdio/config': 9.12.6
       '@wdio/logger': 9.4.4
@@ -24203,7 +24211,7 @@ snapshots:
 
   webdriverio@9.12.7(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     dependencies:
-      '@types/node': 22.13.1
+      '@types/node': 20.17.32
       '@types/sinonjs__fake-timers': 8.1.5
       '@wdio/config': 9.12.6
       '@wdio/logger': 9.4.4

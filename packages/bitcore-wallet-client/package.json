@@ -41,7 +41,7 @@
     "typescript": "5.7.3"
   },
   "devDependencies": {
-    "@bcpros/bitcore-wallet-service": "^9.0.12",
+    "@bcpros/bitcore-wallet-service": "^9.0.14",
     "@types/lodash": "^4.14.136",
     "@types/node": "22.13.1",
     "browserify": "^13.1.0",
