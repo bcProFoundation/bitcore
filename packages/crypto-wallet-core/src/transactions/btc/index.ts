@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import { Key } from '../../derivation';
 
 export class BTCTxProvider {
@@ -81,7 +80,6 @@ export class BTCTxProvider {
   sign(params: { tx: string; keys: Array<Key>; utxos: any[]; pubkeys?: any[]; threshold?: number; opts: any }) {
     const { tx, keys, pubkeys, threshold, opts } = params;
     let utxos = params.utxos || [];
-    let inputAddresses = this.getSigningAddresses({ tx, utxos });
     let bitcoreTx = new this.lib.Transaction(tx);
     let applicableUtxos = this.getRelatedUtxos({
       outputs: bitcoreTx.inputs,
