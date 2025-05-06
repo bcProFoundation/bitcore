@@ -121,6 +121,8 @@
     "@types/node": "22.13.1",
     "@types/nodemailer": "^4.6.6",
     "@types/request": "^2.48.1",
+    "@types/express": "4.17.17",
+    "@types/express-serve-static-core": "4.17.31",
     "chai": "^1.9.1",
     "coveralls": "^3.0.2",
     "jsdoc": "^3.6.3",

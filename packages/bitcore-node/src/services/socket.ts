@@ -1,6 +1,5 @@
 import * as http from 'http';
 import { ObjectID } from 'mongodb';
-import SocketIO from 'socket.io';
 import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
 import { CoinEvent, EventModel, EventStorage, TxEvent } from '../models/events';
@@ -22,7 +21,7 @@ function SanitizeWallet(x: { wallets?: ObjectID[] }) {
 @LoggifyClass
 export class SocketService {
   httpServer?: http.Server;
-  io?: SocketIO.Server;
+  io?: any;
   id: number = Math.random();
   configService: ConfigService;
   serviceConfig: ConfigType['services']['socket'];
@@ -61,33 +60,35 @@ export class SocketService {
       this.stopped = false;
       logger.info('Starting Socket Service');
       this.httpServer = server;
-      this.io = new SocketIO.Server(server);
-      this.io.sockets.on('connection', socket => {
-        socket.on('room', (room: string, payload: VerificationPayload) => {
-          const chainNetwork = room.slice(0, room.lastIndexOf('/') + 1);
-          const roomName = room.slice(room.lastIndexOf('/') + 1);
-          switch (roomName) {
-            case 'wallets':
-              if (bwsKeys.includes(payload.pubKey) && this.validateRequest(payload)) {
+      this.io = require('socket.io')(server);
+      if (this.io) {
+        this.io.sockets.on('connection', socket => {
+          socket.on('room', (room: string, payload: VerificationPayload) => {
+            const chainNetwork = room.slice(0, room.lastIndexOf('/') + 1);
+            const roomName = room.slice(room.lastIndexOf('/') + 1);
+            switch (roomName) {
+              case 'wallets':
+                if (bwsKeys.includes(payload.pubKey) && this.validateRequest(payload)) {
+                  socket.join(room);
+                } else {
+                  socket.emit('failure', { message: 'Authentication failed' });
+                }
+                break;
+              case 'wallet':
+                if (this.validateRequest(payload)) {
+                  socket.join(chainNetwork + payload.pubKey);
+                } else {
+                  socket.emit('failure', { message: 'Authentication failed' });
+                }
+                break;
+              case 'inv':
+              case 'address':
                 socket.join(room);
-              } else {
-                socket.emit('failure', { message: 'Authentication failed' });
-              }
-              break;
-            case 'wallet':
-              if (this.validateRequest(payload)) {
-                socket.join(chainNetwork + payload.pubKey);
-              } else {
-                socket.emit('failure', { message: 'Authentication failed' });
-              }
-              break;
-            case 'inv':
-            case 'address':
-              socket.join(room);
-              break;
-          }
+                break;
+            }
+          });
         });
-      });
+      }
     }
     this.wireup();
     logger.info('Started Socket Service');

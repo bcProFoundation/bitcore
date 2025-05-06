@@ -28,7 +28,8 @@
       "mocha"
     ],
     "esModuleInterop": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true
   },
   "include": [
     "./src/**/*",
