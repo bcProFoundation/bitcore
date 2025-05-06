@@ -1,6 +1,5 @@
 import * as http from 'http';
 import { ObjectID } from 'mongodb';
-import SocketIO from 'socket.io';
 import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
 const { Server } = require('socket.io');
@@ -23,11 +22,7 @@ function SanitizeWallet(x: { wallets?: ObjectID[] }) {
 @LoggifyClass
 export class SocketService {
   httpServer?: http.Server;
-<<<<<<< Updated upstream
-  io?: SocketIO.Server;
-=======
   io?: typeof Server;
->>>>>>> Stashed changes
   id: number = Math.random();
   configService: ConfigService;
   serviceConfig: ConfigType['services']['socket'];
@@ -66,11 +61,7 @@ export class SocketService {
       this.stopped = false;
       logger.info('Starting Socket Service');
       this.httpServer = server;
-<<<<<<< Updated upstream
-      this.io = new SocketIO.Server(server);
-=======
       this.io = new Server(server);
->>>>>>> Stashed changes
       this.io.sockets.on('connection', socket => {
         socket.on('room', (room: string, payload: VerificationPayload) => {
           const chainNetwork = room.slice(0, room.lastIndexOf('/') + 1);
