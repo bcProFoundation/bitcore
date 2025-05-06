@@ -113,10 +113,8 @@
   },
   "devDependencies": {
     "@types/async": "^2.4.1",
-    "@types/bson": "^4.2.4",
     "@types/linkify-it": "^3.0.2",
     "@types/lodash": "^4.14.123",
-    "@types/moment": "^2.13.0",
     "@types/mongodb": "^4.0.7",
     "@types/node": "22.13.1",
     "@types/nodemailer": "^4.6.6",
