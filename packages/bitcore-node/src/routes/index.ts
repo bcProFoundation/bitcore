@@ -72,7 +72,11 @@ app.param(['chain', 'network'], (req: Request, _: Response, next: any) => {
 app.use('/api/:chain/:network', (req: Request, resp: Response, next: any) => {
   let { chain, network } = req.params;
 
+  console.warn("DEBUGPRINT[106]: index.ts:74 (after let  chain, network  = req.params;)")
+  console.log(req.params);
+  console.log(chains);
   const hasChain = chains.includes(chain as string);
+  console.warn("DEBUGPRINT[105]: index.ts:75: chains=", chains)
   const chainNetworks = networks[chain as string] || null;
   console.log(chainNetworks)
   const hasChainNetworks = chainNetworks != null;
