@@ -81,6 +81,11 @@
   "resolutions": {
     "ecashaddrjs": "npm:ecashaddrjs@^2.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "@types/node": "22.13.1"
+    }
+  },
   "husky": {
     "hooks": {}
   }
