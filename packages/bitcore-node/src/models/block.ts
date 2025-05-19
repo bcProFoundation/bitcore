@@ -61,8 +61,14 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
 
     const previousBlock = await this.collection.findOne({ hash: convertedBlock.previousBlockHash, chain, network });
     logger.warn(`DEBUGPRINT[151]: block.ts:62: previousBlock= %o`, previousBlock)
+    logger.warn(`DEBUGPRINT[152]: block.ts:64: blockOp= %o`, blockOp)
 
-    await this.collection.bulkWrite([blockOp]);
+    try {
+      await this.collection.bulkWrite([blockOp]);
+    } catch (err) {
+      logger.error('MongoDB bulkWrite failed', { error: err, blockOp });
+      throw err; // or handle as needed
+    }
     if (previousBlock) {
       await this.collection.updateOne(
         { chain, network, hash: previousBlock.hash },
