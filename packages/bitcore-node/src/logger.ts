@@ -108,7 +108,7 @@ process.on('uncaughtException', (error) => {
   const message = typeof error === 'string' ? error : error.message;
   logger.error({
     message: `Uncaught Exception: ${message}`,
-    error,
+    error: error && error.stack ? error.stack : error,
     timestamp: timestamp()
   });
   // Exit the process to allow Docker to restart the container
@@ -118,10 +118,10 @@ process.on('uncaughtException', (error) => {
 // Error handler for unhandled promise rejections
 process.on('unhandledRejection', (reason, _) => {
   const error = reason instanceof Error ? reason : new Error(String(reason));
-  console.log(error);
+  console.error(error);
   logger.error({
     message: 'Unhandled Promise Rejection',
-    error,
+    error: error && error.stack ? error.stack : error,
     timestamp: timestamp()
   });
   // Exit the process to allow Docker to restart the container
