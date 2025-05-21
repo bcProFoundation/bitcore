@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { cpus, homedir } from 'os';
+import { homedir } from 'os';
 import { ConfigType } from './types/Config';
 import parseArgv from './utils/parseArgv';
 let program = parseArgv([], ['config']);
