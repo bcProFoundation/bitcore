@@ -66,35 +66,55 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
     try {
       await this.collection.bulkWrite([blockOp]);
     } catch (err) {
-      logger.error('MongoDB bulkWrite failed', { error: err, blockOp });
+      logger.error('MongoDB bulkWrite failed %o', { error: err, blockOp });
       throw err; // or handle as needed
     }
-    if (previousBlock) {
-      await this.collection.updateOne(
-        { chain, network, hash: previousBlock.hash },
-        { $set: { nextBlockHash: convertedBlock.hash } }
-      );
-      logger.debug('Updating previous block.nextBlockHash %o', convertedBlock.hash);
+    try {
+      if (previousBlock) {
+        await this.collection.updateOne(
+          { chain, network, hash: previousBlock.hash },
+          { $set: { nextBlockHash: convertedBlock.hash } }
+        );
+        logger.debug('Updating previous block.nextBlockHash %o', convertedBlock.hash);
+      }
+    } catch (err) {
+      logger.error('collection.updateOne failed');
+      throw err; // or handle as needed
     }
 
-    await TransactionStorage.batchImport({
-      txs: block.transactions,
-      blockHash: convertedBlock.hash,
-      blockTime: new Date(time),
-      blockTimeNormalized: new Date(timeNormalized),
-      height,
-      chain,
-      network,
-      parentChain,
-      forkHeight,
-      initialSyncComplete
-    });
-
-    if (initialSyncComplete) {
-      EventStorage.signalBlock(convertedBlock);
+    try {
+      await TransactionStorage.batchImport({
+        txs: block.transactions,
+        blockHash: convertedBlock.hash,
+        blockTime: new Date(time),
+        blockTimeNormalized: new Date(timeNormalized),
+        height,
+        chain,
+        network,
+        parentChain,
+        forkHeight,
+        initialSyncComplete: true
+      });
+    } catch (err) {
+      logger.error('TransactionStorage.batchImport failed %o', err);
+      throw err; // or handle as needed
     }
 
-    await this.collection.updateOne({ hash: convertedBlock.hash, chain, network }, { $set: { processed: true } });
+    try {
+      if (initialSyncComplete) {
+        EventStorage.signalBlock(convertedBlock);
+      }
+    } catch (err) {
+      logger.error('EventStorage.signalBlock failed %o', err);
+      throw err;
+    }
+
+    try {
+      await this.collection.updateOne({ hash: convertedBlock.hash, chain, network }, { $set: { processed: true } });
+    } catch (err) {
+      logger.error('collection.updateOne failed %o', err);
+      throw err;
+    }
   }
 
   async getBlockOp(params: { block: BitcoinBlockType; chain: string; network: string; initialHeight?: number }) {
