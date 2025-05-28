@@ -27,18 +27,15 @@ export const FullClusteredWorker = async () => {
     if (args.DEBUG) {
       services.push(Api);
     } else {
-      logger.info("DEBUGPRINT[160]: all.ts:29 (after  else )")
       services.push(Worker);
     }
   } else {
     services.push(Api);
   }
 
-  logger.info("DEBUGPRINT[158]: all.ts:35 (after services.push(Api);)");
   Modules.loadConfigured();
 
   for (const service of services) {
-    logger.info("DEBUGPRINT[159]: all.ts:39 (after for (const service of services) )")
     await service.start();
   }
 };

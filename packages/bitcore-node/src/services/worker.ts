@@ -18,8 +18,7 @@ export class WorkerService extends EventEmitter {
 
   async start() {
     if (cluster.isPrimary) {
-      logger.info(`Master ${process.pid} is running`);
-      logger.info(`DEBUGPRINT[161]: worker.ts:22: config.numWorkers= %o`, config.numWorkers);
+      logger.verbose(`Master ${process.pid} is running`);
       if (!args.DEBUG) {
         for (let worker = 0; worker < config.numWorkers; worker++) {
           let newWorker = cluster.fork();

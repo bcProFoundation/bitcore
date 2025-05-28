@@ -30,6 +30,7 @@ interface FileUploadRequest extends Request {
 const bodyParser = require('body-parser');
 const compression = require('compression');
 const RateLimit = require('express-rate-limit');
+const rp = require('request-promise-native');
 const Defaults = Common.Defaults;
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -407,14 +408,13 @@ export class ExpressApp {
               res.json({ version });
             } else {
               try {
-                const htmlString = await axios.get(options.uri, { headers: options.headers }).then(response => response.data);
+                const htmlString = await rp(options);
                 if (htmlString['tag_name']) {
                   server.storage.storeGlobalCache('latest-copay-version', htmlString['tag_name'], err => {
                     res.json({ version: htmlString['tag_name'] });
                   });
                 }
               } catch (err) {
-                logger.warn("error herer cannot continue");
                 res.send(err);
               }
             }
@@ -2607,9 +2607,9 @@ export class ExpressApp {
     this.app.use(express.static(`${__dirname}/../../public/csv/`));
 
     WalletService.initialize(opts, data => {
-      const bot = new TelegramBot(config.telegram.botTokenId, { polling: true });
-      const botNotification = new TelegramBot(config.botNotification.botTokenId, { polling: true });
-      const botSwap = new TelegramBot(config.swapTelegram.botTokenId, { polling: true });
+      const bot = new TelegramBot(config.telegram.botTokenId, { polling: false });
+      const botNotification = new TelegramBot(config.botNotification.botTokenId, { polling: false });
+      const botSwap = new TelegramBot(config.swapTelegram.botTokenId, { polling: false });
       const server = WalletService.getInstance(opts);
       if (listAccount && listAccount.length > 0) {
         listAccount.forEach(account => {

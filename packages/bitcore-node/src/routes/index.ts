@@ -76,10 +76,8 @@ app.use('/api/:chain/:network', (req: Request, resp: Response, next: any) => {
   const chainNetworks = networks[chain as string] || null;
   console.log(chainNetworks)
   const hasChainNetworks = chainNetworks != null;
-  console.warn("DEBUGPRINT[96]: index.ts:78: hasChainNetworks=", hasChainNetworks)
   console.log(hasChainNetworks)
   const hasNetworkForChain = hasChainNetworks ? chainNetworks[network as string] : false;
-  console.warn("DEBUGPRINT[97]: index.ts:80: hasNetworkForChain=", hasNetworkForChain)
   console.log(hasNetworkForChain)
 
   if (chain && !hasChain) {

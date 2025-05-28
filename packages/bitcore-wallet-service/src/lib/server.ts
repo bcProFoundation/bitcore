@@ -3982,7 +3982,6 @@ export class WalletService implements IWalletService {
             return cb(new ClientError('Invalid proposal signature'));
           }
 
-          logger.warn("DEBUGPRINT[39]: server.ts:4016 (after return cb(new ClientError(Invalid propos…)")
           // Save signature info for other copayers to check
           txp.proposalSignature = opts.proposalSignature;
           if (signingKey.selfSigned) {
@@ -4934,8 +4933,6 @@ export class WalletService implements IWalletService {
     swapQueueInterval = setInterval(() => {
       if (this.storage && this.storage.orderQueue) {
         this.storage.orderQueue.get(async (err, data) => {
-          logger.debug('orderinfo created: ', data);
-          console.log('orderinfo created: ', data);
           const saveError = (orderInfo, data, error, status?) => {
             let isOrderOutOfFund = false;
             if (error.message) {
@@ -5010,8 +5007,6 @@ export class WalletService implements IWalletService {
               });
             }
           };
-          console.log('clients fund in queue now: ', clientsFund);
-          console.log('clients receive in queue now: ', clientsReceive);
           if (data) {
             const orderInfo = await this._getOrderInfo({ id: data.payload });
             if (['waiting', 'processing'].includes(orderInfo.status)) {
@@ -7902,7 +7897,6 @@ export class WalletService implements IWalletService {
     this.logd('Registering wallet');
     bc.register(wallet, err => {
       if (err) {
-        logger.error(err);
         return cb(err);
       }
       wallet.beRegistered = true;

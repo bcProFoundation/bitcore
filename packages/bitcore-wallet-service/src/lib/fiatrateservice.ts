@@ -238,7 +238,8 @@ export class FiatRateService {
   }
 
   _retrieveLotus(cb) {
-    logger.debug('Fetching data for lotus');
+    logger.info('Fetching data for lotus');
+    logger.info(config.blockchainExplorerOpts);
     const bc = BlockChainExplorer({
       chain: 'xpi',
       network: 'livenet',
