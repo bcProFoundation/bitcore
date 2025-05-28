@@ -22,9 +22,9 @@
     "url": "https://github.com/bitpay/bitcore-wallet-service/issues"
   },
   "scripts": {
-    "start": "npm run clean && npm run tsc && npm run copy-csv && ./start.sh",
-    "start-debug": "npm run clean && npm run tsc && ./start.sh 1",
-    "start-bws": "npm run clean && npm run tsc && ./start-bws.sh",
+    "start": "pnpm run clean && pnpm run tsc && npm run copy-csv && ./start.sh",
+    "start-debug": "pnpm run clean && pnpm run tsc && ./start.sh 1",
+    "start-bws": "pnpm run clean && pnpm run tsc && ./start-bws.sh",
     "stop": "./stop.sh",
     "stop-bws": "./stop-bws.sh",
     "coverage": "npm run compile && ./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha -- --reporter spec test",

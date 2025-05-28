@@ -130,7 +130,7 @@ export class Client {
     });
   }
 
-  async listTransactions(params): Promise<Readable> {
+  listTransactions(params) {
     const {
       pubKey,
       startBlock,
@@ -161,12 +161,10 @@ export class Client {
     const url = apiUrl + query;
     const signature = this.sign({ method: 'GET', url });
     logger.debug('List transactions %o', url);
-    return axios({
-      method: 'get',
-      url,
+    return requestStream.get(url, {
       headers: { 'x-signature': signature },
-      responseType: 'stream'
-    }).then(response => response.data);  // return the stream
+      json: true
+    });
   }
 
   async importAddresses(params) {

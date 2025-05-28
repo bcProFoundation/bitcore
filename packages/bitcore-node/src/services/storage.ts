@@ -31,7 +31,6 @@ export class StorageService {
   }
 
   start(args: Partial<ConfigType> = {}): Promise<MongoClient> {
-    logger.info("DEBUGPRINT[162]: storage.ts:33 (after start(args: Partial<ConfigType> = ): Pro…)");
     return new Promise((resolve, reject) => {
       let options = Object.assign({}, this.configService.get(), args);
       let { dbUrl, dbName, dbHost, dbPort, dbUser, dbPass, dbReadPreference } = options;
@@ -49,7 +48,6 @@ export class StorageService {
       let attempted = 0;
       let attemptConnectId = setInterval(async () => {
         try {
-          logger.info("DEBUGPRINT[164]: storage.ts:51 (after try )")
           this.client = await attemptConnect();
           this.db = this.client.db(dbName);
           this.connected = true;
@@ -57,7 +55,6 @@ export class StorageService {
           this.connection.emit('CONNECTED');
           resolve(this.client);
         } catch (err: any) {
-          logger.error("DEBUGPRINT[163]: storage.ts:58 (after  catch (err: any) )");
           logger.error('%o', err);
           attempted++;
           if (attempted > 5) {

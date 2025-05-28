@@ -225,7 +225,6 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
   }
 
   async processBlock(block: BitcoinBlockType): Promise<any> {
-    logger.warn("DEBUGPRINT[149]: p2p.ts:227 (after async processBlock(block: BitcoinBlockTy…)")
     await this.blockModel.addBlock({
       chain: this.chain,
       network: this.network,
@@ -261,7 +260,6 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
     }
     this.isSyncing = true;
     const { chain, chainConfig, network } = this;
-    logger.info(`DEBUGPRINT[142]: p2p.ts:262: chainConfig= %o`, chainConfig)
     const { parentChain, forkHeight } = chainConfig;
     const state = await StateStorage.collection.findOne({});
     this.initialSyncComplete = state?.initialSyncComplete?.includes(`${chain}:${network}`);
@@ -272,7 +270,6 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
         logger.info(`Waiting until ${parentChain} syncs before ${chain} ${network}`);
         await wait(5000);
         parentTip = await ChainStateProvider.getLocalTip({ chain: parentChain, network });
-        logger.info(`DEBUGPRINT[143]: p2p.ts:273: parentTip= %o`, parentTip)
       }
     }
 
@@ -298,20 +295,15 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
         const block = await this.getBlock(headers[0].hash);
         if (block.header.prevHash) {
           const prevHash = Buffer.from(block.header.prevHash).reverse().toString('hex');
-          logger.warn("DEBUGPRINT[145]: p2p.ts:299 (after const prevHash = Buffer.from(block.heade…)")
           const genesisBlock = await this.getBlock(prevHash);
           await this.processBlock(genesisBlock);
-          logger.warn("DEBUGPRINT[146]: p2p.ts:302 (after await this.processBlock(genesisBlock);)")
           currentHeight++;
         }
       }
-      logger.info("DEBUGPRINT[144]: p2p.ts:304 (after currentHeight++;)")
       for (const header of headers) {
         try {
-          logger.warn(`DEBUGPRINT[147]: p2p.ts:310: header.hash= %o`, header.hash)
           const block = await this.getBlock(header.hash);
           await this.processBlock(block);
-          logger.warn("DEBUGPRINT[148]: p2p.ts:312 (after await this.processBlock(block);)")
           currentHeight++;
           const now = Date.now();
           const oneSecond = 1000;

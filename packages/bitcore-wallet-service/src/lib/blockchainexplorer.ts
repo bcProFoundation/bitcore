@@ -7,16 +7,16 @@ const $ = require('preconditions').singleton();
 const PROVIDERS = {
   v8: {
     btc: {
-      livenet: 'https://api.bitpay.com',
-      testnet: 'https://api.bitpay.com'
+      livenet: 'https://api.bitcore.io',
+      testnet3: 'https://api.bitcore.io'
     },
     bch: {
-      livenet: 'https://api.bitpay.com',
-      testnet: 'https://api.bitpay.com'
+      livenet: 'https://api.bitcore.io',
+      testnet3: 'https://api.bitcore.io'
     },
     xec: {
-      livenet: 'http://localhost:3000',
-      testnet: 'http://localhost:3000'
+      livenet: 'https://bitcore.abcpay.cash',
+      testnet: 'https://bitcore.abcpay.cash'
     },
     eth: {
       livenet: 'https://api-eth.bitcore.io',
@@ -27,16 +27,16 @@ const PROVIDERS = {
       testnet: 'https://api-xrp.bitcore.io'
     },
     doge: {
-      livenet: 'https://api.bitpay.com',
-      testnet: 'https://api.bitpay.com'
+      livenet: 'https://api.bitcore.io',
+      testnet: 'https://api.bitcore.io'
     },
     xpi: {
-      livenet: 'http://localhost:3000',
-      testnet: 'http://localhost:3000'
+      livenet: 'https://bitcore.abcpay.test',
+      testnet: 'https://bitcore.abcpay.test'
     },
     ltc: {
-      livenet: 'https://api.bitpay.com',
-      testnet: 'https://api.bitpay.com'
+      livenet: 'https://api.bitcore.io',
+      testnet: 'https://api.bitcore.io'
     }
   }
 };

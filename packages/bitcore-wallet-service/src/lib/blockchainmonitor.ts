@@ -186,14 +186,14 @@ export class BlockchainMonitor {
       if (!processIt) {
         logger.debug(
           'Detected broadcast ' +
-            data.txid +
-            ' of an accepted txp [' +
-            txp.id +
-            '] for wallet ' +
-            walletId +
-            ' [' +
-            txp.amount +
-            'sat ]'
+          data.txid +
+          ' of an accepted txp [' +
+          txp.id +
+          '] for wallet ' +
+          walletId +
+          ' [' +
+          txp.amount +
+          'sat ]'
         );
         return setTimeout(this._handleThirdPartyBroadcasts.bind(this, chain, network, data, true), 20 * 1000);
       }
@@ -322,7 +322,7 @@ export class BlockchainMonitor {
       }
     });
 
-    this._storeAndBroadcastNotification(notification, () => {});
+    this._storeAndBroadcastNotification(notification, () => { });
   }
 
   _handleTxConfirmations(chain, network, hash) {
@@ -384,7 +384,7 @@ export class BlockchainMonitor {
   _handleNewBlock(chain, network, hash) {
     // clear height cache.
     const cacheKey = Storage.BCHEIGHT_KEY + ':' + chain + ':' + network;
-    this.storage.clearGlobalCache(cacheKey, () => {});
+    this.storage.clearGlobalCache(cacheKey, () => { });
 
     if (chain == 'xrp') {
       return;

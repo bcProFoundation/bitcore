@@ -41,7 +41,6 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
     if (reorg) {
       return Promise.reject('reorg');
     }
-    logger.warn("DEBUGPRINT[150]: block.ts:43 (after return Promise.reject(reorg);)")
     return this.processBlock(params);
   }
 
@@ -60,8 +59,6 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
     const { height, timeNormalized, time } = convertedBlock;
 
     const previousBlock = await this.collection.findOne({ hash: convertedBlock.previousBlockHash, chain, network });
-    logger.warn(`DEBUGPRINT[151]: block.ts:62: previousBlock= %o`, previousBlock)
-    logger.warn(`DEBUGPRINT[152]: block.ts:64: blockOp= %o`, blockOp)
 
     try {
       await this.collection.bulkWrite([blockOp]);
