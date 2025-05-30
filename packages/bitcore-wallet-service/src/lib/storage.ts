@@ -2333,53 +2333,71 @@ export class Storage {
   storeFiatRate(coin, rates, cb) {
     console.warn("DEBUGPRINT[229]: storage.ts:2333 (after storeFiatRate(coin, rates, cb) )")
     const now = Date.now();
-    async.each(
-      rates,
-      (rate: { code: string; value: string }, next) => {
-        let i = {
-          ts: now,
-          coin,
-          code: rate.code,
-          value: rate.value
-        };
-        try {
-          this.db.collection(collections.FIAT_RATES2).insertOne(
-            i,
-            { w: 1 },
-            (err, result) => { // This is MongoDB's callback
-              if (err) {
-                console.error('MongoDB insertOne error:', err); // Log it here!
-                return next(err); // Propagate error to async.each
-              }
-              // console.log('MongoDB insertOne success:', result); // Optional: for debugging success
-              next(); // Signal success for this item
-            }
-          );
-        } catch (syncError) {
-          console.error('Synchronous error within async.each iteratee:', syncError);
-          return next(syncError); // Propagate synchronous error
-        }
-      },
-      (err) => { // This is the final callback for async.each
-        if (err) {
-          console.error('Error during async.each processing of fiat rates:', err);
-          // Ensure 'cb' is actually a function before calling it
-          if (typeof cb === 'function') {
-            return cb(err); // Propagate error to the caller of storeFiatRate
-          } else {
-            console.error("CRITICAL: Final callback 'cb' in storeFiatRate is not a function!");
-            // This itself could be a source of a crash if 'cb' is undefined and you try to call it.
-            // The global 'uncaughtException' handler should catch this if cb is not a function.
-          }
-          return;
-        }
-        // All items processed successfully
-        if (typeof cb === 'function') {
-          cb(null); // Signal overall success
-        }
+    // 1. Prepare the array of documents to insert
+    let documentsToInsert: Array<{ ts: number; coin: string; code: string; value: any; }> = [];
+    try {
+      documentsToInsert = rates.map(rate => ({
+        ts: now,
+        coin: coin, // Ensure 'coin' is correctly passed and available
+        code: rate.code,
+        value: rate.value // Consider if 'rate.value' needs type conversion, e.g., to number
+      }));
+    } catch (mapError) {
+      // This catch block handles synchronous errors during the .map() operation
+      // e.g., if 'rates' is not an array or 'rate' objects are malformed.
+      console.error('Error preparing documents for batch insert:', mapError);
+      if (typeof cb === 'function') {
+        // It's good practice to ensure cb is a function before calling it.
+        return cb(mapError instanceof Error ? mapError : new Error(String(mapError)));
       }
+      // If cb is not a function, the error is logged, but we can't propagate it further here.
+      // A global uncaughtException handler would be the last resort.
+      return;
+    }
 
-    );
+    // 2. Check if there are any documents to insert
+    if (documentsToInsert.length === 0) {
+      console.log('No fiat rates to store.');
+      if (typeof cb === 'function') {
+        return cb(null, { message: 'No documents to insert.' }); // Signal success, nothing done
+      }
+      return;
+    }
+    // 3. Perform the insertMany operation
+    try {
+      this.db.collection(collections.FIAT_RATES2).insertMany(
+        documentsToInsert,
+        {
+          w: 1,          // Standard write concern
+          ordered: false // Optional: set to false to attempt all inserts even if some fail.
+          // If true (default), it stops on the first error.
+        },
+        (err, result) => { // This is MongoDB's callback for insertMany
+          if (err) {
+            // 'err' here could be a single error or a BulkWriteError if ordered:false
+            console.error('MongoDB insertMany error:', err);
+            if (typeof cb === 'function') {
+              return cb(err);
+            }
+            return;
+          }
+
+          // 'result' contains information like insertedCount, insertedIds, etc.
+          // console.log('MongoDB insertMany success:', result.insertedCount, 'documents inserted.');
+          if (typeof cb === 'function') {
+            cb(null, result); // Signal overall success
+          }
+        }
+      );
+    } catch (syncError) {
+      // This catch block is for synchronous errors thrown by the driver before
+      // the async operation even starts (e.g., if this.db is undefined,
+      // or collection name is invalid type).
+      console.error('Synchronous error calling insertMany:', syncError);
+      if (typeof cb === 'function') {
+        return cb(syncError instanceof Error ? syncError : new Error(String(syncError)));
+      }
+    }
   }
 
   storeCurrencyRate(rates, cb) {

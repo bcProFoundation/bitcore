@@ -1,6 +1,6 @@
 import * as async from 'async';
 import _, { countBy, reject } from 'lodash';
-import * as request from 'request';
+import * as cron from 'node-cron';
 import config from '../config'
 import { Common } from './common';
 import { Storage } from './storage';
@@ -53,16 +53,29 @@ export class FiatRateService {
     );
   }
 
-  startCron(opts, cb) {
+  startCron(opts: any, cb: (err?: Error) => void) {
     opts = opts || {};
     this.providers = _.values(require('./fiatrateproviders'));
     const interval = opts.fetchInterval || Defaults.FIAT_RATE_FETCH_INTERVAL;
+
     if (interval) {
+      // Initial fetch
       this._fetch();
-      setInterval(() => {
+
+      // Schedule recurring fetch using node-cron
+      // Convert minutes to cron expression (e.g., every 5 minutes: '*/5 * * * *')
+      const cronExpression = `*/${interval} * * * *`;
+
+      const cronJob = cron.schedule(cronExpression, () => {
+        console.log('start fetching fiat rates at ' + new Date().toISOString());
         this._fetch();
-      }, interval * 60 * 1000);
+        console.log('end fetching fiat rates at ' + new Date().toISOString());
+      });
+
+      // Ensure the cron job keeps running
+      cronJob.start();
     }
+
     return cb();
   }
 
