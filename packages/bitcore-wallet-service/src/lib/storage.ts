@@ -76,7 +76,7 @@ const Utils = Common.Utils;
 
 const ObjectID = mongodb.ObjectID;
 
-var objectIdDate = function(date) {
+var objectIdDate = function (date) {
   return Math.floor(date / 1000).toString(16) + '0000000000000000';
 };
 export class Storage {
@@ -2342,15 +2342,43 @@ export class Storage {
           code: rate.code,
           value: rate.value
         };
-        this.db.collection(collections.FIAT_RATES2).insertOne(
-          i,
-          {
-            w: 1
-          },
-          next
-        );
+        try {
+          this.db.collection(collections.FIAT_RATES2).insertOne(
+            i,
+            { w: 1 },
+            (err, result) => { // This is MongoDB's callback
+              if (err) {
+                console.error('MongoDB insertOne error:', err); // Log it here!
+                return next(err); // Propagate error to async.each
+              }
+              // console.log('MongoDB insertOne success:', result); // Optional: for debugging success
+              next(); // Signal success for this item
+            }
+          );
+        } catch (syncError) {
+          console.error('Synchronous error within async.each iteratee:', syncError);
+          return next(syncError); // Propagate synchronous error
+        }
       },
-      cb
+      (err) => { // This is the final callback for async.each
+        if (err) {
+          console.error('Error during async.each processing of fiat rates:', err);
+          // Ensure 'cb' is actually a function before calling it
+          if (typeof cb === 'function') {
+            return cb(err); // Propagate error to the caller of storeFiatRate
+          } else {
+            console.error("CRITICAL: Final callback 'cb' in storeFiatRate is not a function!");
+            // This itself could be a source of a crash if 'cb' is undefined and you try to call it.
+            // The global 'uncaughtException' handler should catch this if cb is not a function.
+          }
+          return;
+        }
+        // All items processed successfully
+        if (typeof cb === 'function') {
+          cb(null); // Signal overall success
+        }
+      }
+
     );
   }
 
@@ -2914,7 +2942,7 @@ export class Storage {
 
   _dump(cb, fn) {
     fn = fn || console.log;
-    cb = cb || function() {};
+    cb = cb || function () { };
 
     this.db.collections((err, collections) => {
       if (err) return cb(err);
