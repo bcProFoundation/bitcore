@@ -1,6 +1,6 @@
 import * as async from 'async';
 import _, { countBy, reject } from 'lodash';
-import * as cron from 'node-cron';
+import cron from 'node-cron';
 import config from '../config'
 import { Common } from './common';
 import { Storage } from './storage';
