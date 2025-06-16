@@ -62,18 +62,9 @@ export class FiatRateService {
       // Initial fetch
       this._fetch();
 
-      // Schedule recurring fetch using node-cron
-      // Convert minutes to cron expression (e.g., every 5 minutes: '*/5 * * * *')
-      const cronExpression = `*/${interval} * * * *`;
-
-      const cronJob = cron.schedule(cronExpression, () => {
-        console.log('start fetching fiat rates at ' + new Date().toISOString());
+      setInterval(() => {
         this._fetch();
-        console.log('end fetching fiat rates at ' + new Date().toISOString());
-      });
-
-      // Ensure the cron job keeps running
-      cronJob.start();
+      }, interval * 60 * 1000);
     }
 
     return cb();
