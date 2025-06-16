@@ -2331,7 +2331,6 @@ export class Storage {
   }
 
   storeFiatRate(coin, rates, cb) {
-    console.warn("DEBUGPRINT[229]: storage.ts:2333 (after storeFiatRate(coin, rates, cb) )")
     const now = Date.now();
     async.each(
       rates,
