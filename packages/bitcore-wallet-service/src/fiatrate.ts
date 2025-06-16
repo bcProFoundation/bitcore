@@ -18,10 +18,5 @@ async.eachSeries(scripts, function (script, callback) {
     console.error(`${data}`);
   });
 
-  node.on('exit', (code: number, signal: string) => {
-    console.log(`Process ${script} exited with code ${code} and signal ${signal}`);
-    process.exit(1); // Exit with non-zero code to crash the container
-  });
-
   callback();
 });
