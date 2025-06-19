@@ -18,6 +18,7 @@ async.eachSeries(scripts, function (script, callback) {
     console.error(`${data}`);
   });
 
+  callback();
 });
 
 console.log('Fiatrate parent process running, keeping alive...');

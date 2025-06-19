@@ -9,15 +9,15 @@ import logger from '../lib/logger';
 const service = new FiatRateService();
 service.init(config, err => {
   if (err) {
-  };
+    logger.error('Error initializing FiatRateService:', err);
+    process.exit(1);
+  }
   service.startCron(config, err => {
-    if (err) throw err;
-
+    if (err) {
+      logger.error('Error starting cron job:', err);
+      process.exit(1);
+    }
     logger.info('Fiat rate service started');
 
-    // Keep the process alive
-    setInterval(() => {
-      logger.debug('Fiatrate service running...');
-    }, 3600000); // Log once per hour
   });
 });

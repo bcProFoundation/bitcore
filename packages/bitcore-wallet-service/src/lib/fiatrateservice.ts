@@ -62,9 +62,6 @@ export class FiatRateService {
       // Initial fetch
       this._fetch();
 
-      setInterval(() => {
-        this._fetch();
-      }, interval * 60 * 1000);
     }
 
     return cb();
