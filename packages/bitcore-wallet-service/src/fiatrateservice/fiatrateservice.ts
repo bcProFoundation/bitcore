@@ -18,6 +18,7 @@ service.init(config, err => {
       process.exit(1);
     }
     logger.info('Fiat rate service started');
-
+    process.exit(0);
+    return;
   });
 });
