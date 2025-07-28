@@ -2347,7 +2347,7 @@ export class Storage {
             { w: 1 },
             (err, result) => { // This is MongoDB's callback
               if (err) {
-                console.error('MongoDB insertOne error:', err); // Log it here!
+                logger.error('MongoDB insertOne error:', err); // Log it here!
                 return next(err); // Propagate error to async.each
               }
               // console.log('MongoDB insertOne success:', result); // Optional: for debugging success
@@ -2355,29 +2355,19 @@ export class Storage {
             }
           );
         } catch (syncError) {
-          console.error('Synchronous error within async.each iteratee:', syncError);
+          logger.error('Synchronous error within async.each iteratee:', syncError);
           return next(syncError); // Propagate synchronous error
         }
       },
       (err) => { // This is the final callback for async.each
         if (err) {
-          console.error('Error during async.each processing of fiat rates:', err);
-          // Ensure 'cb' is actually a function before calling it
-          if (typeof cb === 'function') {
-            return cb(err); // Propagate error to the caller of storeFiatRate
-          } else {
-            console.error("CRITICAL: Final callback 'cb' in storeFiatRate is not a function!");
-            // This itself could be a source of a crash if 'cb' is undefined and you try to call it.
-            // The global 'uncaughtException' handler should catch this if cb is not a function.
-          }
-          return;
+          logger.error('Error during async.each processing of fiat rates:', err);
+          return cb(err);
         }
         // All items processed successfully
-        if (typeof cb === 'function') {
-          cb(null); // Signal overall success
-        }
+        logger.debug('All fiat rates stored successfully');
+        cb(null); // Signal overall success
       }
-
     );
   }
 
