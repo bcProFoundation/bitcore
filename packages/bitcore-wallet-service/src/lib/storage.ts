@@ -95,17 +95,16 @@ export class Storage {
   }
 
   static createIndexes(db) {
-    logger.info('Entered createIndexes function'); // Confirm entry
-    logger.info('DB object received in createIndexes:', db); // Check received DB
+    console.error('DEBUG: Entered createIndexes'); // First line in function
     if (!db) {
-      logger.error('DB is null/undefined in createIndexes');
+      console.error('ERROR: db is null in createIndexes');
       return;
     }
-    if (!db.collection) {
-      logger.error('DB not ready: [storage.ts] no db.collection');
+    if (typeof db.collection !== 'function') {
+      console.error('ERROR: db.collection is not a function:', typeof db.collection);
       return;
     }
-    logger.info('Creating DB indexes');
+    console.error('Creating DB indexes'); // Original log
     db.collection(collections.USER).createIndex({
       id: 1
     });
@@ -268,22 +267,28 @@ export class Storage {
         logger.error('Unable to connect to the mongoDB. Check the credentials.');
         return cb(err);
       }
-      this.db = client.db(config.dbname);
-      this.client = client;
-      this.queue = mongoDbQueue(this.db, 'donation_queue');
-      this.orderQueue = mongoDbQueue(this.db, 'order_queue');
-      this.conversionOrderQueue = mongoDbQueue(this.db, 'conversion_order_queue');
-      this.merchantOrderQueue = mongoDbQueue(this.db, 'merchant_order_queue');
-      logger.info(`Connection established to db: ${config.uri}`);
-      logger.info('DB object passed to createIndexes:', this.db); // Check db object
-      logger.info('About to call createIndexes'); // Log before calling
       try {
+        this.db = client.db(config.dbname);
+        this.client = client;
+        this.queue = mongoDbQueue(this.db, 'donation_queue');
+        this.orderQueue = mongoDbQueue(this.db, 'order_queue');
+        this.conversionOrderQueue = mongoDbQueue(this.db, 'conversion_order_queue');
+        this.merchantOrderQueue = mongoDbQueue(this.db, 'merchant_order_queue');
+        console.error(`Connection established to db: ${config.uri}`); // Keep as is (working)
+
+        // CRITICAL: Add synchronous debug
+        console.error('DEBUG: About to call createIndexes', {
+          dbExists: !!this.db,
+          collectionMethod: typeof this.db?.collection
+        });
+
         Storage.createIndexes(this.db);
-        logger.info(`Indexes finished`);
-      } catch (err) {
-        logger.error('Error calling createIndexes:', err);
+        console.error('Indexes finished');
+        return cb();
+      } catch (e) {
+        console.error('CRASH in connect callback:', e); // Catch sync errors
+        return cb(e);
       }
-      return cb();
     });
   }
 
