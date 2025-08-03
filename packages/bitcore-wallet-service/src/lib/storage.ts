@@ -95,11 +95,17 @@ export class Storage {
   }
 
   static createIndexes(db) {
-    logger.info('Creating DB indexes');
+    logger.info('Entered createIndexes function'); // Confirm entry
+    logger.info('DB object received in createIndexes:', db); // Check received DB
+    if (!db) {
+      logger.error('DB is null/undefined in createIndexes');
+      return;
+    }
     if (!db.collection) {
       logger.error('DB not ready: [storage.ts] no db.collection');
       return;
     }
+    logger.info('Creating DB indexes');
     db.collection(collections.USER).createIndex({
       id: 1
     });
@@ -269,8 +275,14 @@ export class Storage {
       this.conversionOrderQueue = mongoDbQueue(this.db, 'conversion_order_queue');
       this.merchantOrderQueue = mongoDbQueue(this.db, 'merchant_order_queue');
       logger.info(`Connection established to db: ${config.uri}`);
-
-      Storage.createIndexes(this.db);
+      logger.info('DB object passed to createIndexes:', this.db); // Check db object
+      logger.info('About to call createIndexes'); // Log before calling
+      try {
+        Storage.createIndexes(this.db);
+        logger.info(`Indexes finished`);
+      } catch (err) {
+        logger.error('Error calling createIndexes:', err);
+      }
       return cb();
     });
   }

@@ -60,6 +60,7 @@ export class FiatRateService {
 
     if (interval) {
       // Initial fetch
+      console.warn("DEBUGPRINT[356]: fiatrateservice.ts:62 (after // Initial fetch)")
       this._fetch();
 
     }
@@ -100,12 +101,11 @@ export class FiatRateService {
     return _.find(this.providers, provider => provider.name === nameProvider);
   }
 
-  getLatestCurrencyRates(opts): Promise<any> {
+  getLatestCurrencyRates(opts: {ts?: number; code?: string}): Promise<any> {
     return new Promise((resolve, reject) => {
       const now = Date.now();
       const ts = opts.ts ? opts.ts : now;
       let fiatFiltered = [];
-      let rates = [];
 
       if (opts.code) {
         fiatFiltered = _.filter(Defaults.FIAT_CURRENCIES, ['code', opts.code]);
@@ -118,7 +118,8 @@ export class FiatRateService {
       _.forEach(currencies, currency => {
         promiseList.push(this._getCurrencyRate(currency.code, ts));
       });
-      Promise.all(promiseList).then(listRate => {
+      return Promise.all(promiseList).then(listRate => {
+        console.warn("DEBUGPRINT[364]: fiatrateservice.ts:122: listRate=", listRate)
         return resolve(listRate);
       });
     });
@@ -127,9 +128,12 @@ export class FiatRateService {
   _getCurrencyRate(code, ts): Promise<any> {
     return new Promise((resolve, reject) => {
       this.storage.fetchCurrencyRates(code, ts, async (err, res) => {
+        console.warn("DEBUGPRINT[371]: fiatrateservice.ts:133: res=", res)
         if (err) {
+          console.warn("DEBUGPRINT[367]: fiatrateservice.ts:134: err=", err)
           logger.warn('Error fetching data for ' + code, err);
         }
+        console.warn("DEBUGPRINT[368]: fiatrateservice.ts:138: res=", res)
         return resolve(res);
       });
     });
@@ -141,11 +145,16 @@ export class FiatRateService {
   }
 
   async _fetch(cb?) {
+    console.warn("DEBUGPRINT[357]: fiatrateservice.ts:144 (after async _fetch(cb?) )")
     cb = cb || function () { };
     let coinsData = ['btc', 'bch', 'xec', 'eth', 'xrp', 'doge', 'xpi', 'ltc'];
+    console.warn("DEBUGPRINT[361]: fiatrateservice.ts:147: coinsData=", coinsData)
     const etoken = this._getEtokenSupportPrice();
+    console.warn("DEBUGPRINT[362]: fiatrateservice.ts:149: etoken=", etoken)
     const coins = _.concat(coinsData, etoken);
+    console.warn("DEBUGPRINT[363]: fiatrateservice.ts:151: coins=", coins)
     const listRate = await this.getLatestCurrencyRates({});
+    console.warn("DEBUGPRINT[360]: fiatrateservice.ts:150: listRate=", listRate)
     if (listRate) {
       async.eachSeries(
         coins,
@@ -157,6 +166,7 @@ export class FiatRateService {
               return next2();
             }
             res = await this.handleRateCurrencyCoin(res, listRate);
+            console.warn("DEBUGPRINT[358]: fiatrateservice.ts:161: res=", res)
             this.storage.storeFiatRate(coin, res, err => {
               if (err) {
                 logger.warn('Error storing data for ' + provider.name, err);
@@ -171,6 +181,7 @@ export class FiatRateService {
   }
 
   async _retrieve(provider, coin, cb) {
+    console.warn("DEBUGPRINT[359]: fiatrateservice.ts:176: provider=", provider)
     if (coin === 'xpi') {
       return this._retrieveLotus(cb);
     }
