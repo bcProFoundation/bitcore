@@ -148,18 +148,16 @@ export class FiatRateService {
     console.warn("DEBUGPRINT[357]: fiatrateservice.ts:144 (after async _fetch(cb?) )")
     cb = cb || function () { };
     let coinsData = ['btc', 'bch', 'xec', 'eth', 'xrp', 'doge', 'xpi', 'ltc'];
-    console.warn("DEBUGPRINT[361]: fiatrateservice.ts:147: coinsData=", coinsData)
     const etoken = this._getEtokenSupportPrice();
-    console.warn("DEBUGPRINT[362]: fiatrateservice.ts:149: etoken=", etoken)
     const coins = _.concat(coinsData, etoken);
-    console.warn("DEBUGPRINT[363]: fiatrateservice.ts:151: coins=", coins)
     const listRate = await this.getLatestCurrencyRates({});
-    console.warn("DEBUGPRINT[360]: fiatrateservice.ts:150: listRate=", listRate)
     if (listRate) {
       async.eachSeries(
         coins,
         async (coin, next2) => {
+          console.warn("DEBUGPRINT[460]: fiatrateservice.ts:161: coin=", coin)
           const provider = this._getProviderRate(coin);
+          console.warn("DEBUGPRINT[461]: fiatrateservice.ts:159: provider=", provider)
           this._retrieve(provider, coin, async (err, res) => {
             if (err) {
               logger.warn('Error retrieving data for ' + provider.name + coin, err);
