@@ -101,7 +101,7 @@ export class FiatRateService {
     return _.find(this.providers, provider => provider.name === nameProvider);
   }
 
-  getLatestCurrencyRates(opts: {ts?: number; code?: string}): Promise<any> {
+  getLatestCurrencyRates(opts: { ts?: number; code?: string }): Promise<any> {
     return new Promise((resolve, reject) => {
       const now = Date.now();
       const ts = opts.ts ? opts.ts : now;
@@ -151,7 +151,10 @@ export class FiatRateService {
     const etoken = this._getEtokenSupportPrice();
     const coins = _.concat(coinsData, etoken);
     const listRate = await this.getLatestCurrencyRates({});
+    console.warn("DEBUG: listRate truthy?", !!listRate); // ADD THIS
+    console.warn("DEBUG: listRate=", listRate); // ADD THIS
     if (listRate) {
+      console.warn("DEBUG: About to start eachSeries"); // ADD THIS
       async.eachSeries(
         coins,
         async (coin, next2) => {
@@ -175,6 +178,8 @@ export class FiatRateService {
         },
         cb
       );
+    } else {
+      console.warn("DEBUG: listRate is falsy, skipping loop"); // ADD THIS
     }
   }
 
