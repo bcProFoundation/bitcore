@@ -117,7 +117,11 @@ export class FiatRateService {
         : Defaults.SUPPORT_FIAT_CURRENCIES;
       const promiseList = [];
       _.forEach(currencies, currency => {
-        promiseList.push(this._getCurrencyRate(currency.code, ts));
+        const timeoutPromise = Promise.race([
+          this._getCurrencyRate(currency.code, ts),
+          new Promise(resolve => setTimeout(() => resolve(null), 3000))
+        ]);
+        promiseList.push(timeoutPromise);
       });
       console.warn("DEBUG: About to call Promise.all with", promiseList.length, "promises"); // ADD THIS
       return Promise.all(promiseList).then(listRate => {
