@@ -102,6 +102,7 @@ export class FiatRateService {
   }
 
   getLatestCurrencyRates(opts: { ts?: number; code?: string }): Promise<any> {
+    console.warn("DEBUG: Entering getLatestCurrencyRates"); // ADD THIS
     return new Promise((resolve, reject) => {
       const now = Date.now();
       const ts = opts.ts ? opts.ts : now;
@@ -118,9 +119,13 @@ export class FiatRateService {
       _.forEach(currencies, currency => {
         promiseList.push(this._getCurrencyRate(currency.code, ts));
       });
+      console.warn("DEBUG: About to call Promise.all with", promiseList.length, "promises"); // ADD THIS
       return Promise.all(promiseList).then(listRate => {
         console.warn("DEBUGPRINT[364]: fiatrateservice.ts:122: listRate=", listRate)
         return resolve(listRate);
+      }).catch(error => {
+        console.warn("DEBUG: Promise.all failed:", error); // ADD THIS
+        reject(error);
       });
     });
   }
@@ -150,36 +155,47 @@ export class FiatRateService {
     let coinsData = ['btc', 'bch', 'xec', 'eth', 'xrp', 'doge', 'xpi', 'ltc'];
     const etoken = this._getEtokenSupportPrice();
     const coins = _.concat(coinsData, etoken);
-    const listRate = await this.getLatestCurrencyRates({});
-    console.warn("DEBUG: listRate truthy?", !!listRate); // ADD THIS
-    console.warn("DEBUG: listRate=", listRate); // ADD THIS
-    if (listRate) {
-      console.warn("DEBUG: About to start eachSeries"); // ADD THIS
-      async.eachSeries(
-        coins,
-        async (coin, next2) => {
-          console.warn("DEBUGPRINT[460]: fiatrateservice.ts:161: coin=", coin)
-          const provider = this._getProviderRate(coin);
-          console.warn("DEBUGPRINT[461]: fiatrateservice.ts:159: provider=", provider)
-          this._retrieve(provider, coin, async (err, res) => {
-            if (err) {
-              logger.warn('Error retrieving data for ' + provider.name + coin, err);
-              return next2();
-            }
-            res = await this.handleRateCurrencyCoin(res, listRate);
-            console.warn("DEBUGPRINT[358]: fiatrateservice.ts:161: res=", res)
-            this.storage.storeFiatRate(coin, res, err => {
+    console.warn("DEBUG: About to call getLatestCurrencyRates"); // ADD THIS
+    try {
+      const listRate = await Promise.race([
+        this.getLatestCurrencyRates({}),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('getLatestCurrencyRates timeout')), 10000)
+        )
+      ]);
+      console.warn("DEBUG: listRate truthy?", !!listRate); // ADD THIS
+      console.warn("DEBUG: listRate=", listRate); // ADD THIS
+      if (listRate) {
+        console.warn("DEBUG: About to start eachSeries"); // ADD THIS
+        async.eachSeries(
+          coins,
+          async (coin, next2) => {
+            console.warn("DEBUGPRINT[460]: fiatrateservice.ts:161: coin=", coin)
+            const provider = this._getProviderRate(coin);
+            console.warn("DEBUGPRINT[461]: fiatrateservice.ts:159: provider=", provider)
+            this._retrieve(provider, coin, async (err, res) => {
               if (err) {
-                logger.warn('Error storing data for ' + provider.name, err);
+                logger.warn('Error retrieving data for ' + provider.name + coin, err);
+                return next2();
               }
-              return next2();
+              res = await this.handleRateCurrencyCoin(res, listRate);
+              console.warn("DEBUGPRINT[358]: fiatrateservice.ts:161: res=", res)
+              this.storage.storeFiatRate(coin, res, err => {
+                if (err) {
+                  logger.warn('Error storing data for ' + provider.name, err);
+                }
+                return next2();
+              });
             });
-          });
-        },
-        cb
-      );
-    } else {
-      console.warn("DEBUG: listRate is falsy, skipping loop"); // ADD THIS
+          },
+          cb
+        );
+      } else {
+        console.warn("DEBUG: listRate is falsy, skipping loop"); // ADD THIS
+      }
+    } catch (error) {
+      console.warn("DEBUG: Error in getLatestCurrencyRates:", error);
+      return cb(error);
     }
   }
 
