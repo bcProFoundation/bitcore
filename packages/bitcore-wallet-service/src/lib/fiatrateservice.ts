@@ -131,8 +131,16 @@ export class FiatRateService {
   }
 
   _getCurrencyRate(code, ts): Promise<any> {
+    console.warn("DEBUG: Starting _getCurrencyRate for", code); // ADD THIS
     return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        console.warn("DEBUG: _getCurrencyRate TIMEOUT for", code); // ADD THIS
+        resolve(null); // Resolve with null instead of hanging
+      }, 5000);
+
       this.storage.fetchCurrencyRates(code, ts, async (err, res) => {
+        clearTimeout(timeoutId); // Clear timeout if callback is called
+        console.warn("DEBUG: _getCurrencyRate callback called for", code, "err:", !!err, "res:", !!res); // ADD THIS
         console.warn("DEBUGPRINT[371]: fiatrateservice.ts:133: res=", res)
         if (err) {
           console.warn("DEBUGPRINT[367]: fiatrateservice.ts:134: err=", err)
