@@ -3204,4 +3204,25 @@ export class Storage {
       cb
     );
   }
+
+  async testConnection() {
+    try {
+      console.warn("DEBUG: Testing database connection...");
+      const result = await this.db.admin().ping();
+      console.warn("DEBUG: Database ping successful:", result);
+
+      const stats = await this.db.stats();
+      console.warn("DEBUG: Database stats:", {
+        collections: stats.collections,
+        objects: stats.objects,
+        ok: stats.ok
+      });
+
+      return true;
+    } catch (error) {
+      console.warn("DEBUG: Database connection test failed:", error);
+      return false;
+    }
+  }
+
 }
