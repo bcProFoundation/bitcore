@@ -31,18 +31,19 @@ export class UpdateStats {
       return cb(new Error('No dbname at config.'));
     }
 
-    mongodb.MongoClient.connect(dbConfig.uri, { useUnifiedTopology: true }, (err, client) => {
-      if (err) {
-        return cb(err);
-      }
-      this.db = client.db(dbConfig.dbname);
-      this.client = client;
+    mongodb.MongoClient.connect(dbConfig.uri, { useUnifiedTopology: true })
+      .then(client => {
+        this.db = client.db(dbConfig.dbname);
+        this.client = client;
 
-      this.updateStats((err, stats) => {
-        if (err) return cb(err);
-        return cb(null, stats);
+        this.updateStats((err, stats) => {
+          if (err) return cb(err);
+          return cb(null, stats);
+        });
+      })
+      .catch(err => {
+        return cb(err);
       });
-    });
   }
 
   updateStats(cb) {
@@ -113,13 +114,13 @@ export class UpdateStats {
             console.log(`\tRemoving entries from/after ${lastDay}`);
             await this.db
               .collection('stats_wallets')
-              .remove({ '_id.day': { $gte: lastDay } })
-              .then(async err => {
+              .deleteMany({ '_id.day': { $gte: lastDay } })
+              .then(async result => {
                 // rm day = null
                 res = res.filter(x => x._id.day);
                 console.log(`\tTrying to insert ${res.length} entries`);
                 const opts: any = { ordered: false };
-                await this.db.collection('stats_wallets').insert(res, opts);
+                await this.db.collection('stats_wallets').insertMany(res, opts);
                 console.log(`${res.length} entries inserted in stats_wallets`);
               });
           } catch (err) {
@@ -181,14 +182,14 @@ export class UpdateStats {
             console.log(`\tRemoving entries from/after ${lastDay}`);
             await this.db
               .collection('stats_fiat_rates')
-              .remove({ '_id.day': { $gte: lastDay } })
-              .then(async err => {
+              .deleteMany({ '_id.day': { $gte: lastDay } })
+              .then(async result => {
                 // rm day = null
                 res = res.filter(x => x._id.day);
 
                 console.log(`Trying to insert ${res.length} entries`);
                 const opts: any = { ordered: false };
-                await this.db.collection('stats_fiat_rates').insert(res, opts);
+                await this.db.collection('stats_fiat_rates').insertMany(res, opts);
                 console.log(`${res.length} entries inserted in stats_fiat_rates`);
               });
           } catch (err) {
@@ -269,13 +270,13 @@ export class UpdateStats {
             console.log(`\tRemoving entries from/after ${lastDay}`);
             await this.db
               .collection('stats_txps')
-              .remove({ '_id.day': { $gte: lastDay } })
-              .then(async err => {
+              .deleteMany({ '_id.day': { $gte: lastDay } })
+              .then(async result => {
                 // rm day = null
                 res = res.filter(x => x._id.day);
                 console.log(`\tTrying to insert ${res.length} entries`);
                 const opts: any = { ordered: false };
-                await this.db.collection('stats_txps').insert(res, opts);
+                await this.db.collection('stats_txps').insertMany(res, opts);
                 console.log(`\t${res.length} entries inserted in stats_txps`);
               });
           } catch (err) {

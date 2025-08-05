@@ -262,34 +262,44 @@ export class Storage {
       return cb(new Error('No dbname at config.'));
     }
 
-    mongodb.MongoClient.connect(config.uri, { useUnifiedTopology: true }, (err, client) => {
-      if (err) {
+    const connectionOptions = {
+      maxPoolSize: 50,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000
+    };
+
+    mongodb.MongoClient.connect(config.uri, connectionOptions)
+      .then(client => {
+        try {
+          this.db = client.db(config.dbname);
+          this.client = client;
+          this.queue = mongoDbQueue(this.db, 'donation_queue');
+          this.orderQueue = mongoDbQueue(this.db, 'order_queue');
+          this.conversionOrderQueue = mongoDbQueue(this.db, 'conversion_order_queue');
+          this.merchantOrderQueue = mongoDbQueue(this.db, 'merchant_order_queue');
+          console.error(`Connection established to db: ${config.uri}`);
+
+          console.error('DEBUG: About to call createIndexes', {
+            dbExists: !!this.db,
+            collectionMethod: typeof this.db?.collection
+          });
+
+          Storage.createIndexes(this.db);
+          console.error('Indexes finished');
+          return cb();
+        } catch (e) {
+          console.error('CRASH in connect callback:', e);
+          return cb(e);
+        }
+      })
+      .catch(err => {
         logger.error('Unable to connect to the mongoDB. Check the credentials.');
         return cb(err);
-      }
-      try {
-        this.db = client.db(config.dbname);
-        this.client = client;
-        this.queue = mongoDbQueue(this.db, 'donation_queue');
-        this.orderQueue = mongoDbQueue(this.db, 'order_queue');
-        this.conversionOrderQueue = mongoDbQueue(this.db, 'conversion_order_queue');
-        this.merchantOrderQueue = mongoDbQueue(this.db, 'merchant_order_queue');
-        console.error(`Connection established to db: ${config.uri}`); // Keep as is (working)
-
-        // CRITICAL: Add synchronous debug
-        console.error('DEBUG: About to call createIndexes', {
-          dbExists: !!this.db,
-          collectionMethod: typeof this.db?.collection
-        });
-
-        Storage.createIndexes(this.db);
-        console.error('Indexes finished');
-        return cb();
-      } catch (e) {
-        console.error('CRASH in connect callback:', e); // Catch sync errors
-        return cb(e);
-      }
-    });
+      });
   }
 
   disconnect(cb) {
@@ -327,7 +337,7 @@ export class Storage {
       },
       wallet.toObject(),
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -344,7 +354,7 @@ export class Storage {
     this.db.collection(collections.DONATION).insertOne(
       donationStorage,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -360,7 +370,7 @@ export class Storage {
     this.db.collection(collections.TOKEN_INFO).insertOne(
       tokenInfo,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -454,7 +464,7 @@ export class Storage {
       return;
     }
 
-    this.db.collection(collections.USER).update(
+    this.db.collection(collections.USER).updateOne(
       {
         email: user.email
       },
@@ -462,11 +472,7 @@ export class Storage {
         $setOnInsert: user
       },
       { upsert: true },
-      (err, result) => {
-        if (err) return cb(err);
-        if (!result) return cb();
-        return cb(null, result);
-      }
+      cb
     );
   }
   storeUserConversion(user, cb) {
@@ -476,7 +482,7 @@ export class Storage {
       return;
     }
 
-    this.db.collection(collections.USER_CONVERSION).update(
+    this.db.collection(collections.USER_CONVERSION).updateOne(
       {
         email: user.email
       },
@@ -534,7 +540,7 @@ export class Storage {
     this.db.collection(collections.KEYS).insertOne(
       keys,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -555,7 +561,7 @@ export class Storage {
     this.db.collection(collections.KEYS_CONVERSION).insertOne(
       keys,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -820,7 +826,7 @@ export class Storage {
     this.db.collection(collections.ORDER_INFO).insertOne(
       orderInfo,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -879,7 +885,7 @@ export class Storage {
     this.db.collection(collections.CONVERSION_ORDER_INFO).insertOne(
       conversionOrderInfo,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -900,7 +906,7 @@ export class Storage {
     this.db.collection(collections.MERCHANT_ORDER).insertOne(
       merchantOrder,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -921,7 +927,7 @@ export class Storage {
     this.db.collection(collections.USER_WATCH_ADDRESS).insertOne(
       user,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -962,7 +968,7 @@ export class Storage {
     this.db.collection(collections.USER_WATCH_ADDRESS).deleteOne(
       userInfo,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -1009,7 +1015,7 @@ export class Storage {
     this.db.collection(collections.ORDER_INFO_NOTI).insertOne(
       orderInfoNoti,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -1200,9 +1206,9 @@ export class Storage {
 
     return this.db
       .collection(collections.ORDER_INFO)
-      .find(queryObject)
-      .sort(opts.query)
-      .count();
+      .countDocuments(queryObject)
+      .then(count => count)
+      .catch(err => { throw err; });
   }
 
   fetchAllConversionOrderInfo(opts, cb) {
@@ -1220,9 +1226,7 @@ export class Storage {
   countAllConversionOrderInfo(opts) {
     return this.db
       .collection(collections.CONVERSION_ORDER_INFO)
-      .find({})
-      .sort({ _id: -1 })
-      .count();
+      .countDocuments({});
   }
 
   fetchAllCoinConfig(cb) {
@@ -1244,7 +1248,7 @@ export class Storage {
     this.db.collection(collections.COIN_CONFIG).insertMany(
       listCoinConfig,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -1345,14 +1349,14 @@ export class Storage {
         walletId: wallet.id
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       err => {
         if (err) return cb(err);
         this.db.collection(collections.COPAYERS_LOOKUP).insertMany(
           copayerLookups,
           {
-            w: 1
+            writeConcern: { w: 1 }
           },
           err => {
             if (err) return cb(err);
@@ -1670,7 +1674,7 @@ export class Storage {
     this.db.collection(collections.NOTIFICATIONS).insertOne(
       notification,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -1685,7 +1689,7 @@ export class Storage {
       },
       txp.toObject(),
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -1699,7 +1703,7 @@ export class Storage {
         walletId
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -1822,7 +1826,7 @@ export class Storage {
       },
       address,
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: false
       },
       cb
@@ -1836,7 +1840,7 @@ export class Storage {
       },
       { $set: { beRegistered: true } },
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: false
       },
       cb
@@ -1850,7 +1854,7 @@ export class Storage {
       },
       { $set: { beRegistered: null } },
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: false
       },
       () => {
@@ -1860,7 +1864,7 @@ export class Storage {
           },
           { $set: { beRegistered: null } },
           {
-            w: 1,
+            writeConcern: { w: 1 },
             upsert: false
           },
           () => {
@@ -1879,7 +1883,7 @@ export class Storage {
     this.db.collection(collections.ADDRESSES).insertMany(
       clonedAddresses,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       err => {
         // duplicate address?
@@ -2003,7 +2007,7 @@ export class Storage {
       },
       preferences,
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2017,7 +2021,7 @@ export class Storage {
       },
       email,
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2110,7 +2114,7 @@ export class Storage {
         totalAddresses
       },
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2171,7 +2175,9 @@ export class Storage {
       {
         walletId
       },
-      {},
+      {
+        writeConcern: { w: 1 }
+      },
       cb
     );
   }
@@ -2195,7 +2201,7 @@ export class Storage {
         items
       },
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2209,7 +2215,9 @@ export class Storage {
         type: 'historyStream',
         key: null
       },
-      {},
+      {
+        writeConcern: { w: 1 }
+      },
       cb
     );
   }
@@ -2242,7 +2250,7 @@ export class Storage {
         }
       },
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2283,7 +2291,10 @@ export class Storage {
             key: pos,
             tx: item
           },
-          next
+          (err, result) => {
+            if (err) return next(err);
+            next();
+          }
         );
       },
       err => {
@@ -2338,7 +2349,7 @@ export class Storage {
             tipHeight: last.blockheight
           },
           {
-            w: 1,
+            writeConcern: { w: 1 },
             upsert: true
           },
           cb
@@ -2403,7 +2414,10 @@ export class Storage {
           {
             w: 1
           },
-          next
+          (err, result) => {
+            if (err) return next(err);
+            next();
+          }
         );
       },
       cb
@@ -2544,7 +2558,7 @@ export class Storage {
       },
       txNote.toObject(),
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2570,7 +2584,7 @@ export class Storage {
       },
       session.toObject(),
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2618,13 +2632,13 @@ export class Storage {
     this.db.collection(collections.LOG_DEVICE).insertOne(
       deviceInfo,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
         if (!result) return cb();
-
-        return cb(null, result.ops[0]);
+        // Changed from result.ops[0] to the inserted document
+        return cb(null, { ...deviceInfo, _id: result.insertedId });
       }
     );
   }
@@ -2636,16 +2650,25 @@ export class Storage {
       },
       device.toObject(),
       {
-        w: 1,
-        upsert: true
+        writeConcern: { w: 1 },
+        upsert: true,
       },
-      (err, result) => {
-        if (err) return cb(err);
-        if (!result) return cb();
+    ).then(result => {
+      if (!result) return cb(new Error('No result from replaceOne'));
 
-        return cb(null, result.ops[0]);
+      if (result.upsertedId) {
+        // Document was inserted (upserted)
+        return cb(null, { ...device.toObject(), _id: result.upsertedId });
+      } else {
+        // Document was updated - fetch the updated document
+        return this.db.collection(collections.LOG_DEVICE).findOne(
+          { deviceId: device.deviceId }
+        )
+          .then(doc => cb(null, doc))
+          .catch(findErr => cb(findErr));
       }
-    );
+    })
+      .catch(err => cb(err));
   }
 
   // TODO: delete after done feature
@@ -2655,7 +2678,7 @@ export class Storage {
         deviceId
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -2747,15 +2770,14 @@ export class Storage {
     this.db.collection(collections.APPRECIATION).insertOne(
       appreciationInfo,
       {
-        w: 1
-      },
-      (err, result) => {
-        if (err) return cb(err);
-        if (!result) return cb();
-
-        return cb(null, result.ops[0]);
-      }
-    );
+        writeConcern: { w: 1 }
+      })
+      .then(result => {
+        if (!result) return cb(new Error('No result from insertOne'));
+        // Return the document with the inserted ID
+        return cb(null, { ...appreciationInfo, _id: result.insertedId });
+      })
+      .catch(err => cb(err));
   }
 
   storeManyAppreciation(appreciationList, cb) {
@@ -2768,7 +2790,7 @@ export class Storage {
     this.db.collection(collections.APPRECIATION).insertMany(
       appreciationList,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       (err, result) => {
         if (err) return cb(err);
@@ -2786,14 +2808,26 @@ export class Storage {
       },
       appreciationInfo.toObject(),
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       (err, result) => {
         if (err) return cb(err);
         if (!result) return cb();
 
-        return cb(null, result.ops[0]);
+        // In MongoDB 4.x, we need to fetch the document after upsert
+        if (result.upsertedId) {
+          return cb(null, { ...appreciationInfo.toObject(), _id: result.upsertedId });
+        } else {
+          // Document was updated, fetch it
+          this.db.collection(collections.APPRECIATION).findOne(
+            { claimCode: appreciationInfo.claimCode },
+            (findErr, doc) => {
+              if (findErr) return cb(findErr);
+              return cb(null, doc);
+            }
+          );
+        }
       }
     );
   }
@@ -2807,7 +2841,7 @@ export class Storage {
     this.db.collection(collections.APPRECIATION).deleteMany(
       filter,
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -2861,7 +2895,7 @@ export class Storage {
       },
       pushNotificationSub,
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2875,7 +2909,7 @@ export class Storage {
         token
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -2889,7 +2923,7 @@ export class Storage {
       },
       pushNotificationSub,
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2903,7 +2937,7 @@ export class Storage {
         externalUserId
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -2937,7 +2971,7 @@ export class Storage {
       },
       txConfirmationSub,
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -2951,7 +2985,7 @@ export class Storage {
         txid
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -3016,7 +3050,7 @@ export class Storage {
         }
       },
       {
-        w: 1,
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -3031,7 +3065,7 @@ export class Storage {
         type: null
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -3063,7 +3097,9 @@ export class Storage {
         _id: key,
         expireOn: expireTs
       },
-      {},
+      {
+        writeConcern: { w: 1 }
+      },
       cb
     );
   }
@@ -3073,7 +3109,9 @@ export class Storage {
       {
         _id: key
       },
-      {},
+      {
+        writeConcern: { w: 1 }
+      },
       cb
     );
   }
@@ -3144,7 +3182,7 @@ export class Storage {
         advertisementId: adId
       },
       {
-        w: 1
+        writeConcern: { w: 1 }
       },
       cb
     );
@@ -3157,6 +3195,7 @@ export class Storage {
       },
       { $set: advert },
       {
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -3184,6 +3223,7 @@ export class Storage {
       },
       { $set: { isAdActive: true, isTesting: false } },
       {
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb
@@ -3199,6 +3239,7 @@ export class Storage {
         $set: { isAdActive: false, isTesting: true }
       },
       {
+        writeConcern: { w: 1 },
         upsert: true
       },
       cb

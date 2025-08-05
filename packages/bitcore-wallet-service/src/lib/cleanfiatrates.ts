@@ -8,7 +8,7 @@ import { Storage } from './storage';
 
 const ObjectID = mongodb.ObjectID;
 
-var objectIdDate = function(date) {
+var objectIdDate = function (date) {
   return Math.floor(date.getTime() / 1000).toString(16) + '0000000000000000';
 };
 
@@ -18,7 +18,7 @@ export class CleanFiatRates {
   from: Date;
   to: Date;
 
-  constructor() {}
+  constructor() { }
 
   run(cb) {
     let dbConfig = config.storageOpts.mongoDb;
@@ -32,22 +32,34 @@ export class CleanFiatRates {
       return cb(new Error('No dbname at config.'));
     }
 
-    mongodb.MongoClient.connect(dbConfig.uri, { useUnifiedTopology: true }, (err, client) => {
-      if (err) {
-        return cb(err);
-      }
-      this.db = client.db(dbConfig.dbname);
-      this.client = client;
+    const connectionOptions = {
+      maxPoolSize: 50,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000
+    };
 
-      this.cleanFiatRates((err, rates) => {
-        if (err) return cb(err);
+    mongodb.MongoClient.connect(config.uri, connectionOptions)
+      .then(client => {
+        this.db = client.db(dbConfig.dbname);
+        this.client = client;
 
-        this.client.close(err => {
-          if (err) logger.error('%o', err);
-          return cb(null, rates);
+        this.cleanFiatRates((err, rates) => {
+          if (err) return cb(err);
+
+          this.client.close(err => {
+            if (err) logger.error('%o', err);
+            return cb(null, rates);
+          });
         });
+      })
+      .catch(err => {
+        logger.error('Unable to connect to the mongoDB. Check the credentials.');
+        return cb(err);
       });
-    });
   }
 
   cleanFiatRates(cb) {
@@ -141,7 +153,7 @@ export class CleanFiatRates {
     try {
       this.db
         .collection(Storage.collections.FIAT_RATES2)
-        .remove({
+        .deleteMany({
           ts: {
             $nin: datesToKeep,
             $gte: moment(this.from).valueOf(),
@@ -149,8 +161,8 @@ export class CleanFiatRates {
           }
         })
         .then(data => {
-          console.log(`\t${data.result.n} entries were removed from fiat_rates2`);
-          return cb(null, data.result);
+          console.log(`\t${data.deletedCount} entries were removed from fiat_rates2`);
+          return cb(null, data);
         });
     } catch (err) {
       console.log('\t!! Cannot remove data from fiat_rates2:', err);
