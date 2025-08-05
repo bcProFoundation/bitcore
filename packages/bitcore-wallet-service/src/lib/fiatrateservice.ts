@@ -112,10 +112,17 @@ export class FiatRateService {
         fiatFiltered = _.filter(Defaults.FIAT_CURRENCIES, ['code', opts.code]);
         if (!fiatFiltered.length) return reject(opts.code + ' is not supported');
       }
-      const currencies: { code: string; name: string }[] = fiatFiltered.length
+      // TEMPORARY: Test with just a few currencies first
+      const allCurrencies: { code: string; name: string }[] = fiatFiltered.length
         ? fiatFiltered
         : Defaults.SUPPORT_FIAT_CURRENCIES;
-      const concurrency = 10;
+      const currencies = allCurrencies.slice(0, 10); // Test with first 10 currencies only
+      // const currencies: { code: string; name: string }[] = fiatFiltered.length
+      //   ? fiatFiltered
+      //   : Defaults.SUPPORT_FIAT_CURRENCIES;
+      // CRITICAL: Limit concurrency to prevent connection pool exhaustion
+      const concurrency = 5; // Start with just 5 concurrent queries
+      console.warn(`DEBUG: Processing ${currencies.length} currencies with concurrency ${concurrency}`);
       async.mapLimit(currencies, concurrency, (currency, cb) => {
         this._getCurrencyRate(currency.code, ts)
           .then(rate => cb(null, rate))
@@ -127,27 +134,27 @@ export class FiatRateService {
     });
   }
 
-_getCurrencyRate(code, ts): Promise<any> {
-  console.warn("DEBUG: Starting _getCurrencyRate for", code); // ADD THIS
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      console.warn("DEBUG: _getCurrencyRate TIMEOUT for", code); // ADD THIS
-      resolve(null); // Resolve with null instead of hanging
-    }, 5000);
+  _getCurrencyRate(code, ts): Promise<any> {
+    console.warn("DEBUG: Starting _getCurrencyRate for", code); // ADD THIS
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        console.warn("DEBUG: _getCurrencyRate TIMEOUT for", code); // ADD THIS
+        resolve(null); // Resolve with null instead of hanging
+      }, 5000);
 
-    this.storage.fetchCurrencyRates(code, ts, async (err, res) => {
-      clearTimeout(timeoutId); // Clear timeout if callback is called
-      console.warn("DEBUG: _getCurrencyRate callback called for", code, "err:", !!err, "res:", !!res); // ADD THIS
-      console.warn("DEBUGPRINT[371]: fiatrateservice.ts:133: res=", res)
-      if (err) {
-        console.warn("DEBUGPRINT[367]: fiatrateservice.ts:134: err=", err)
-        logger.warn('Error fetching data for ' + code, err);
-      }
-      console.warn("DEBUGPRINT[368]: fiatrateservice.ts:138: res=", res)
-      return resolve(res);
+      this.storage.fetchCurrencyRates(code, ts, async (err, res) => {
+        clearTimeout(timeoutId); // Clear timeout if callback is called
+        console.warn("DEBUG: _getCurrencyRate callback called for", code, "err:", !!err, "res:", !!res); // ADD THIS
+        console.warn("DEBUGPRINT[371]: fiatrateservice.ts:133: res=", res)
+        if (err) {
+          console.warn("DEBUGPRINT[367]: fiatrateservice.ts:134: err=", err)
+          logger.warn('Error fetching data for ' + code, err);
+        }
+        console.warn("DEBUGPRINT[368]: fiatrateservice.ts:138: res=", res)
+        return resolve(res);
+      });
     });
-  });
-}
+  }
   _getEtokenSupportPrice() {
     const etokenSupportPrice = _.get(config, 'etoken.etokenSupportPrice', undefined);
     if (!etokenSupportPrice) return [];

@@ -2412,6 +2412,13 @@ export class Storage {
 
   fetchCurrencyRates(code, ts, cb) {
     console.warn("DEBUG: fetchCurrencyRates called for", code, ts);
+
+    // Add a manual timeout wrapper
+    const timeoutId = setTimeout(() => {
+      console.warn("DEBUG: MongoDB query timeout for", code);
+      cb(new Error(`MongoDB query timeout for ${code}`));
+    }, 3000); // 3 second timeout
+
     this.db
       .collection(collections.FIAT_RATES2)
       .find({
@@ -2425,7 +2432,9 @@ export class Storage {
         ts: -1
       })
       .limit(1)
+      .maxTimeMS(2000) // MongoDB driver timeout
       .toArray((err, result) => {
+        clearTimeout(timeoutId);
         console.warn("DEBUG: fetchCurrencyRates toArray callback for", code, "err:", err, "result:", result);
         if (err || _.isEmpty(result)) return cb(err);
         return cb(null, result[0]);
