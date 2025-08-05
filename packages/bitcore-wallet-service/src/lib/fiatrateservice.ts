@@ -115,21 +115,14 @@ export class FiatRateService {
       const currencies: { code: string; name: string }[] = fiatFiltered.length
         ? fiatFiltered
         : Defaults.SUPPORT_FIAT_CURRENCIES;
-      const promiseList = [];
-      _.forEach(currencies, currency => {
-        const timeoutPromise = Promise.race([
-          this._getCurrencyRate(currency.code, ts),
-          new Promise(resolve => setTimeout(() => resolve(null), 3000))
-        ]);
-        promiseList.push(timeoutPromise);
-      });
-      console.warn("DEBUG: About to call Promise.all with", promiseList.length, "promises"); // ADD THIS
-      return Promise.all(promiseList).then(listRate => {
-        console.warn("DEBUGPRINT[364]: fiatrateservice.ts:122: listRate=", listRate)
-        return resolve(listRate);
-      }).catch(error => {
-        console.warn("DEBUG: Promise.all failed:", error); // ADD THIS
-        reject(error);
+      const concurrency = 10;
+      async.mapLimit(currencies, concurrency, (currency, cb) => {
+        this._getCurrencyRate(currency.code, ts)
+          .then(rate => cb(null, rate))
+          .catch(err => cb(err));
+      }, (err, listRate) => {
+        if (err) return reject(err);
+        resolve(listRate);
       });
     });
   }
