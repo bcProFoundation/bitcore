@@ -2411,6 +2411,7 @@ export class Storage {
   }
 
   fetchCurrencyRates(code, ts, cb) {
+    console.warn("DEBUG: fetchCurrencyRates called for", code, ts);
     this.db
       .collection(collections.FIAT_RATES2)
       .find({
@@ -2425,6 +2426,7 @@ export class Storage {
       })
       .limit(1)
       .toArray((err, result) => {
+        console.warn("DEBUG: fetchCurrencyRates toArray callback for", code, "err:", err, "result:", result);
         if (err || _.isEmpty(result)) return cb(err);
         return cb(null, result[0]);
       });
