@@ -127,27 +127,27 @@ export class FiatRateService {
     });
   }
 
-  _getCurrencyRate(code, ts): Promise<any> {
-    console.warn("DEBUG: Starting _getCurrencyRate for", code); // ADD THIS
-    return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        console.warn("DEBUG: _getCurrencyRate TIMEOUT for", code); // ADD THIS
-        resolve(null); // Resolve with null instead of hanging
-      }, 5000);
+_getCurrencyRate(code, ts): Promise<any> {
+  console.warn("DEBUG: Starting _getCurrencyRate for", code); // ADD THIS
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      console.warn("DEBUG: _getCurrencyRate TIMEOUT for", code); // ADD THIS
+      resolve(null); // Resolve with null instead of hanging
+    }, 5000);
 
-      this.storage.fetchCurrencyRates(code, ts, async (err, res) => {
-        clearTimeout(timeoutId); // Clear timeout if callback is called
-        console.warn("DEBUG: _getCurrencyRate callback called for", code, "err:", !!err, "res:", !!res); // ADD THIS
-        console.warn("DEBUGPRINT[371]: fiatrateservice.ts:133: res=", res)
-        if (err) {
-          console.warn("DEBUGPRINT[367]: fiatrateservice.ts:134: err=", err)
-          logger.warn('Error fetching data for ' + code, err);
-        }
-        console.warn("DEBUGPRINT[368]: fiatrateservice.ts:138: res=", res)
-        return resolve(res);
-      });
+    this.storage.fetchCurrencyRates(code, ts, async (err, res) => {
+      clearTimeout(timeoutId); // Clear timeout if callback is called
+      console.warn("DEBUG: _getCurrencyRate callback called for", code, "err:", !!err, "res:", !!res); // ADD THIS
+      console.warn("DEBUGPRINT[371]: fiatrateservice.ts:133: res=", res)
+      if (err) {
+        console.warn("DEBUGPRINT[367]: fiatrateservice.ts:134: err=", err)
+        logger.warn('Error fetching data for ' + code, err);
+      }
+      console.warn("DEBUGPRINT[368]: fiatrateservice.ts:138: res=", res)
+      return resolve(res);
     });
-  }
+  });
+}
   _getEtokenSupportPrice() {
     const etokenSupportPrice = _.get(config, 'etoken.etokenSupportPrice', undefined);
     if (!etokenSupportPrice) return [];
@@ -180,14 +180,14 @@ export class FiatRateService {
             console.warn("DEBUGPRINT[461]: fiatrateservice.ts:159: provider=", provider)
             this._retrieve(provider, coin, async (err, res) => {
               if (err) {
-                logger.warn('Error retrieving data for ' + provider.name + coin, err);
+                console.warn('Error retrieving data for ' + provider.name + coin, err);
                 return next2();
               }
               res = await this.handleRateCurrencyCoin(res, listRate);
               console.warn("DEBUGPRINT[358]: fiatrateservice.ts:161: res=", res)
               this.storage.storeFiatRate(coin, res, err => {
                 if (err) {
-                  logger.warn('Error storing data for ' + provider.name, err);
+                  console.warn('Error storing data for ' + provider.name, err);
                 }
                 return next2();
               });
