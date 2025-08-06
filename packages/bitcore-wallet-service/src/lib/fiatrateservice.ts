@@ -165,10 +165,11 @@ export class FiatRateService {
   async _fetch(cb?) {
     console.warn("DEBUGPRINT[357]: fiatrateservice.ts:144 (after async _fetch(cb?) )")
     // Test database connection first
-    const connectionOk = await this.storage.testConnection();
-    if (!connectionOk) {
-      console.warn("DEBUG: Database connection failed, skipping currency rates");
-      return cb();
+    try {
+      const result = await this.storage.testConnection();
+      console.log('Test result:', result);
+    } catch (error) {
+      console.error('Test error:', error);
     }
     cb = cb || function () { };
     let coinsData = ['btc', 'bch', 'xec', 'eth', 'xrp', 'doge', 'xpi', 'ltc'];

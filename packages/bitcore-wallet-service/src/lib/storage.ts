@@ -3252,16 +3252,31 @@ export class Storage {
     try {
       console.warn("DEBUG: Testing database connection...");
 
-      // Simple test - try to access a collection
-      const collection = this.db.collection(collections.WALLETS);
-      const result = await collection.findOne({}, { projection: { _id: 1 } });
-      console.warn("DEBUG: Database connection test successful");
+      // Wrap the entire operation in a timeout
+      const testPromise = new Promise(async (resolve, reject) => {
+        try {
+          // Simple test - try to access a collection with minimal operation
+          const collection = this.db.collection(collections.WALLETS);
+          const result = await collection.findOne({}, {
+            projection: { _id: 1 },
+            maxTimeMS: 2000 // MongoDB operation timeout
+          });
+          console.warn("DEBUG: Database connection test successful");
+          resolve(true);
+        } catch (error) {
+          console.warn("DEBUG: Database findOne failed:", error);
+          reject(error);
+        }
+      });
 
-      return true;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database test timeout after 3 seconds')), 3000)
+      );
+
+      return await Promise.race([testPromise, timeoutPromise]);
     } catch (error) {
       console.warn("DEBUG: Database connection test failed:", error);
       return false;
     }
-
   }
 }
