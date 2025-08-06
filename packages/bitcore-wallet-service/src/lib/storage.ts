@@ -3251,21 +3251,17 @@ export class Storage {
   async testConnection() {
     try {
       console.warn("DEBUG: Testing database connection...");
-      const result = await this.db.admin().ping();
-      console.warn("DEBUG: Database ping successful:", result);
 
-      const stats = await this.db.stats();
-      console.warn("DEBUG: Database stats:", {
-        collections: stats.collections,
-        objects: stats.objects,
-        ok: stats.ok
-      });
+      // Simple test - try to access a collection
+      const collection = this.db.collection(collections.WALLETS);
+      const result = await collection.findOne({}, { projection: { _id: 1 } });
+      console.warn("DEBUG: Database connection test successful");
 
       return true;
     } catch (error) {
       console.warn("DEBUG: Database connection test failed:", error);
       return false;
     }
-  }
 
+  }
 }
