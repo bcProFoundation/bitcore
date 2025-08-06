@@ -12,6 +12,7 @@ import {
   Address,
   Advertisement,
   Email,
+  IWallet,
   Notification,
   Preferences,
   PushNotificationSub,
@@ -325,7 +326,7 @@ export class Storage {
       (err, result) => {
         if (err) return cb(err);
         if (!result) return cb();
-        return cb(null, Wallet.fromObj(result));
+        return cb(null, Wallet.fromObj(result as unknown as IWallet));
       }
     );
   }
@@ -398,9 +399,9 @@ export class Storage {
     this.db
       .collection(collections.TOKEN_INFO)
       .find({})
-      .toArray((err, result: TokenInfo[]) => {
+      .toArray((err, result) => {
         if (err) return cb(err);
-        return cb(null, result);
+        return cb(null, result.map(r => r as unknown as TokenInfo));
       });
   }
 
@@ -432,8 +433,9 @@ export class Storage {
     this.db
       .collection(collections.DONATION)
       .find({ createdOn: { $gte: start, $lt: end } })
-      .toArray((err, result: DonationStorage[]) => {
-        const donationInToday = _.filter(result, item => item.txidDonation);
+      .toArray((err, result) => {
+        if (err) return cb(err);
+        const donationInToday = _.filter(result, item => (item as unknown as DonationStorage).txidDonation);
         return cb(null, donationInToday);
       });
   }
@@ -1771,8 +1773,7 @@ export class Storage {
       return cb(err);
     });
 
-    cursor.on('data', doc => {
-      cursor.pause();
+    cursor.on('data', async doc => {
       let x;
       try {
         x = BCHAddressTranslator.translate(doc.address, 'cashaddr');
@@ -1780,8 +1781,7 @@ export class Storage {
         return cb(e);
       }
 
-      this.db.collection(collections.ADDRESSES).updateMany({ _id: doc._id }, { $set: { address: x } });
-      cursor.resume();
+      await this.db.collection(collections.ADDRESSES).updateMany({ _id: doc._id }, { $set: { address: x } });
     });
   }
 
@@ -2372,7 +2372,7 @@ export class Storage {
         try {
           this.db.collection(collections.FIAT_RATES2).insertOne(
             i,
-            { w: 1 },
+            { writeConcern: { w: 1 } },
             (err, result) => { // This is MongoDB's callback
               if (err) {
                 logger.error('MongoDB insertOne error:', err); // Log it here!
@@ -2411,9 +2411,7 @@ export class Storage {
         };
         this.db.collection(collections.FIAT_RATES2).insertOne(
           i,
-          {
-            w: 1
-          },
+          { writeConcern: { w: 1 } },
           (err, result) => {
             if (err) return next(err);
             next();

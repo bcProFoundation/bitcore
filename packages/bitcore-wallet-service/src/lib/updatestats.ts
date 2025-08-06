@@ -31,7 +31,17 @@ export class UpdateStats {
       return cb(new Error('No dbname at config.'));
     }
 
-    mongodb.MongoClient.connect(dbConfig.uri, { useUnifiedTopology: true })
+    const connectionOptions = {
+      maxPoolSize: 50,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000
+    };
+
+    mongodb.MongoClient.connect(config.uri, connectionOptions)
       .then(client => {
         this.db = client.db(dbConfig.dbname);
         this.client = client;
@@ -213,7 +223,7 @@ export class UpdateStats {
     let last = await cursor.next();
     let lastDay = LAST_DAY;
     if (last && last._id) {
-      lastDay = last._id.day;
+      lastDay = last.day;
       console.log(`\tLast run is ${lastDay}`);
     } else {
       console.log(`\t${coll} NEVER UPDATED. Set date to ${lastDay}`);

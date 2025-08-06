@@ -116,6 +116,7 @@ export class FiatRateService {
       const allCurrencies: { code: string; name: string }[] = fiatFiltered.length
         ? fiatFiltered
         : Defaults.SUPPORT_FIAT_CURRENCIES;
+      // TODO: revert herer
       const currencies = allCurrencies.slice(0, 10); // Test with first 10 currencies only
       // const currencies: { code: string; name: string }[] = fiatFiltered.length
       //   ? fiatFiltered
