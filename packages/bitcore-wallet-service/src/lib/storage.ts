@@ -1959,16 +1959,18 @@ export class Storage {
       .toArray((err, result) => {
         if (err) return cb(err);
         if (!result || _.isEmpty(result)) return cb();
+
+        let foundAddress;
         if (result.length > 1) {
-          result = _.find(result, address => {
-            return chain == (address.chain || address.coin || 'btc');
+          foundAddress = _.find(result, addressDoc => {
+            return chain == (addressDoc.chain || addressDoc.coin || 'btc');
           });
         } else {
-          result = _.head(result);
+          foundAddress = _.head(result);
         }
-        if (!result) return cb();
+        if (!foundAddress) return cb();
 
-        return cb(null, Address.fromObj(result));
+        return cb(null, Address.fromObj(foundAddress as unknown as any));
       });
   }
 
@@ -1981,15 +1983,17 @@ export class Storage {
       .toArray((err, result) => {
         if (err) return cb(err);
 
+        let foundPreferences;
         if (copayerId) {
-          result = _.find(result, {
+          foundPreferences = _.find(result, {
             copayerId
           });
         }
+        if (!foundPreferences && copayerId) return cb();
         if (!result) return cb();
 
-        const preferences = _.map([].concat(result), r => {
-          return Preferences.fromObj(r);
+        const preferences = _.map([].concat(foundPreferences || result), r => {
+          return Preferences.fromObj(r as unknown as any);
         });
         if (copayerId) {
           return cb(null, preferences[0] as T);
