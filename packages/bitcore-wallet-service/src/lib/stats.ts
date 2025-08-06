@@ -1,7 +1,7 @@
 import * as async from 'async';
 import * as _ from 'lodash';
 import moment from 'moment';
-import * as mongodb from 'mongodb';
+import * as mongodb from 'mongodb-legacy';
 import config from '../config';
 import logger from './logger';
 
@@ -36,22 +36,34 @@ export class Stats {
       return cb(new Error('No dbname at config.'));
     }
 
-    mongodb.MongoClient.connect(dbConfig.uri, { useUnifiedTopology: true }, (err, client) => {
-      if (err) {
-        return cb(err);
-      }
-      this.db = client.db(dbConfig.dbname);
-      this.client = client;
+    const connectionOptions = {
+      maxPoolSize: 50,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000
+    };
 
-      this._getStats((err, stats) => {
-        if (err) return cb(err);
+    mongodb.MongoClient.connect(config.uri, connectionOptions)
+      .then(client => {
+        this.db = client.db(dbConfig.dbname);
+        this.client = client;
 
-        this.client.close(err => {
-          if (err) logger.error('%o', err);
-          return cb(null, stats);
+        this._getStats((err, stats) => {
+          if (err) return cb(err);
+
+          this.client.close(err => {
+            if (err) logger.error('%o', err);
+            return cb(null, stats);
+          });
         });
+      })
+      .catch(err => {
+        logger.error('Unable to connect to the mongoDB. Check the credentials.');
+        return cb(err);
       });
-    });
   }
 
   _getStats(cb) {
@@ -94,12 +106,12 @@ export class Stats {
         if (err) return cb(err);
         const stats = {
           byDay: _.map(results, record => {
-            const day = moment(record._id.day).format('YYYYMMDD');
+            const day = moment(record.day).format('YYYYMMDD');
             return {
               day,
-              coin: record._id.coin,
-              value: record._id.value,
-              count: record.count ? record.count : record.value.count
+              coin: record.coin,
+              value: record.value,
+              count: record.count ? record.count : (record.value?.count ?? 0)
             };
           })
         };
@@ -124,10 +136,10 @@ export class Stats {
         if (err) return cb(err);
         const stats = {
           byDay: _.map(results, record => {
-            const day = moment(record._id.day).format('YYYYMMDD');
+            const day = moment(record.day).format('YYYYMMDD');
             return {
               day,
-              coin: record._id.coin,
+              coin: record.coin,
               value: record.value
             };
           })
@@ -157,10 +169,10 @@ export class Stats {
           amountByDay: []
         };
         _.each(results, record => {
-          const day = moment(record._id.day).format('YYYYMMDD');
+          const day = moment(record.day).format('YYYYMMDD');
           stats.nbByDay.push({
             day,
-            coin: record._id.coin,
+            coin: record.coin,
             count: record.count ? record.count : record.value.count
           });
           stats.amountByDay.push({

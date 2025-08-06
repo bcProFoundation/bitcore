@@ -1,6 +1,5 @@
 import * as async from 'async';
 import _, { countBy, reject } from 'lodash';
-import cron from 'node-cron';
 import config from '../config'
 import { Common } from './common';
 import { Storage } from './storage';
@@ -8,6 +7,7 @@ import axios, { AxiosInstance } from 'axios';
 
 const $ = require('preconditions').singleton();
 const Bitcore = require('@bcpros/bitcore-lib');
+const pLimit = require('p-limit');
 
 const Defaults = Common.Defaults;
 const Constants = Common.Constants;
@@ -100,28 +100,32 @@ export class FiatRateService {
     return _.find(this.providers, provider => provider.name === nameProvider);
   }
 
-  getLatestCurrencyRates(opts): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const now = Date.now();
-      const ts = opts.ts ? opts.ts : now;
-      let fiatFiltered = [];
-      let rates = [];
+  async getLatestCurrencyRates(opts: { ts?: number; code?: string }): Promise<any> {
+    const now = Date.now();
+    const ts = opts.ts ? opts.ts : now;
+    let fiatFiltered = [];
 
-      if (opts.code) {
-        fiatFiltered = _.filter(Defaults.FIAT_CURRENCIES, ['code', opts.code]);
-        if (!fiatFiltered.length) return reject(opts.code + ' is not supported');
-      }
-      const currencies: { code: string; name: string }[] = fiatFiltered.length
-        ? fiatFiltered
-        : Defaults.SUPPORT_FIAT_CURRENCIES;
-      const promiseList = [];
-      _.forEach(currencies, currency => {
-        promiseList.push(this._getCurrencyRate(currency.code, ts));
-      });
-      Promise.all(promiseList).then(listRate => {
-        return resolve(listRate);
-      });
-    });
+    if (opts.code) {
+      fiatFiltered = _.filter(Defaults.FIAT_CURRENCIES, ['code', opts.code]);
+      if (!fiatFiltered.length) return reject(opts.code + ' is not supported');
+    }
+    const currencies: { code: string; name: string }[] = fiatFiltered.length
+      ? fiatFiltered
+      : Defaults.SUPPORT_FIAT_CURRENCIES;
+
+    const limit = pLimit(10);
+
+    try {
+      const rates = await Promise.all(
+        currencies.map(currency =>
+          limit(() => this._getCurrencyRate(currency.code, ts))
+        )
+      );
+      console.warn("DEBUGPRINT[473]: fiatrateservice.ts:124: rates=", rates.length)
+      return rates;
+    } catch (error) {
+      throw error;
+    }
   }
 
   _getCurrencyRate(code, ts): Promise<any> {
@@ -145,28 +149,32 @@ export class FiatRateService {
     let coinsData = ['btc', 'bch', 'xec', 'eth', 'xrp', 'doge', 'xpi', 'ltc'];
     const etoken = this._getEtokenSupportPrice();
     const coins = _.concat(coinsData, etoken);
-    const listRate = await this.getLatestCurrencyRates({});
-    if (listRate) {
-      async.eachSeries(
-        coins,
-        async (coin, next2) => {
-          const provider = this._getProviderRate(coin);
-          this._retrieve(provider, coin, async (err, res) => {
-            if (err) {
-              logger.warn('Error retrieving data for ' + provider.name + coin, err);
-              return next2();
-            }
-            res = await this.handleRateCurrencyCoin(res, listRate);
-            this.storage.storeFiatRate(coin, res, err => {
+    try {
+      const listRate = await this.getLatestCurrencyRates({});
+      if (listRate) {
+        async.eachSeries(
+          coins,
+          async (coin, next2) => {
+            const provider = this._getProviderRate(coin);
+            this._retrieve(provider, coin, async (err, res) => {
               if (err) {
-                logger.warn('Error storing data for ' + provider.name, err);
+                logger.warn('Error retrieving data for ' + provider.name + coin, err);
+                return next2();
               }
-              return next2();
+              res = await this.handleRateCurrencyCoin(res, listRate);
+              this.storage.storeFiatRate(coin, res, err => {
+                if (err) {
+                  logger.warn('Error storing data for ' + provider.name, err);
+                }
+                return next2();
+              });
             });
-          });
-        },
-        cb
-      );
+          },
+          cb
+        );
+      }
+    } catch (error) {
+      return cb(error);
     }
   }
 

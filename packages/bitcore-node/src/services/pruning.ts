@@ -75,7 +75,7 @@ export class PruningService {
     args.OLD && logger.info(`Pruning mempool txs older than ${MEMPOOL_AGE} day(s)`);
     args.INVALID && logger.info('Pruning conflicting mempool txs');
     args.DRY && logger.info('Pruning service DRY RUN');
-    
+
     this.registerRpcs();
 
     if (args.EXIT) {
@@ -151,6 +151,7 @@ export class PruningService {
         this.transactionModel.collection
           .find({ chain, network, blockHeight: SpentHeightIndicators.pending, blockTimeNormalized: { $lt: oldTime } })
           .sort(count > 5000 ? { chain: 1, network: 1, blockTimeNormalized: 1 } : {})
+          .stream()
           .pipe(
             new Transform({
               objectMode: true,
@@ -239,7 +240,7 @@ export class PruningService {
           continue;
         }
         seen.add(vout.mintTxid);
-        const tx = await this.transactionModel.collection.findOne({ chain, network, txid: vout.mintTxid });
+        const tx = await this.transactionModel.collection.findOne<ITransaction>({ chain, network, txid: vout.mintTxid });
         if (!tx) {
           logger.error(`Coin ${vout.mintTxid} has no corresponding tx`);
           continue;
@@ -251,7 +252,7 @@ export class PruningService {
         } else {
           // Check if the parent tx was replaced since the sync process marks immediate replacements as replaced, but not descendants
           const vins = await this.coinModel.collection.find({ chain, network, spentTxid: vout.mintTxid }).toArray();
-          const vinTxs = await this.transactionModel.collection.find({ chain, network, txid: { $in: vins.map(vin => vin.mintTxid) } }).toArray();
+          const vinTxs = await this.transactionModel.collection.find<ITransaction>({ chain, network, txid: { $in: vins.map(vin => vin.mintTxid) } }).toArray();
           for (const tx of vinTxs) {
             if (tx.replacedByTxid) {
               if (await this.invalidateTx(chain, network, tx)) {
@@ -276,7 +277,7 @@ export class PruningService {
    * @param {string} chain
    * @param {string} network
    * @param {ITransaction} tx Transaction object with replacedByTxid
-   * @returns 
+   * @returns
    */
   async invalidateTx(chain: string, network: string, tx: ITransaction) {
     if (tx.blockHeight! >= 0) {
@@ -309,7 +310,7 @@ export class PruningService {
         logger.info(`${args.DRY ? 'DRY RUN - ' : ''}Invalidating ${tx.txid} with replacement => ${tx.replacedByTxid} (${isExpired ? 'expired' : nConfs})`);
         if (args.DRY) {
           return true;
-        }        
+        }
         await this.transactionModel._invalidateTx({
           chain,
           network,

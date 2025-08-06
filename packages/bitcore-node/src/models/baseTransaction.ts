@@ -1,4 +1,4 @@
-import { ObjectId } from 'bson';
+import { ObjectId } from 'mongodb-legacy';
 import { Storage, StorageService, StreamingFindOptions } from '../services/storage';
 import { SpentHeightIndicators } from '../types/Coin';
 import { TransformOptions } from '../types/TransformOptions';

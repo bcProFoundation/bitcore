@@ -25,16 +25,14 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
   setupListeners() {
     this.pool.on('peerready', peer => {
       logger.info(
-        `${timestamp()} | Connected to peer: ${peer.host}:${peer.port.toString().padEnd(5)} | Chain: ${
-          this.chain
+        `${timestamp()} | Connected to peer: ${peer.host}:${peer.port.toString().padEnd(5)} | Chain: ${this.chain
         } | Network: ${this.network}`
       );
     });
 
     this.pool.on('peerdisconnect', peer => {
       logger.warn(
-        `${timestamp()} | Not connected to peer: ${peer.host}:${peer.port.toString().padEnd(5)} | Chain: ${
-          this.chain
+        `${timestamp()} | Not connected to peer: ${peer.host}:${peer.port.toString().padEnd(5)} | Chain: ${this.chain
         } | Network: ${this.network}`
       );
     });
@@ -151,7 +149,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
     const atTipOfChain = blockNum === tipHeight;
     const errors = new Array<ErrorType>();
 
-    const [block, blockTxs] = await Promise.all([
+    const [block, blockTxsRaw] = await Promise.all([
       BitcoinBlockStorage.collection.findOne({
         chain,
         network,
@@ -160,6 +158,20 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }),
       TransactionStorage.collection.find({ chain, network, blockHeight: blockNum }).toArray()
     ]);
+
+    const blockTxs: ITransaction[] = blockTxsRaw.map(tx => ({
+      txid: tx.txid,
+      chain: tx.chain,
+      network: tx.network,
+      fee: tx.fee,
+      value: tx.value,
+      blockHeight: tx.blockHeight,
+      blockHash: tx.blockHash,
+      blockTime: tx.blockTime,
+      blockTimeNormalized: tx.blockTimeNormalized,
+      wallets: tx.wallets,
+      replacedByTxid: tx.replacedByTxid,
+    }));
 
     if (!block) {
       success = false;
@@ -178,7 +190,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
 
     const blockTxids = blockTxs.map(t => t.txid);
     const firstHash = blockTxs[0] ? blockTxs[0].blockHash : block!.hash;
-    const [coinsForTx, mempoolTxs, blocksForHash, blocksForHeight, p2pBlock] = await Promise.all([
+    const [coinsForTxRaw, mempoolTxs, blocksForHash, blocksForHeight, p2pBlock] = await Promise.all([
       CoinStorage.collection.find({ chain, network, mintTxid: { $in: blockTxids } }).toArray(),
       TransactionStorage.collection.find({ chain, network, blockHeight: -1, txid: { $in: blockTxids } }).toArray(),
       BitcoinBlockStorage.collection.countDocuments({ chain, network, hash: firstHash }),
@@ -190,6 +202,24 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }),
       this.deepScan ? this.getBlockForNumber(blockNum) : Promise.resolve({} as any)
     ]);
+
+    const coinsForTx: ICoin[] = coinsForTxRaw.map(coin => ({
+      network: coin.network,
+      chain: coin.chain,
+      mintTxid: coin.mintTxid,
+      mintIndex: coin.mintIndex,
+      value: coin.value,
+      mintHeight: coin.mintHeight,
+      spentHeight: coin.spentHeight,
+      spentTxid: coin.spentTxid,
+      address: coin.address,
+      script: coin.script,
+      wallets: coin.wallets,
+      coinbase: coin.coinbase,
+      confirmations: coin.confirmations,
+      sequenceNumber: coin.sequenceNumber,
+    }));
+
 
     const seenTxs = {} as { [txid: string]: ITransaction };
 

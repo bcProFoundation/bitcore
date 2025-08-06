@@ -1,4 +1,4 @@
-import { Db, MongoClient } from 'mongodb';
+import { Db, MongoClient } from 'mongodb-legacy';
 import 'source-map-support/register';
 import { Transform } from 'stream';
 
@@ -38,7 +38,7 @@ export class Mongo {
       return;
     }
     try {
-      this.client = new MongoClient(this.path, { useNewUrlParser: true, useUnifiedTopology: true });
+      this.client = new MongoClient(this.path, {});
       await this.client.connect();
       this.db = this.client.db(this.databaseName);
       this.walletCollection = this.db.collection(this.walletCollectionName);
@@ -57,8 +57,6 @@ export class Mongo {
   async testConnection() {
     try {
       const client = new MongoClient(this.path, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
         noDelay: true,
         serverSelectionTimeoutMS: 5000
       });
@@ -82,7 +80,7 @@ export class Mongo {
     const cursor = this.walletCollection
       .find({ name: { $exists: true } }, { name: 1, chain: 1, network: 1, storageType: 1, tokens: 1 })
       .pipe(stream);
-    stream.on('end', async () => await this.close());
+    stream.on('', async () => await this.close());
     return cursor;
   }
 

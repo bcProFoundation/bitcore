@@ -1,10 +1,10 @@
-import { ObjectID } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import os from 'os';
 import { StorageService } from '../services/storage';
 import { BaseModel } from './base';
 
 export interface IState {
-  _id?: ObjectID;
+  _id?: ObjectId;
   initialSyncComplete: any;
   verifiedBlockHeight?: {
     [chain: string]: {
@@ -24,13 +24,13 @@ export class StateModel extends BaseModel<IState> {
   }
   allowedPaging = [];
 
-  onConnect() {}
+  onConnect() { }
 
   async getSingletonState() {
     return this.collection.findOneAndUpdate(
       {},
       { $setOnInsert: { created: new Date() } },
-      { upsert: true, returnOriginal: false }
+      { upsert: true, returnDocument: 'after' }
     );
   }
 
@@ -64,7 +64,7 @@ export class StateModel extends BaseModel<IState> {
     );
   }
 
-  setVerifiedBlockHeight(params: { chain: string; network: string; height: number}) {
+  setVerifiedBlockHeight(params: { chain: string; network: string; height: number }) {
     const { chain, network, height } = params;
     return this.collection.updateOne(
       {},
@@ -76,7 +76,7 @@ export class StateModel extends BaseModel<IState> {
     );
   }
 
-  setLastAddressSubscriptionUpdate(params: { chain: string; network: string; timestamp: Date}) {
+  setLastAddressSubscriptionUpdate(params: { chain: string; network: string; timestamp: Date }) {
     const { chain, network, timestamp } = params;
     return this.collection.updateOne(
       {},

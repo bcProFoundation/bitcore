@@ -120,7 +120,7 @@ router.get('/:blockHash/coins/:limit/:pgnum', async function(req: Request, res: 
       next = `/block/${blockHash}/coins/${maxLimit}/${nxtPageNum}`;
     }
 
-    const sanitize = (coins: Array<ICoin>) => coins.map(c => CoinStorage._apiTransform(c, { object: true }));
+    const sanitize = (coins: Array<any>) => coins.map(c => CoinStorage._apiTransform(c as ICoin, { object: true }));
     return res.json({ txids, inputs: sanitize(inputs), outputs: sanitize(outputs), previous, next });
   } catch (err: any) {
     logger.error('Error getting block hash data: %o', err.stack || err.message || err);

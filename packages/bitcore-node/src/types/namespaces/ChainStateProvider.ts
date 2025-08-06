@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import { MongoBound } from '../../models/base';
 import { IBtcBlock } from '../../models/block';
 import { ICoin } from '../../models/coin';

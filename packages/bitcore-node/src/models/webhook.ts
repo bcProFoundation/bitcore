@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import { StorageService } from '../services/storage';
 import { BaseModel } from './base';
 
@@ -33,12 +33,15 @@ export class WebhookModel extends BaseModel<IWebhook> {
     const MINUTE = 1000 * 60;
     const HOUR = MINUTE * 60;
     const DAY = HOUR * 24;
-  
-    return this.collection.find({ chain, network, processed: false })
-      .addCursorFlag('tailable', true)
-      .addCursorFlag('awaitData', true)
-      .maxAwaitTimeMS(DAY * 24 + HOUR * 20 + MINUTE * 31)
-      .stream();
+
+    return this.collection.find(
+      { chain, network, processed: false },
+      {
+        tailable: true,
+        awaitData: true,
+        maxAwaitTimeMS: DAY * 24 + HOUR * 20 + MINUTE * 31
+      }
+    ).stream();
   }
 
   setProcessed(params: { webhook?: IWebhook; webhookId?: ObjectId | string }) {
@@ -47,7 +50,7 @@ export class WebhookModel extends BaseModel<IWebhook> {
     if (!id) {
       throw new Error('No webhook id given to clear');
     }
-    return this.collection.updateOne({ _id: id }, { $set: { processed: true }});
+    return this.collection.updateOne({ _id: id }, { $set: { processed: true } });
   }
 }
 

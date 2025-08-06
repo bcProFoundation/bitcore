@@ -22,7 +22,7 @@ if (require.main === module) {
 
     console.log('Verifying headers for', chain, network, 'from height', resumeHeight);
     await BitcoinBlockStorage.collection
-      .find({ chain, network, processed: true, height: { $gte: checkHeight } })
+      .find<IBlock>({ chain, network, processed: true, height: { $gte: checkHeight } })
       .project({ height: 1, nextBlockHash: 1, previousBlockHash: 1, hash: 1 })
       .sort({ height: 1 })
       .forEach(locatorBlock => {
@@ -52,7 +52,7 @@ if (require.main === module) {
           }
         }
 
-        previousBlock = locatorBlock;
+        previousBlock = { ...locatorBlock } as IBlock;
         checkHeight++;
         if (success) {
           console.log({ block: checkHeight, success });

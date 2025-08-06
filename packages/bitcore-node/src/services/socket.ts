@@ -1,5 +1,5 @@
 import * as http from 'http';
-import { ObjectID } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import socketio from 'socket.io';
 import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
@@ -11,8 +11,8 @@ import { Auth, VerificationPayload } from '../utils/auth';
 import { Config, ConfigService } from './config';
 import { Event, EventService } from './event';
 
-function SanitizeWallet(x: { wallets?: ObjectID[] }) {
-  const sanitized: any = Object.assign({}, x, { wallets: new Array<ObjectID>() });
+function SanitizeWallet(x: { wallets?: ObjectId[] }) {
+  const sanitized: any = Object.assign({}, x, { wallets: new Array<ObjectId>() });
   if (sanitized.wallets && sanitized.wallets.length > 0) {
     delete sanitized.wallets;
   }
@@ -120,7 +120,7 @@ export class SocketService {
         this.io.sockets.in(`/${chain}/${network}/inv`).emit('tx', sanitizedTx);
 
         if (tx.wallets && tx.wallets.length) {
-          const objectIds = tx.wallets.map(w => new ObjectID(w));
+          const objectIds = tx.wallets.map(w => new ObjectId(w));
           const wallets = await WalletStorage.collection.find({ _id: { $in: objectIds } }).toArray();
           for (let wallet of wallets) {
             this.io.sockets.in(`/${chain}/${network}/wallets`).emit('tx', { pubKey: wallet.pubKey, tx });
@@ -147,7 +147,7 @@ export class SocketService {
         this.io.sockets.in(`/${chain}/${network}/address`).emit(address, sanitizedCoin);
         this.io.sockets.in(`/${chain}/${network}/inv`).emit('coin', sanitizedCoin);
         if (coin.wallets && coin.wallets.length) {
-          const objectIds = coin.wallets.map(w => new ObjectID(w));
+          const objectIds = coin.wallets.map(w => new ObjectId(w));
           const wallets = await WalletStorage.collection.find({ _id: { $in: objectIds } }).toArray();
           for (let wallet of wallets) {
             this.io.sockets.in(`/${chain}/${network}/wallets`).emit('coin', { pubKey: wallet.pubKey, coin });

@@ -176,7 +176,7 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
       return false;
     }
     if (header) {
-      const prevBlock = await this.collection.findOne({ chain, network, hash: header.prevHash });
+      const prevBlock = await this.collection.findOne<IBlock>({ chain, network, hash: header.prevHash });
       if (prevBlock) {
         localTip = prevBlock;
       } else {

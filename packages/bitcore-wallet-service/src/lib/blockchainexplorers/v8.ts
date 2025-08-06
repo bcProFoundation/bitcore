@@ -137,8 +137,6 @@ export class V8 {
       name: wallet.id,
       pubKey: wallet.beAuthPublicKey2
     };
-    console.warn(payload);
-    console.warn(wallet.beAuthPrivateKey2);
     client
       .register({
         authKey: wallet.beAuthPrivateKey2,

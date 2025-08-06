@@ -1,11 +1,11 @@
-import { ObjectID } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import { WalletAddressStorage } from '../models/walletAddress';
 import { StorageService } from '../services/storage';
 import { TransformOptions } from '../types/TransformOptions';
 import { BaseModel } from './base';
 
 export interface IWallet {
-  _id?: ObjectID;
+  _id?: ObjectId;
   chain: string;
   network: string;
   name: string;

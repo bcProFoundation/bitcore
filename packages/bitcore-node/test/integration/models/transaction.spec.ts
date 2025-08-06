@@ -1,4 +1,4 @@
-import { ObjectId } from 'bson';
+import { ObjectId } from 'mongodb-legacy';
 import { expect } from 'chai';
 import * as crypto from 'crypto';
 import { CoinStorage, ICoin } from '../../../src/models/coin';

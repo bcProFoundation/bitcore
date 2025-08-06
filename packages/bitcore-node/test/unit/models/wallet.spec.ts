@@ -1,4 +1,4 @@
-import { ObjectId } from 'bson';
+import { ObjectId } from 'mongodb-legacy';
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 import { MongoBound } from '../../../src/models/base';

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import sinon from 'sinon';
 import { BitcoinBlockStorage } from '../../../src/models/block';
 import { CoinStorage, ICoin } from '../../../src/models/coin';

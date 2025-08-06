@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
-import { Collection, Db, MongoClient, ObjectID } from 'mongodb';
+import { Collection, Db, Document, MongoClient, ObjectId } from 'mongodb-legacy';
 import { Storage } from '../services/storage';
 
-export type MongoBound<T> = T & Partial<{ _id: ObjectID }>;
+export type MongoBound<T> = T & Partial<{ _id: ObjectId }>;
 export abstract class BaseModel<T> {
   connected = false;
   client?: MongoClient;
@@ -41,7 +41,7 @@ export abstract class BaseModel<T> {
 
   abstract onConnect();
 
-  get collection(): Collection<MongoBound<T>> {
+  get collection(): Collection<Document> {
     if (this.storageService.db) {
       return this.storageService.db.collection(this.collectionName);
     } else {

@@ -1,3 +1,4 @@
+import { Document } from 'mongodb-legacy';
 import { StorageService } from '../services/storage';
 import { IBlock } from '../types/Block';
 import { ChainNetwork } from '../types/ChainNetwork';
@@ -30,15 +31,15 @@ export abstract class BaseBlock<T extends IBlock> extends BaseModel<T> {
   }
 
   async getLocalTip({ chain, network }) {
-    const tip = await this.collection.findOne({ chain, network, processed: true }, { sort: { height: -1 } });
-    return tip as IBlock;
+    const tip = await this.collection.findOne<IBlock>({ chain, network, processed: true }, { sort: { height: -1 } });
+    return tip;
   }
 
   public async validateLocatorHashes(params: ChainNetwork) {
     const { chain, network } = params;
     let headers = new Array<IBlock>();
     const locatorBlocks = await this.collection
-      .find({
+      .find<IBlock>({
         processed: true,
         chain,
         network
@@ -61,11 +62,11 @@ export abstract class BaseBlock<T extends IBlock> extends BaseModel<T> {
         nextMatch = nextMatch && locatorBlocks[i].previousBlockHash === locatorBlocks[i + 1].hash;
       }
       if (!prevMatch || !nextMatch) {
-        headers.push(locatorBlocks[i]);
+        headers.push(locatorBlocks[i] as unknown as IBlock);
       }
     }
     return headers;
   }
 
-  abstract _apiTransform(block: T | Partial<MongoBound<T>>, options?: TransformOptions): any;
+  abstract _apiTransform(block: T | Partial<MongoBound<T>> | Partial<Document>, options?: TransformOptions): any;
 }
