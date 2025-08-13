@@ -171,7 +171,11 @@ export class MongoWriteStream extends Transform {
 
   async _transform(data: Array<any>, _, done) {
     await Promise.all(
-      partition(data, data.length / Config.get().maxPoolSize).map(batch => this.collection.bulkWrite(batch))
+      partition(data, data.length / Config.get().maxPoolSize).map(batch => {
+        logger.debug('Transform bulkwrite fee %o ', batch);
+        return;
+        return this.collection.bulkWrite(batch)
+      })
     );
     done(null, data);
   }
@@ -215,17 +219,17 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
     const { initialSyncComplete, height, chain, network } = params;
     const mintStream = new Readable({
       objectMode: true,
-      read: () => {}
+      read: () => { }
     });
 
     const spentStream = new Readable({
       objectMode: true,
-      read: () => {}
+      read: () => { }
     });
 
     const txStream = new Readable({
       objectMode: true,
-      read: () => {}
+      read: () => { }
     });
 
     this.streamMintOps({ ...params, mintStream });
@@ -619,7 +623,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
       yield coin;
 
       if (coin.spentTxid && !seen[coin.spentTxid]) {
-        yield * this.yieldRelatedOutputs(coin.spentTxid);
+        yield* this.yieldRelatedOutputs(coin.spentTxid);
         seen[coin.spentTxid] = true;
       }
     }
@@ -693,7 +697,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
       const seenTxids = new Set();
       let output: ICoin | null;
 
-      while ((output = (await spentOutputsStream.next()) as  ICoin | null)) {
+      while ((output = (await spentOutputsStream.next()) as ICoin | null)) {
         if (!output.spentTxid || seenTxids.has(output.spentTxid)) {
           continue;
         }

@@ -39,13 +39,46 @@ export class StorageService {
         : `mongodb://${auth}${dbHost}:${dbPort}/${dbName}?socketTimeoutMS=3600000&noDelay=true${dbReadPreference ? `?readPreference=${dbReadPreference}` : ''}`;
       let attemptConnect = async () => {
         return MongoClient.connect(connectUrl, {
-          maxPoolSize: options.maxPoolSize,
+          maxPoolSize: options.maxPoolSize || 50,
+          minPoolSize: 1,
+          maxIdleTimeMS: 30000,
+          serverSelectionTimeoutMS: 10000,
+          socketTimeoutMS: 30000,
+          connectTimeoutMS: 10000,
+          heartbeatFrequencyMS: 10000,
+          retryWrites: true
         });
       };
       let attempted = 0;
       let attemptConnectId = setInterval(async () => {
         try {
           this.client = await attemptConnect();
+
+          // Add connection pool monitoring
+          this.client.on('connectionPoolCreated', (event) => {
+            logger.info('Connection pool created:', event);
+          });
+
+          this.client.on('connectionPoolClosed', (event) => {
+            logger.warn('Connection pool closed:', event);
+          });
+
+          this.client.on('connectionCreated', (event) => {
+            logger.debug('Connection created:', { connectionId: event.connectionId });
+          });
+
+          this.client.on('connectionClosed', (event) => {
+            logger.warn('Connection closed:', {
+              connectionId: event.connectionId,
+              reason: event.reason
+            });
+          });
+
+          this.client.on('connectionPoolCleared', (event) => {
+            logger.error('Connection pool cleared:', event);
+          });
+
+
           this.db = this.client.db(dbName);
           this.connected = true;
           clearInterval(attemptConnectId);
@@ -110,13 +143,13 @@ export class StorageService {
 
   stream(input: Readable, req: Request, res: Response) {
     let closed = false;
-    req.on('close', function() {
+    req.on('close', function () {
       closed = true;
     });
-    res.on('close', function() {
+    res.on('close', function () {
       closed = true;
     });
-    input.on('error', function(err) {
+    input.on('error', function (err) {
       if (!closed) {
         closed = true;
         return res.status(500).end(err.message);
@@ -125,7 +158,7 @@ export class StorageService {
     });
     let isFirst = true;
     res.type('json');
-    input.on('data', function(data) {
+    input.on('data', function (data) {
       if (!closed) {
         if (isFirst) {
           res.write('[\n');
@@ -136,7 +169,7 @@ export class StorageService {
         res.write(JSON.stringify(data));
       }
     });
-    input.on('end', function() {
+    input.on('end', function () {
       if (!closed) {
         if (isFirst) {
           // there was no data
@@ -151,15 +184,15 @@ export class StorageService {
 
   apiStream(cursor: Readable, req: Request, res: Response) {
     let closed = false;
-    req.on('close', function() {
+    req.on('close', function () {
       closed = true;
       cursor.destroy();
     });
-    res.on('close', function() {
+    res.on('close', function () {
       closed = true;
       cursor.destroy();
     });
-    cursor.on('error', function(err) {
+    cursor.on('error', function (err) {
       if (!closed) {
         closed = true;
         return res.status(500).end(err.message);
@@ -168,7 +201,7 @@ export class StorageService {
     });
     let isFirst = true;
     res.type('json');
-    cursor.on('data', function(data) {
+    cursor.on('data', function (data) {
       if (!closed) {
         if (isFirst) {
           res.write('[\n');
@@ -181,7 +214,7 @@ export class StorageService {
         cursor.destroy();
       }
     });
-    cursor.on('end', function() {
+    cursor.on('end', function () {
       if (!closed) {
         if (isFirst) {
           // there was no data

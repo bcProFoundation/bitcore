@@ -95,14 +95,14 @@ export class WalletAddressModel extends BaseModel<IWalletAddress> {
           return callback();
         }
         try {
-          await WalletAddressStorage.collection.bulkWrite(
-            addressBatch.map(address => ({
-              insertOne: {
-                document: { chain, network, wallet: wallet._id, address, processed: false }
-              }
-            })),
-            { ordered: false }
-          );
+          // await WalletAddressStorage.collection.bulkWrite(
+          //   addressBatch.map(address => ({
+          //     insertOne: {
+          //       document: { chain, network, wallet: wallet._id, address, processed: false }
+          //     }
+          //   })),
+          //   { ordered: false }
+          // );
         } catch (err: any) {
           // Ignore duplicate keys, they may be half processed
           if (err.code !== 11000) {
@@ -123,15 +123,15 @@ export class WalletAddressModel extends BaseModel<IWalletAddress> {
           return callback();
         }
         try {
-          await CoinStorage.collection.bulkWrite(
-            addressBatch.map(address => ({
-              updateMany: {
-                filter: { chain, network, address },
-                update: { $addToSet: { wallets: wallet._id } }
-              }
-            })),
-            { ordered: false }
-          );
+          // await CoinStorage.collection.bulkWrite(
+          //   addressBatch.map(address => ({
+          //     updateMany: {
+          //       filter: { chain, network, address },
+          //       update: { $addToSet: { wallets: wallet._id } }
+          //     }
+          //   })),
+          //   { ordered: false }
+          // );
           this.push(addressBatch);
           callback();
         } catch (err) {
@@ -212,17 +212,17 @@ export class WalletAddressModel extends BaseModel<IWalletAddress> {
           return callback();
         }
         try {
-          await WalletAddressStorage.collection.bulkWrite(
-            addressBatch.map(address => {
-              return {
-                updateOne: {
-                  filter: { chain, network, address, wallet: wallet._id },
-                  update: { $set: { processed: true } }
-                }
-              };
-            }),
-            { ordered: false }
-          );
+          // await WalletAddressStorage.collection.bulkWrite(
+          //   addressBatch.map(address => {
+          //     return {
+          //       updateOne: {
+          //         filter: { chain, network, address, wallet: wallet._id },
+          //         update: { $set: { processed: true } }
+          //       }
+          //     };
+          //   }),
+          //   { ordered: false }
+          // );
           callback();
         } catch (err) {
           callback(err);
