@@ -1,6 +1,6 @@
 import { Wallet, ParseApiStream } from '@bcpros/bitcore-client';
 import { expect } from 'chai';
-import { ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import * as io from 'socket.io-client';
 import config from '../../src/config';
 import { MongoBound } from '../../src/models/base';
@@ -26,7 +26,7 @@ const rpc = new AsyncRPC(creds.username, creds.password, creds.host, creds.port)
 
 async function checkWalletExists(pubKey, expectedAddress) {
   // Check the database for the first wallet
-  const dbWallet = await WalletStorage.collection.findOne({
+  const dbWallet = await WalletStorage.collection.findOne<IWallet>({
     chain,
     network,
     pubKey

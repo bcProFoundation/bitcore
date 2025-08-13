@@ -15,7 +15,7 @@ var sjcl = require('sjcl');
 var { WalletService } = require('../../ts_build/lib/server');
 var { PushNotificationsService } = require('../../ts_build/lib/pushnotificationsservice');
 const { Storage } = require('../../ts_build/lib/storage')
-const ObjectID  = require('mongodb').ObjectID;
+const ObjectId  = require('mongodb-legacy').ObjectId;
 
 var TestData = require('../testdata');
 var helpers = require('./helpers');
@@ -842,7 +842,7 @@ describe('Push notifications', function() {
       }, function(err) {
         server.createAddress({}, (err, address) => {
           should.not.exist(err);
-          
+
           // Simulate incoming tx notification
           server._notify('NewIncomingTx', {
             txid: '997',
@@ -1124,7 +1124,7 @@ describe('Push notifications', function() {
     it('should notify NewBlock to all devices subscribed in the last 10 minutes', function(done) {
       var collections = Storage.collections;
       const oldSubscription = {
-         "_id" : new ObjectID("5fb57ecde3de1d285042a551"),
+         "_id" : new ObjectId("5fb57ecde3de1d285042a551"),
          "version" : "1.0.0",
          "createdOn" : 1605729997,
          "copayerId" : wallet.copayers[0].id,
@@ -1529,7 +1529,7 @@ describe('Push notifications', function() {
     it('should notify NewBlock to all devices subscribed in the last 10 minutes', function(done) {
       var collections = Storage.collections;
       const oldSubscription = {
-         "_id" : new ObjectID("5fb57ecde3de1d285042a551"),
+         "_id" : new ObjectId("5fb57ecde3de1d285042a551"),
          "version" : "1.0.0",
          "createdOn" : 1605729997,
          "copayerId" : wallet.copayers[0].id,

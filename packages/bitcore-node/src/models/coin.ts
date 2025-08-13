@@ -1,4 +1,4 @@
-import { CollectionAggregationOptions, ObjectID } from 'mongodb';
+import { AggregateOptions, ObjectId } from 'mongodb-legacy';
 import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
 import { Libs } from '../providers/libs';
@@ -18,7 +18,7 @@ export interface ICoin {
   value: number;
   address: string;
   script: Buffer;
-  wallets: Array<ObjectID>;
+  wallets: Array<ObjectId>;
   spentTxid: string;
   spentHeight: number;
   confirmations?: number;
@@ -65,7 +65,7 @@ export class CoinModel extends BaseModel<ICoin> {
     );
   }
 
-  async getBalance(params: { query: any }, options: CollectionAggregationOptions = {}) {
+  async getBalance(params: { query: any }, options: AggregateOptions = {}) {
     let { query } = params;
     const result = await this.collection
       .aggregate<{ _id: string; balance: number }>(
@@ -211,7 +211,7 @@ export class CoinModel extends BaseModel<ICoin> {
     }
 
     const transform: CoinJSON = {
-      _id: valueOrDefault(coin._id, new ObjectID()).toHexString(),
+      _id: valueOrDefault(coin._id, new ObjectId()).toHexString(),
       chain: valueOrDefault(coin.chain, ''),
       network: valueOrDefault(coin.network, ''),
       coinbase: valueOrDefault(coin.coinbase, false),

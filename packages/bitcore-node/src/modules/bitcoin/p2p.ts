@@ -330,7 +330,7 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
     this.isSyncing = false;
     await StateStorage.collection.findOneAndUpdate(
       {},
-      { $addToSet: { initialSyncComplete: `${chain}:${network}` } },
+      { $addToSet: { initialSyncComplete: `${chain}:${network}` } } as any,
       { upsert: true }
     );
     this.events.emit('SYNCDONE');

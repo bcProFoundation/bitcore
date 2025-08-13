@@ -1,7 +1,7 @@
 import * as async from 'async';
 import moment from 'moment';
-import * as mongodb from 'mongodb';
-const ObjectID = mongodb.ObjectID;
+import * as mongodb from 'mongodb-legacy';
+const ObjectId = mongodb.ObjectId;
 
 const storage = require('./storage');
 const LAST_DAY = '2019-12-01';
@@ -31,18 +31,29 @@ export class UpdateStats {
       return cb(new Error('No dbname at config.'));
     }
 
-    mongodb.MongoClient.connect(dbConfig.uri, { useUnifiedTopology: true }, (err, client) => {
-      if (err) {
-        return cb(err);
-      }
-      this.db = client.db(dbConfig.dbname);
-      this.client = client;
+    const connectionOptions = {
+      maxPoolSize: 50,
+      minPoolSize: 1,
+      maxIdleTimeMS: 30000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000
+    };
 
-      this.updateStats((err, stats) => {
-        if (err) return cb(err);
-        return cb(null, stats);
+    mongodb.MongoClient.connect(config.uri, connectionOptions)
+      .then(client => {
+        this.db = client.db(dbConfig.dbname);
+        this.client = client;
+
+        this.updateStats((err, stats) => {
+          if (err) return cb(err);
+          return cb(null, stats);
+        });
+      })
+      .catch(err => {
+        return cb(err);
       });
-    });
   }
 
   updateStats(cb) {
@@ -75,7 +86,7 @@ export class UpdateStats {
       .aggregate([
         {
           $match: {
-            _id: { $gt: new ObjectID(od) }
+            _id: { $gt: new ObjectId(od) }
           }
         },
         {
@@ -113,13 +124,13 @@ export class UpdateStats {
             console.log(`\tRemoving entries from/after ${lastDay}`);
             await this.db
               .collection('stats_wallets')
-              .remove({ '_id.day': { $gte: lastDay } })
-              .then(async err => {
+              .deleteMany({ '_id.day': { $gte: lastDay } })
+              .then(async result => {
                 // rm day = null
                 res = res.filter(x => x._id.day);
                 console.log(`\tTrying to insert ${res.length} entries`);
                 const opts: any = { ordered: false };
-                await this.db.collection('stats_wallets').insert(res, opts);
+                await this.db.collection('stats_wallets').insertMany(res, opts);
                 console.log(`${res.length} entries inserted in stats_wallets`);
               });
           } catch (err) {
@@ -140,7 +151,7 @@ export class UpdateStats {
       .aggregate([
         {
           $match: {
-            _id: { $gt: new ObjectID(od) }
+            _id: { $gt: new ObjectId(od) }
           }
         },
         {
@@ -181,14 +192,14 @@ export class UpdateStats {
             console.log(`\tRemoving entries from/after ${lastDay}`);
             await this.db
               .collection('stats_fiat_rates')
-              .remove({ '_id.day': { $gte: lastDay } })
-              .then(async err => {
+              .deleteMany({ '_id.day': { $gte: lastDay } })
+              .then(async result => {
                 // rm day = null
                 res = res.filter(x => x._id.day);
 
                 console.log(`Trying to insert ${res.length} entries`);
                 const opts: any = { ordered: false };
-                await this.db.collection('stats_fiat_rates').insert(res, opts);
+                await this.db.collection('stats_fiat_rates').insertMany(res, opts);
                 console.log(`${res.length} entries inserted in stats_fiat_rates`);
               });
           } catch (err) {
@@ -212,7 +223,7 @@ export class UpdateStats {
     let last = await cursor.next();
     let lastDay = LAST_DAY;
     if (last && last._id) {
-      lastDay = last._id.day;
+      lastDay = last.day;
       console.log(`\tLast run is ${lastDay}`);
     } else {
       console.log(`\t${coll} NEVER UPDATED. Set date to ${lastDay}`);
@@ -228,7 +239,7 @@ export class UpdateStats {
       .aggregate([
         {
           $match: {
-            _id: { $gt: new ObjectID(od) }
+            _id: { $gt: new ObjectId(od) }
           }
         },
         {
@@ -269,13 +280,13 @@ export class UpdateStats {
             console.log(`\tRemoving entries from/after ${lastDay}`);
             await this.db
               .collection('stats_txps')
-              .remove({ '_id.day': { $gte: lastDay } })
-              .then(async err => {
+              .deleteMany({ '_id.day': { $gte: lastDay } })
+              .then(async result => {
                 // rm day = null
                 res = res.filter(x => x._id.day);
                 console.log(`\tTrying to insert ${res.length} entries`);
                 const opts: any = { ordered: false };
-                await this.db.collection('stats_txps').insert(res, opts);
+                await this.db.collection('stats_txps').insertMany(res, opts);
                 console.log(`\t${res.length} entries inserted in stats_txps`);
               });
           } catch (err) {

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ObjectID } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import * as sinon from 'sinon';
 import { MongoBound } from '../../../src/models/base';
 import { BitcoinBlockStorage } from '../../../src/models/block';
@@ -48,7 +48,7 @@ describe('Block Model', function() {
 
   describe('BlockModel find options', () => {
     it('should be able to create query options', () => {
-      const id = new ObjectID();
+      const id = new ObjectId();
       const { query, options } = Storage.getFindOptions<MongoBound<IBtcBlock>>(BitcoinBlockStorage, {
         since: id,
         paging: '_id',
@@ -61,7 +61,7 @@ describe('Block Model', function() {
     });
 
     it('should default to descending', () => {
-      const id = new ObjectID();
+      const id = new ObjectId();
       const { query, options } = Storage.getFindOptions<MongoBound<IBtcBlock>>(BitcoinBlockStorage, {
         since: id,
         paging: '_id',
@@ -73,7 +73,7 @@ describe('Block Model', function() {
     });
 
     it('should allow ascending', () => {
-      const id = new ObjectID();
+      const id = new ObjectId();
       const { query, options } = Storage.getFindOptions<MongoBound<IBtcBlock>>(BitcoinBlockStorage, {
         since: id,
         paging: '_id',

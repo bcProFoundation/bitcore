@@ -30,7 +30,7 @@ export async function blocks(
   const normalizedTimes = new Array(tip!.height).fill(0);
 
   // check each block
-  const cursor = BitcoinBlockStorage.collection.find({
+  const cursor = BitcoinBlockStorage.collection.find<IBtcBlock>({
     chain: info.chain,
     network: info.network
   });
@@ -154,7 +154,7 @@ export async function transactions(
 ) {
   const rpc = new AsyncRPC(creds.username, creds.password, creds.host, creds.port);
 
-  const txcursor = TransactionStorage.collection.find({
+  const txcursor = TransactionStorage.collection.find<IBtcTransaction>({
     chain: info.chain,
     network: info.network
   });

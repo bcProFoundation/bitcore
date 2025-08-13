@@ -1,9 +1,9 @@
-import { ObjectID } from 'mongodb';
+import { ObjectId } from 'mongodb-legacy';
 import { StorageService } from '../services/storage';
 import { BaseModel } from './base';
 
 export interface IRateLimit {
-  _id?: ObjectID;
+  _id?: ObjectId;
   identifier: string;
   method: string;
   period: string;
@@ -41,7 +41,7 @@ export class RateLimitModel extends BaseModel<IRateLimit> {
           $setOnInsert: { time: new Date(), expireAt: new Date(Date.now() + 2 * RateLimitTimes.Second) },
           $inc: { count: 1 }
         },
-        { upsert: true, returnOriginal: false }
+        { upsert: true, returnDocument: 'after' }
       ),
       this.collection.findOneAndUpdate(
         { identifier, method, period: 'minute', time: { $gte: new Date(Date.now() - RateLimitTimes.Minute) } },
@@ -49,7 +49,7 @@ export class RateLimitModel extends BaseModel<IRateLimit> {
           $setOnInsert: { time: new Date(), expireAt: new Date(Date.now() + 2 * RateLimitTimes.Minute) },
           $inc: { count: 1 }
         },
-        { upsert: true, returnOriginal: false }
+        { upsert: true, returnDocument: 'after' }
       ),
       this.collection.findOneAndUpdate(
         { identifier, method, period: 'hour', time: { $gte: new Date(Date.now() - RateLimitTimes.Hour) } },
@@ -57,7 +57,7 @@ export class RateLimitModel extends BaseModel<IRateLimit> {
           $setOnInsert: { time: new Date(), expireAt: new Date(Date.now() + 2 * RateLimitTimes.Hour) },
           $inc: { count: 1 }
         },
-        { upsert: true, returnOriginal: false }
+        { upsert: true, returnDocument: 'after' }
       )
     ]);
   }

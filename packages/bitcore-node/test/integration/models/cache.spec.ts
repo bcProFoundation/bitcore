@@ -1,4 +1,4 @@
-import { ObjectId } from 'bson';
+import { ObjectId } from 'mongodb-legacy';
 import { expect } from 'chai';
 import { CacheStorage } from '../../../src/models/cache';
 import { resetDatabase } from '../../helpers';

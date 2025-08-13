@@ -1,9 +1,8 @@
-import { ObjectId } from 'bson';
 import { EventEmitter } from 'events';
 import { Request, Response } from 'express';
-import { ObjectID } from 'mongodb';
-import { Cursor, Db, MongoClient } from 'mongodb';
-import { Readable } from 'stream';
+import { FindCursor, ObjectId } from 'mongodb-legacy';
+import { Db, MongoClient } from 'mongodb-legacy';
+import { Readable, Transform } from 'stream';
 import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
 import '../models';
@@ -40,9 +39,7 @@ export class StorageService {
         : `mongodb://${auth}${dbHost}:${dbPort}/${dbName}?socketTimeoutMS=3600000&noDelay=true${dbReadPreference ? `?readPreference=${dbReadPreference}` : ''}`;
       let attemptConnect = async () => {
         return MongoClient.connect(connectUrl, {
-          keepAlive: true,
-          poolSize: options.maxPoolSize,
-          useNewUrlParser: true
+          maxPoolSize: options.maxPoolSize,
         });
       };
       let attempted = 0;
@@ -105,7 +102,7 @@ export class StorageService {
             break;
         }
       } else if (modelKey == '_id') {
-        typecastedValue = new ObjectID(oldValue) as any;
+        typecastedValue = new ObjectId(oldValue) as any;
       }
     }
     return typecastedValue;
@@ -152,15 +149,15 @@ export class StorageService {
     });
   }
 
-  apiStream<T>(cursor: Cursor<T>, req: Request, res: Response) {
+  apiStream(cursor: Readable, req: Request, res: Response) {
     let closed = false;
     req.on('close', function() {
       closed = true;
-      cursor.close();
+      cursor.destroy();
     });
     res.on('close', function() {
       closed = true;
-      cursor.close();
+      cursor.destroy();
     });
     cursor.on('error', function(err) {
       if (!closed) {
@@ -181,7 +178,7 @@ export class StorageService {
         }
         res.write(data);
       } else {
-        cursor.close();
+        cursor.destroy();
       }
     });
     cursor.on('end', function() {
@@ -238,14 +235,27 @@ export class StorageService {
     const finalQuery = Object.assign({}, originalQuery, query);
     let cursor = model.collection
       .find(finalQuery, options)
-      .addCursorFlag('noCursorTimeout', true)
-      .stream({
-        transform: transform || model._apiTransform.bind(model)
-      });
+      .addCursorFlag('noCursorTimeout', true) as FindCursor<any>;
+
     if (options.sort) {
       cursor = cursor.sort(options.sort);
     }
-    return this.apiStream(cursor, req, res);
+
+    const stream = cursor.stream();
+
+    const transformStream = new Transform({
+      objectMode: true,
+      transform: (doc, _, callback) => {
+        try {
+          const transformed = (transform || model._apiTransform.bind(model))(doc);
+          callback(null, transformed);
+        } catch (err) {
+          callback(err as Error);
+        }
+      }
+    });
+
+    return this.apiStream(stream.pipe(transformStream), req, res);
   }
 }
 

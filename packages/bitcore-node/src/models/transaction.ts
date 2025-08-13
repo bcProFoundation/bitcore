@@ -1,6 +1,5 @@
-import { ObjectId } from 'bson';
 import * as lodash from 'lodash';
-import { Collection } from 'mongodb';
+import { Collection, ObjectId } from 'mongodb-legacy';
 import { Readable, Transform } from 'stream';
 import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
@@ -15,7 +14,7 @@ import { partition } from '../utils';
 import { MongoBound } from './base';
 import { BaseTransaction, ITransaction } from './baseTransaction';
 import { CoinStorage, ICoin } from './coin';
-import { EventStorage } from './events';
+import { CoinEvent, EventStorage } from './events';
 import { IWalletAddress, WalletAddressStorage } from './walletAddress';
 
 export { ITransaction };
@@ -143,7 +142,7 @@ export class MempoolCoinEventTransform extends Transform {
           return { address, coin };
         })
         .filter(({ coin }) => shouldFire(coin));
-      EventStorage.signalAddressCoins(eventPayload);
+      EventStorage.signalAddressCoins(eventPayload as unknown as CoinEvent[]);
     }
     done(null, coinBatch);
   }
@@ -413,7 +412,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
 
       const findWalletsForAddresses = async (addresses: Array<string>) => {
         let partialWallets = await WalletAddressStorage.collection
-          .find({ address: { $in: addresses }, chain, network }, { batchSize: 100 })
+          .find<IWalletAddress>({ address: { $in: addresses }, chain, network }, { batchSize: 100 })
           .project({ wallet: 1, address: 1 })
           .toArray();
         return partialWallets;
@@ -423,18 +422,19 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
         addressBatch.add(mintOp.updateOne.update.$set.address);
         if (addressBatch.size >= 1000) {
           const batchWallets = await findWalletsForAddresses(Array.from(addressBatch));
-          wallets = wallets.concat(batchWallets);
+          wallets = wallets.concat(batchWallets as unknown as IWalletAddress[]);
           addressBatch.clear();
         }
       }
       const remainingBatch = await findWalletsForAddresses(Array.from(addressBatch));
-      wallets = wallets.concat(remainingBatch);
+      wallets = wallets.concat(remainingBatch as unknown as IWalletAddress[]);
 
       if (wallets.length) {
         for (let mintOp of mintBatch) {
           let transformedWallets = wallets
             .filter(wallet => wallet.address === mintOp.updateOne.update.$set.address)
             .map(wallet => wallet.wallet);
+
           mintOp.updateOne.update.$set.wallets = transformedWallets;
           if (mintOp.updateOne.update.$setOnInsert) {
             delete mintOp.updateOne.update.$setOnInsert.wallets;
@@ -598,7 +598,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
   async findAllRelatedOutputs(forTx: string) {
     const seen = {};
     const allRelatedCoins: ICoin[] = [];
-    const txCoins = await CoinStorage.collection.find({ mintTxid: forTx, mintHeight: { $ne: SpentHeightIndicators.conflicting } }).toArray();
+    const txCoins = await CoinStorage.collection.find<ICoin>({ mintTxid: forTx, mintHeight: { $ne: SpentHeightIndicators.conflicting } }).toArray();
     for (let coin of txCoins) {
       allRelatedCoins.push(coin);
       seen[coin.mintTxid] = true;
@@ -614,7 +614,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
     const seen = {};
     const batchStream = CoinStorage.collection.find({ mintTxid: forTx, mintHeight: { $ne: SpentHeightIndicators.conflicting } });
     let coin: ICoin | null;
-    while (coin = (await batchStream.next())) {
+    while (coin = (await batchStream.next() as ICoin | null)) {
       seen[coin.mintTxid] = true;
       yield coin;
 
@@ -656,7 +656,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
       const seenInvalidTxids = new Set();
       let input: ICoin | null;
 
-      while ((input = await conflictingInputsStream.next())) {
+      while ((input = (await conflictingInputsStream.next()) as ICoin | null)) {
         if (seenInvalidTxids.has(input.spentTxid)) {
           continue;
         }
@@ -693,7 +693,7 @@ export class TransactionModel extends BaseTransaction<IBtcTransaction> {
       const seenTxids = new Set();
       let output: ICoin | null;
 
-      while ((output = await spentOutputsStream.next())) {
+      while ((output = (await spentOutputsStream.next()) as  ICoin | null)) {
         if (!output.spentTxid || seenTxids.has(output.spentTxid)) {
           continue;
         }

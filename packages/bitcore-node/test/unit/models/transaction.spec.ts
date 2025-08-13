@@ -1,4 +1,4 @@
-import { ObjectId } from 'bson';
+import { ObjectId } from 'mongodb-legacy';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { Readable } from 'stream';

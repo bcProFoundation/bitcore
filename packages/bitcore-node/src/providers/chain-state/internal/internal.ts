@@ -2,8 +2,8 @@ import { GetBlockBeforeTimeParams, StreamTransactionParams, WalletBalanceType } 
 import { StreamBlocksParams } from '../../../types/namespaces/ChainStateProvider';
 
 import { Validation } from '@bcpros/crypto-wallet-core';
-import { ObjectId } from 'mongodb';
-import { Transform } from 'stream';
+import { ObjectId } from 'mongodb-legacy';
+import { Readable, Transform } from 'stream';
 import { LoggifyClass } from '../../../decorators/Loggify';
 import { MongoBound } from '../../../models/base';
 import { BitcoinBlockStorage, IBtcBlock } from '../../../models/block';
@@ -110,9 +110,10 @@ export class InternalStateProvider implements IChainStateService {
 
   async getBlocks(params: GetBlockParams): Promise<Array<IBlock>> {
     const { query, options } = this.getBlocksQuery(params);
-    let cursor = BitcoinBlockStorage.collection.find(query, options).addCursorFlag('noCursorTimeout', true);
-    if (options.sort) {
-      cursor = cursor.sort(options.sort);
+    const { sort, ...findOptions } = options;
+    let cursor = BitcoinBlockStorage.collection.find(query, findOptions).addCursorFlag('noCursorTimeout', true) as any;
+    if (sort) {
+      cursor = cursor.sort(sort);
     }
     let blocks = await cursor.toArray();
     const tip = await this.getLocalTip(params);
@@ -179,10 +180,10 @@ export class InternalStateProvider implements IChainStateService {
     return blocks[0];
   }
 
-  async getBlockBeforeTime(params: GetBlockBeforeTimeParams): Promise<IBlock|null> {
+  async getBlockBeforeTime(params: GetBlockBeforeTimeParams): Promise<IBlock | null> {
     const { chain, network, time } = params;
     const date = new Date(time || Date.now());
-    const [block] = await BitcoinBlockStorage.collection
+    const [blockRaw] = await BitcoinBlockStorage.collection
       .find({
         chain,
         network,
@@ -191,7 +192,25 @@ export class InternalStateProvider implements IChainStateService {
       .limit(1)
       .sort({ timeNormalized: -1 })
       .toArray();
-    return block;
+    if (!blockRaw) {
+      return null;
+    }
+    return {
+      chain: blockRaw.chain,
+      confirmations: blockRaw.confirmations,
+      network: blockRaw.network,
+      height: blockRaw.height,
+      hash: blockRaw.hash,
+      time: blockRaw.time,
+      timeNormalized: blockRaw.timeNormalized,
+      previousBlockHash: blockRaw.previousBlockHash,
+      nextBlockHash: blockRaw.nextBlockHash,
+      transactions: blockRaw.transactions,
+      transactionCount: blockRaw.transactionCount,
+      size: blockRaw.size,
+      reward: blockRaw.reward,
+      processed: blockRaw.processed
+    } as IBlock;
   }
 
   async streamTransactions(params: StreamTransactionsParams) {
@@ -293,7 +312,18 @@ export class InternalStateProvider implements IChainStateService {
 
   async getWallet(params: GetWalletParams) {
     const { chain, pubKey } = params;
-    return WalletStorage.collection.findOne({ chain, pubKey });
+    const doc = await WalletStorage.collection.findOne({ chain, pubKey });
+    if (!doc) return null;
+
+    return {
+      _id: doc._id,
+      chain: doc.chain,
+      network: doc.network,
+      name: doc.name,
+      singleAddress: doc.singleAddress,
+      pubKey: doc.pubKey,
+      path: doc.path
+    } as IWallet;
   }
 
   streamWalletAddresses(params: StreamWalletAddressesParams) {
@@ -337,7 +367,7 @@ export class InternalStateProvider implements IChainStateService {
     const stringifyWallets = (wallets: Array<ObjectId>) => wallets.map(w => w.toHexString());
     const allMissingAddresses = new Array<string>();
     let totalMissingValue = 0;
-    const missingStream = cursor.pipe(
+    const missingStream = Readable.from(cursor).pipe(
       new Transform({
         objectMode: true,
         async transform(spentCoin: MongoBound<ICoin>, _, next) {
@@ -423,7 +453,7 @@ export class InternalStateProvider implements IChainStateService {
       .sort({ blockTimeNormalized: 1 })
       .addCursorFlag('noCursorTimeout', true);
     const listTransactionsStream = new this.WalletStreamTransform(wallet);
-    transactionStream.pipe(listTransactionsStream).pipe(res);
+    Readable.from(transactionStream).pipe(listTransactionsStream).pipe(res);
   }
 
   async getWalletBalance(params: GetWalletBalanceParams): Promise<WalletBalanceType> {
@@ -608,16 +638,16 @@ export class InternalStateProvider implements IChainStateService {
     const query =
       startHeight && endHeight
         ? {
-            processed: true,
-            chain,
-            network,
-            height: { $gt: startHeight, $lt: endHeight }
-          }
+          processed: true,
+          chain,
+          network,
+          height: { $gt: startHeight, $lt: endHeight }
+        }
         : {
-            processed: true,
-            chain,
-            network
-          };
+          processed: true,
+          chain,
+          network
+        };
     const locatorBlocks = await BitcoinBlockStorage.collection
       .find(query).sort({ height: -1 }).limit(30)
       .addCursorFlag('noCursorTimeout', true)
