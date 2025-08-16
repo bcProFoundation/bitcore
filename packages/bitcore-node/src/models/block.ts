@@ -2,7 +2,7 @@ import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
 import { StorageService } from '../services/storage';
 import { IBlock } from '../types/Block';
-// import { SpentHeightIndicators } from '../types/Coin';
+import { SpentHeightIndicators } from '../types/Coin';
 import { BitcoinBlockType, BitcoinHeaderObj } from '../types/namespaces/Bitcoin';
 import { TransformOptions } from '../types/TransformOptions';
 import { MongoBound } from './base';
@@ -61,22 +61,17 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
     const previousBlock = await this.collection.findOne({ hash: convertedBlock.previousBlockHash, chain, network });
 
     try {
-      logger.warn("DEBUGPRINT[477]: block.ts:63 (after try )")
-      // await this.collection.bulkWrite([blockOp], {
-      //   ordered: false,
-      //   writeConcern: { w: 'majority', j: true, wtimeout: 10000 }
-      // });
+      await this.collection.bulkWrite([blockOp]);
     } catch (err) {
       logger.error('MongoDB bulkWrite failed %o', { error: err, blockOp });
       throw err; // or handle as needed
     }
-    logger.warn("DEBUGPRINT[478]: block.ts:72 (after throw err; // or handle as needed)")
     try {
       if (previousBlock) {
-        // await this.collection.updateOne(
-        //   { chain, network, hash: previousBlock.hash },
-        //   { $set: { nextBlockHash: convertedBlock.hash } }
-        // );
+        await this.collection.updateOne(
+          { chain, network, hash: previousBlock.hash },
+          { $set: { nextBlockHash: convertedBlock.hash } }
+        );
         logger.debug('Updating previous block.nextBlockHash %o', convertedBlock.hash);
       }
     } catch (err) {
@@ -195,12 +190,11 @@ export class BitcoinBlock extends BaseBlock<IBtcBlock> {
       CoinStorage.collection.deleteMany({ chain, network, mintHeight: { $gte: localTip.height } })
     ];
     await Promise.all(reorgOps);
-    logger.warn("DEBUGPRINT[479]: block.ts:197 (after await Promise.all(reorgOps);)")
 
-    // await CoinStorage.collection.updateMany(
-    //   { chain, network, spentHeight: { $gte: localTip.height } },
-    //   { $set: { spentTxid: null, spentHeight: SpentHeightIndicators.unspent } }
-    // );
+    await CoinStorage.collection.updateMany(
+      { chain, network, spentHeight: { $gte: localTip.height } },
+      { $set: { spentTxid: null, spentHeight: SpentHeightIndicators.unspent } }
+    );
 
     logger.debug('Removed data from above blockHeight: %o', localTip.height);
     return true;
