@@ -9,7 +9,6 @@ var scripts = [
   'bcmonitor/bcmonitor.js',
   'emailservice/emailservice.js',
   'pushnotificationsservice/pushnotificationsservice.js',
-  'fiatrateservice/fiatrateservice.js',
   'currencyrateservice/currencyrate.js',
   'bws.js'
 ];
