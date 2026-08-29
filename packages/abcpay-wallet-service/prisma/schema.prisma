@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Wallet {
+  id                 String       @id @default(uuid())
+  name               String
+  coin               String
+  network            String
+  m                  Int
+  n                  Int
+  status             String       @default("pending")
+  pubKey             String
+  derivationStrategy String       @default("BIP44")
+  addressType        String
+  createdAt          DateTime     @default(now())
+  copayers           Copayer[]
+  addresses          Address[]
+  txProposals        TxProposal[]
+  notes              TxNote[]
+}
+
+model Copayer {
+  id            String   @id
+  walletId      String
+  wallet        Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  name          String
+  xPubKey       String
+  requestPubKey String
+  signature     String
+  copayerIndex  Int
+  createdAt     DateTime @default(now())
+
+  @@unique([walletId, xPubKey])
+  @@index([walletId])
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  walletId     String
+  wallet       Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  address      String
+  path         String
+  isChange     Boolean  @default(false)
+  addressIndex Int
+  publicKeys   String[]
+  createdAt    DateTime @default(now())
+
+  @@unique([walletId, path])
+  @@index([address])
+  @@index([walletId])
+}
+
+model TxProposal {
+  id                 String     @id @default(uuid())
+  walletId           String
+  wallet             Wallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  creatorId          String
+  toAddress          String
+  amount             String
+  fee                String
+  feePerKb           Int
+  changeAddress      String?
+  message            String?
+  status             String
+  raw                String?
+  txid               String?
+  inputs             Json
+  outputs            Json
+  excludeUnconfirmed Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  actions            TxAction[]
+
+  @@index([walletId, status])
+}
+
+model TxAction {
+  id         String     @id @default(uuid())
+  proposalId String
+  proposal   TxProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  copayerId  String
+  type       String
+  signatures String[]
+  createdAt  DateTime   @default(now())
+
+  @@unique([proposalId, copayerId])
+}
+
+model TxNote {
+  id        String   @id @default(uuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  txid      String
+  copayerId String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([walletId, txid, copayerId])
+}
