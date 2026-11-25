@@ -4,7 +4,6 @@ import 'source-map-support/register';
 import config from '../config';
 import * as Types from '../types/expressapp';
 import { logger } from './logger';
-import { AaveRouter } from './routes/aave';
 import { registerAbcPayRoutes } from './routes/abcpay';
 import { passport, setupAbcPayMiddleware, startAbcPayServices } from './routes/abcpaySetup';
 import { registerAdvertisementRoutes } from './routes/advertisements';
@@ -13,7 +12,6 @@ import { createRouteHelpers } from './routes/context';
 import { error } from './routes/helpers';
 import { registerMaintenanceRoutes } from './routes/maintenance';
 import { createWalletLimiter } from './routes/middleware/createWalletLimiter';
-import { registerMoralisRoutes } from './routes/moralis';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerServiceRoutes } from './routes/services';
 import { createEstimateFeeLimiter, setupAppMiddleware } from './routes/setup';
@@ -127,12 +125,6 @@ export class ExpressApp {
       returnError
     });
 
-    registerMoralisRoutes(router, {
-      getServer,
-      getServerWithAuth,
-      returnError
-    });
-
     registerAbcPayRoutes(router, {
       getServer,
       getServerWithAuth,
@@ -143,7 +135,6 @@ export class ExpressApp {
     });
 
     /** Imported routes */
-    router.use(new AaveRouter({ returnError, getServer }).router);
     router.use(new TssRouter({ returnError, opts }).router);
 
     // Set no-cache by default

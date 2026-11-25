@@ -100,24 +100,8 @@ describe('Address Validation', () => {
     expect(isValidTestAddress).to.equal(true);
   });
 
-  it('should be able to validate an ETH address', async () => {
-    const isValidAddress = await Validation.validateAddress('ETH', 'mainnet', ethAddress);
-    const isValidPrefixAddress = await Validation.validateAddress('ETH', 'mainnet', prefixEthAddress);
-    expect(isValidAddress).to.equal(true);
-    expect(isValidPrefixAddress).to.equal(true);
-  });
 
-  it('should be able to validate an XRP address', async () => {
-    const isValidAddress = await Validation.validateAddress('XRP', 'mainnet', xrpAddress);
-    expect(isValidAddress).to.equal(true);
-  });
 
-  it('should be able to validate an MATIC address', async () => {
-    const isValidAddress = await Validation.validateAddress('MATIC', 'mainnet', maticAddress);
-    const isValidPrefixAddress = await Validation.validateAddress('MATIC', 'mainnet', prefixMaticAddress);
-    expect(isValidAddress).to.equal(true);
-    expect(isValidPrefixAddress).to.equal(true);
-  });
 
   it('should be able to validate an BTC Uri', async () => {
     const isValidUri = await Validation.validateUri('BTC', btcUri);
@@ -147,32 +131,8 @@ describe('Address Validation', () => {
     expect(isValidTestUri).to.equal(true);
   });
 
-  it('should be able to validate an ETH Uri', async () => {
-    const isValidUri = await Validation.validateUri('ETH', ethUri);
-    const isValidUriParams = await Validation.validateUri('ETH', ethUriParams);
-    const isValidUriSingleParam = await Validation.validateUri('ETH', ethUriSingleParam);
-    expect(isValidUri).to.equal(true);
-    expect(isValidUriParams).to.equal(true);
-    expect(isValidUriSingleParam).to.equal(true);
-  });
 
-  it('should be able to validate an XRP Uri', async () => {
-    const isValidUri = await Validation.validateUri('XRP', xrpUri);
-    const isValidUriParams = await Validation.validateUri('XRP', xrpUriParams);
-    const isValidUriSingleParam = await Validation.validateUri('XRP', xrpUriSingleParam);
-    expect(isValidUri).to.equal(true);
-    expect(isValidUriParams).to.equal(true);
-    expect(isValidUriSingleParam).to.equal(true);
-  });
 
-  it('should be able to validate an MATIC Uri', async () => {
-    const isValidUri = await Validation.validateUri('MATIC', maticUri);
-    const isValidUriParams = await Validation.validateUri('MATIC', maticUriParams);
-    const isValidUriSingleParam = await Validation.validateUri('MATIC', maticUriSingleParam);
-    expect(isValidUri).to.equal(true);
-    expect(isValidUriParams).to.equal(true);
-    expect(isValidUriSingleParam).to.equal(true);
-  });
 
   it('should be able to invalidate an incorrect BTC address', async () => {
     const inValidAddress = await Validation.validateAddress('BTC', 'mainnet', invalidBtcAddress);
@@ -194,89 +154,18 @@ describe('Address Validation', () => {
     expect(inValidAddress).to.equal(false);
   });
 
-  it('should be able to invalidate an incorrect ETH address', async () => {
-    const inValidAddress = await Validation.validateAddress('ETH', 'mainnet', invalidEthAddress);
-    expect(inValidAddress).to.equal(false);
-  });
 
-  it('should be able to invalidate an incorrect XRP address', async () => {
-    const inValidAddress = await Validation.validateAddress('XRP', 'mainnet', invalidXrpAddress);
-    expect(inValidAddress).to.equal(false);
-  });
 
-  it('should be able to invalidate an incorrect MATIC address', async () => {
-    const inValidAddress = await Validation.validateAddress('MATIC', 'mainnet', invalidMaticAddress);
-    expect(inValidAddress).to.equal(false);
-  });
 
-  it('should be able to invalidate incorrect ETH Uri params', async () => {
-    const inValidEthUri = await Validation.validateUri('ETH', invalidEthUriParams);
-    expect(inValidEthUri).to.equal(false);
-  });
 
-  it('should be able to invalidate ETH URI without ethereum prefix', async () => {
-    const inValidEthPrefix = await Validation.validateUri('ETH', invalidEthPrefix);
-    expect(inValidEthPrefix).to.equal(false);
-  });
 
-  it('should be able to invalidate incorrect XRP Uri params', async () => {
-    const inValidXrpUri = await Validation.validateUri('XRP', invalidXrpUriParams);
-    expect(inValidXrpUri).to.equal(false);
-  });
 
-  it('should be able to invalidate XRP URI without ripple prefix', async () => {
-    const inValidXrpPrefix = await Validation.validateUri('XRP', invalidXrpPrefix);
-    expect(inValidXrpPrefix).to.equal(false);
-  });
 
-  it('should be able to invalidate incorrect MATIC Uri params', async () => {
-    const inValidMaticUri = await Validation.validateUri('MATIC', invalidMaticUriParams);
-    expect(inValidMaticUri).to.equal(false);
-  });
 
-  it('should be able to invalidate MATIC URI without ethereum prefix', async () => {
-    const inValidMaticPrefix = await Validation.validateUri('MATIC', invalidMaticPrefix);
-    expect(inValidMaticPrefix).to.equal(false);
-  });
 
-  it('should validate ARC addresses', async () => {
-    const address = '37d7B3bBD88EFdE6a93cF74D2F5b0385D3E3B08A';
-    const prefixedAddress = `0x${address}`;
 
-    expect(await Validation.validateAddress('ARC', 'testnet', address)).to.equal(true);
-    expect(await Validation.validateAddress('ARC', 'testnet', prefixedAddress)).to.equal(true);
-    expect(await Validation.validateAddress('ARC', 'testnet', address.slice(1))).to.equal(false);
-  });
 
-  it('should validate ARC URIs', async () => {
-    const address = '0x37d7B3bBD88EFdE6a93cF74D2F5b0385D3E3B08A';
-    const uri = `arc:${address}`;
-    const uriParams = `${uri}?value=123&gasPrice=123&gas=123&gasLimit=123`;
 
-    expect(await Validation.validateUri('ARC', uri)).to.equal(true);
-    expect(await Validation.validateUri('ARC', uriParams)).to.equal(true);
-    expect(await Validation.validateUri('ARC', `${uri}?value=123`)).to.equal(true);
-    expect(await Validation.validateUri('ARC', address)).to.equal(false);
-    expect(await Validation.validateUri('ARC', `${uri}?value=invalid&gasLimit=123&gas=123`)).to.equal(false);
-  });
 
-  it('should be able to validate a SOL address', async () => {
-    const isValidAddress = await Validation.validateAddress('SOL', 'mainnet', solAddress);
-    expect(isValidAddress).to.equal(true);
-  });
 
-  it('should be able to invalidate an incorrect SOL address', async () => {
-    const isValidAddress = await Validation.validateAddress('SOL', 'mainnet', invalidSolAddress);
-    expect(isValidAddress).to.equal(false);
-  });
-
-  it('should be able to validate a SOL Uri', async () => {
-    const isValidUri = await Validation.validateUri('SOL', solUri);
-    expect(isValidUri).to.equal(true);
-  });
-
-  it('should be able to invalidate an incorrect SOL Uri', async () => {
-    const isValidUri = await Validation.validateUri('SOL', invalidSolUri);
-    expect(isValidUri).to.equal(false);
-  });
 });

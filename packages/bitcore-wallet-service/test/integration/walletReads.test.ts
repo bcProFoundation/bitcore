@@ -95,45 +95,7 @@ describe('Wallet reads', function() {
       });
     }
 
-    it('keeps a token status and a native status of one wallet apart when they run together', async function() {
-      const { server, wallet } = await helpers.createAndJoinWallet(1, 1, { coin: 'eth' });
-      await call(server, 'createAddress');
-      await helpers.stubUtxos(server, wallet, [1], { tokenAddress: TOKEN_ADDRESS });
-      // the token address each balance call saw, read when it was made
-      const seen = [];
-      const getBalance = blockchainExplorer.getBalance;
-      sinon.stub(blockchainExplorer, 'getBalance').callsFake((w: any, cb) => {
-        seen.push(w.tokenAddress || null);
-        return getBalance(w, cb);
-      });
 
-      const [native, token] = await Promise.all([
-        call(server, 'getStatus'),
-        call(server, 'getStatus', { tokenAddress: TOKEN_ADDRESS })
-      ]);
-
-      native.balance.totalAmount.should.equal(1e18);
-      token.balance.totalAmount.should.equal(2e6);
-      seen.sort().should.deep.equal([null, TOKEN_ADDRESS].sort());
-    });
-
-    it('keeps the token address the balance step sets out of the returned and the stored wallet', async function() {
-      const { server, wallet } = await helpers.createAndJoinWallet(1, 1, { coin: 'eth' });
-      await call(server, 'createAddress');
-      await helpers.stubUtxos(server, wallet, [1], { tokenAddress: TOKEN_ADDRESS });
-      // an unregistered wallet, so the balance step stores its copy
-      await storage.db.collection(Storage.collections.WALLETS).updateOne({ id: wallet.id }, { $set: { beRegistered: false } });
-
-      const status = await call(server, 'getStatus', { tokenAddress: TOKEN_ADDRESS, includeExtendedInfo: true });
-
-      status.balance.totalAmount.should.equal(2e6);
-      status.wallet.should.not.have.property('tokenAddress');
-      status.wallet.should.not.have.property('multisigContractAddress');
-      const stored = await storedWallet(wallet.id);
-      stored.beRegistered.should.equal(true);
-      stored.should.not.have.property('tokenAddress');
-      JSON.parse(JSON.stringify(status.wallet)).should.deep.equal({ ...stored, beRegistered: status.wallet.beRegistered });
-    });
 
     it('counts pending txps as locked and the inputs of broadcast txps as spent', async function() {
       const { server, wallet } = await helpers.createAndJoinWallet(1, 1);
@@ -216,15 +178,6 @@ describe('Wallet reads', function() {
         reads().should.equal(1);
       });
 
-      it('reads the wallet once for an account-based wallet', async function() {
-        const { server, wallet } = await helpers.createAndJoinWallet(1, 1, { coin: 'eth' });
-        await call(server, 'createAddress');
-        await helpers.stubUtxos(server, wallet, [1]);
-
-        const reads = countWalletReads(wallet.id);
-        await call(server, 'getStatus');
-        reads().should.equal(1);
-      });
 
       it('reads the wallet once when the status registers the wallet', async function() {
         const { server, wallet } = await helpers.createAndJoinWallet(1, 2);
@@ -245,12 +198,6 @@ describe('Wallet reads', function() {
     });
 
     describe('errors', function() {
-      it('fails with UPGRADE_NEEDED for a SOL wallet and an old client', async function() {
-        const { server } = await helpers.createAndJoinWallet(1, 1, { coin: 'sol' });
-        server.clientVersion = 'bwc-10.10.0';
-        const err = await call(server, 'getStatus').catch(e => e);
-        err.code.should.equal('UPGRADE_NEEDED');
-      });
 
       it('fails with WALLET_NOT_FOUND when the wallet is gone', async function() {
         const { server, wallet } = await helpers.createAndJoinWallet(1, 1);

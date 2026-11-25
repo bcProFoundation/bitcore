@@ -225,65 +225,7 @@ describe('CoinGecko integration', function() {
       should.exist(data);
     });
 
-    it('should use the Arc platform for token lists and contract lookups', async () => {
-      const cacheStub = forceGlobalCacheMisses();
-      const tokenAddress = '0x3600000000000000000000000000000000000000';
-      const otherToken = { chainId: 5042, address: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        name: 'Arc Test Token', symbol: 'TEST', decimals: 6, logoURI: '' };
-      const tokenList = [{ chainId: 5042, address: tokenAddress, symbol: 'USDC', decimals: 6 }, otherToken];
-      fakeRequest = createCoinGeckoRequestStub({
-        onTokenList: platformId => {
-          platformId.should.equal('arc');
-          return { tokens: tokenList };
-        },
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('arc');
-          address.should.equal(tokenAddress);
-          return { id: 'usd-coin', symbol: 'usdc', asset_platform_id: 'arc' };
-        },
-        onMarketChart: id => {
-          id.should.equal('usd-coin');
-          return { prices: [[1, 1]] };
-        }
-      });
-      cg().request = fakeRequest;
 
-      const tokens = await getTokens({ params: { chain: 'arc' } });
-      tokens.should.deep.equal([otherToken]);
-      cacheStub.onSecondCall().callsFake((_key, _duration, cb) => cb(null, tokenList, null));
-      (await getTokens({ params: { chain: 'arc' } })).should.deep.equal([otherToken]);
-      const rates = await getFiatRates({ coin: 'USDC', chain: 'arc', tokenAddress });
-      rates.should.deep.equal([{ ts: 1, rate: 1 }]);
-    });
-
-    it('should map chain aliases to the correct token list platform', async () => {
-      forceGlobalCacheMisses();
-
-      let platformSeen: string | undefined;
-      fakeRequest = createCoinGeckoRequestStub({
-        onTokenList: platformId => {
-          platformSeen = platformId;
-          return {
-            tokens: [
-              {
-                chainId: 137,
-                address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
-                symbol: 'USDC',
-                name: 'USD Coin',
-                decimals: 6,
-                logoURI: 'xxxxxx'
-              }
-            ]
-          };
-        }
-      });
-
-      cg().request = fakeRequest;
-
-      const data = await getTokens({ params: { chain: 'pol' } });
-      should.exist(data);
-      platformSeen.should.equal('polygon-pos');
-    });
 
     it('should return error if coinGecko is commented in config', async () => {
       config.coinGecko = undefined;
@@ -347,14 +289,6 @@ describe('CoinGecko integration', function() {
       data[0].low52w.should.equal(90);
     });
 
-    it('should resolve native Arc market stats and fiat rates to USDC', async () => {
-      const getSpy = sandbox.spy(fakeRequest, 'get');
-      await getMarketStats({ coin: 'arc' });
-      parseRequestedIdsFromMarketsUrl(getSpy.firstCall.args[0]).should.deep.equal(['usd-coin']);
-
-      await getFiatRates({ coin: 'arc' });
-      matchCoinIdFromMarketChartUrl(getSpy.lastCall.args[0]).should.equal('usd-coin');
-    });
 
     it('should reject non-default coin symbols without tokenAddress', async () => {
       try {
@@ -365,14 +299,6 @@ describe('CoinGecko integration', function() {
       }
     });
 
-    it('should require tokenAddress when chain is provided for market stats', async () => {
-      try {
-        await getMarketStats({ coin: ['btc'], chain: ['eth'] });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('chain is only supported for token lookups; provide tokenAddress or omit chain for native coins');
-      }
-    });
 
     it('should reject invalid chain values for default marketstats coins', async () => {
       try {
@@ -384,191 +310,12 @@ describe('CoinGecko integration', function() {
     });
 
 
-    it('should resolve a token unambiguously when tokenAddress is provided', async () => {
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
 
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('arbitrum-one');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'arbitrum-bridged-usdc-arbitrum',
-            symbol: 'usdc.e',
-            asset_platform_id: 'arbitrum-one'
-          };
-        },
-        onMarkets: ids =>
-          ids.map(id => ({
-            id,
-            symbol: 'usdc.e',
-            name: 'Arbitrum Bridged USDC (Arbitrum)',
-            image: `${id}.png`,
-            current_price: 1,
-            total_volume: 1,
-            circulating_supply: 1,
-            market_cap: 1,
-            last_updated: '2020-01-01T00:00:00.000Z'
-          })),
-        onMarketChart: _id => ({ prices: [[0, 1], [1, 1]] }),
-        onCoinInfo: _id => ({ description: { en: 'About token' }, asset_platform_id: 'arbitrum-one' })
-      });
 
-      cg().request = fakeRequest;
 
-      const data = await getMarketStats({ coin: 'USDC.e', chain: 'arb', tokenAddress });
-      should.exist(data);
-      data.should.have.length(1);
-      data[0].name.should.equal('Arbitrum Bridged USDC (Arbitrum)');
-    });
 
-    it('should resolve market stats by chain + tokenAddress when coin is omitted', async () => {
-      const tokenAddress = '0xff970a61a04b1ca14834a43f5de4533ebddb5cc8';
 
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('arbitrum-one');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'bridged-usdc-arbitrum',
-            symbol: 'usdc',
-            asset_platform_id: 'arbitrum-one'
-          };
-        },
-        onMarkets: ids =>
-          ids.map(id => ({
-            id,
-            symbol: 'usdc',
-            name: 'Arbitrum Bridged USDC (Arbitrum)',
-            image: `${id}.png`,
-            current_price: 1,
-            total_volume: 1,
-            circulating_supply: 1,
-            market_cap: 1,
-            last_updated: '2020-01-01T00:00:00.000Z'
-          })),
-        onMarketChart: _id => ({ prices: [[0, 1], [1, 1]] }),
-        onCoinInfo: _id => ({ description: { en: 'About token' }, asset_platform_id: 'arbitrum-one' })
-      });
-      cg().request = fakeRequest;
 
-      const data = await getMarketStats({ chain: 'arb', tokenAddress });
-      should.exist(data);
-      data.should.have.length(1);
-      data[0].name.should.equal('Arbitrum Bridged USDC (Arbitrum)');
-    });
-
-    it('should map pol alias to polygon-pos for token marketstats lookup', async () => {
-      const tokenAddress = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('polygon-pos');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'usd-coin',
-            symbol: 'usdc',
-            asset_platform_id: 'polygon-pos'
-          };
-        },
-        onMarkets: ids =>
-          ids.map(id => ({
-            id,
-            symbol: 'usdc',
-            name: 'USD Coin (PoS)',
-            image: `${id}.png`,
-            current_price: 1,
-            total_volume: 1,
-            circulating_supply: 1,
-            market_cap: 1,
-            last_updated: '2020-01-01T00:00:00.000Z'
-          })),
-        onMarketChart: _id => ({ prices: [[0, 1], [1, 1]] }),
-        onCoinInfo: _id => ({ description: { en: 'About token' }, asset_platform_id: 'polygon-pos' })
-      });
-      cg().request = fakeRequest;
-
-      const data = await getMarketStats({ chain: 'pol', tokenAddress });
-      should.exist(data);
-      data.should.have.length(1);
-      data[0].name.should.equal('USD Coin (PoS)');
-    });
-
-    it('should reject tokenAddress when returned token chain does not match chain', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: () => ({
-          id: 'arbitrum-bridged-usdc-arbitrum',
-          symbol: 'usdc.e',
-          asset_platform_id: 'ethereum'
-        })
-      });
-      cg().request = fakeRequest;
-
-      try {
-        await getMarketStats({ coin: 'USDC.e', chain: 'arb', tokenAddress });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('tokenAddress does not match chain');
-      }
-    });
-
-    it('should map tokenAddress contract 404s to Unsupported tokenAddress', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0x000000000000000000000000000000000000dead';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: () => ({
-          status: { error_code: 404, error_message: 'not found' }
-        })
-      });
-      cg().request = fakeRequest;
-
-      try {
-        await getMarketStats({ coin: 'USDC.e', chain: 'arb', tokenAddress });
-        should.fail('should have thrown');
-      } catch (err) {
-        loggerError.callCount.should.equal(1);
-        loggerError.args[0][0].should.contain('CoinGecko request failed');
-        err.message.should.equal('Unsupported tokenAddress');
-      }
-    });
-
-    it('should reject invalid EVM tokenAddress format before lookup', async () => {
-      const getSpy = sandbox.spy();
-      cg().request = { get: getSpy };
-
-      try {
-        await getMarketStats({ coin: 'USDC.e', chain: 'arb', tokenAddress: 'invalid-evm-address' });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('Invalid tokenAddress');
-        err.statusCode.should.equal(400);
-      }
-
-      getSpy.callCount.should.equal(0);
-    });
-
-    it('should reject tokenAddress when returned token symbol does not match coin', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: () => ({
-          id: 'arbitrum-bridged-usdc-arbitrum',
-          symbol: 'usdc.e'
-        })
-      });
-      cg().request = fakeRequest;
-
-      try {
-        await getMarketStats({ coin: 'WBTC', chain: 'arb', tokenAddress });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('tokenAddress does not match coin');
-      }
-    });
 
 
     it('should use DB cache for default marketstats coin', async () => {
@@ -586,50 +333,6 @@ describe('CoinGecko integration', function() {
       storeCacheStub.getCall(0).args[0].should.equal('cgMarketStats:usd:bitcoin');
     });
 
-    it('should bypass DB cache for token marketstats requests', async () => {
-      const checkCacheStub = sandbox
-        .stub(cg().storage, 'checkAndUseGlobalCache')
-        .callsFake((_key, _duration, cb) => cb(null, null, null));
-      const storeCacheStub = sandbox.stub(cg().storage, 'storeGlobalCache').callsFake((_key, _values, cb) => cb(null));
-
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('arbitrum-one');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'arbitrum-bridged-usdc-arbitrum',
-            symbol: 'usdc.e',
-            asset_platform_id: 'arbitrum-one'
-          };
-        },
-        onMarkets: ids =>
-          ids.map(id => ({
-            id,
-            symbol: 'usdc.e',
-            name: 'Arbitrum Bridged USDC (Arbitrum)',
-            image: `${id}.png`,
-            current_price: 1,
-            total_volume: 1,
-            circulating_supply: 1,
-            market_cap: 1,
-            last_updated: '2020-01-01T00:00:00.000Z'
-          })),
-        onMarketChart: _id => ({ prices: [[0, 1], [1, 1]] }),
-        onCoinInfo: _id => ({ description: { en: 'About token' } })
-      });
-      cg().request = fakeRequest;
-
-      const data = await getMarketStats({ coin: 'USDC.e', chain: 'arb', tokenAddress });
-
-      should.exist(data);
-
-      const checkedKeys = checkCacheStub.getCalls().map(c => c.args[0] as string);
-      const storedKeys = storeCacheStub.getCalls().map(c => c.args[0] as string);
-      checkedKeys.some(k => typeof k === 'string' && k.startsWith('cgMarketStats:')).should.equal(false);
-      storedKeys.some(k => typeof k === 'string' && k.startsWith('cgMarketStats:')).should.equal(false);
-    });
 
     it('should return error if coinGecko is commented in config', async () => {
       config.coinGecko = undefined;
@@ -674,14 +377,6 @@ describe('CoinGecko integration', function() {
       }
     });
 
-    it('should require tokenAddress when chain is provided for fiat rates', async () => {
-      try {
-        await getFiatRates({ coin: 'BTC', chain: 'eth' });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('chain is only supported for token lookups; provide tokenAddress or omit chain for native coins');
-      }
-    });
 
     it('should get fiat rates with explicit days', async () => {
       const data = await getFiatRates({ coin: 'BTC', days: 365 });
@@ -705,156 +400,12 @@ describe('CoinGecko integration', function() {
       }
     });
 
-    it('should resolve fiat rates unambiguously when tokenAddress is provided', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
 
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('arbitrum-one');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'arbitrum-bridged-usdc-arbitrum',
-            symbol: 'usdc.e',
-            asset_platform_id: 'arbitrum-one'
-          };
-        },
-        onMarketChart: id =>
-          id === 'arbitrum-bridged-usdc-arbitrum'
-            ? { prices: [[1, 77], [2, 78]] }
-            : { prices: [[1, 1], [2, 1]] }
-      });
-      cg().request = fakeRequest;
 
-      const data = await getFiatRates({ coin: 'USDC.e', chain: 'arb', tokenAddress });
-      should.exist(data);
-      data.should.deep.equal([
-        { ts: 1, rate: 77 },
-        { ts: 2, rate: 78 }
-      ]);
-    });
 
-    it('should resolve fiat rates by chain + tokenAddress when coin is omitted', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0xff970a61a04b1ca14834a43f5de4533ebddb5cc8';
 
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('arbitrum-one');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'bridged-usdc-arbitrum',
-            symbol: 'usdc',
-            asset_platform_id: 'arbitrum-one'
-          };
-        },
-        onMarketChart: id =>
-          id === 'bridged-usdc-arbitrum'
-            ? { prices: [[1, 99], [2, 100]] }
-            : { prices: [[1, 1], [2, 1]] }
-      });
-      cg().request = fakeRequest;
 
-      const data = await getFiatRates({ chain: 'arb', tokenAddress });
-      should.exist(data);
-      data.should.deep.equal([
-        { ts: 1, rate: 99 },
-        { ts: 2, rate: 100 }
-      ]);
-    });
 
-    it('should map pol alias to polygon-pos for token fiatrates lookup', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('polygon-pos');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'usd-coin',
-            symbol: 'usdc',
-            asset_platform_id: 'polygon-pos'
-          };
-        },
-        onMarketChart: id =>
-          id === 'usd-coin'
-            ? { prices: [[1, 11], [2, 12]] }
-            : { prices: [[1, 1], [2, 1]] }
-      });
-      cg().request = fakeRequest;
-
-      const data = await getFiatRates({ chain: 'pol', tokenAddress });
-      should.exist(data);
-      data.should.deep.equal([
-        { ts: 1, rate: 11 },
-        { ts: 2, rate: 12 }
-      ]);
-    });
-
-    it('should require a valid chain when tokenAddress is provided', async () => {
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
-      try {
-        await getFiatRates({ coin: 'USDC.e', tokenAddress });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('tokenAddress requires valid chain');
-      }
-    });
-
-    it('should reject invalid Solana tokenAddress format before lookup', async () => {
-      const getSpy = sandbox.spy();
-      cg().request = { get: getSpy };
-
-      try {
-        await getFiatRates({ chain: 'sol', tokenAddress: '0xdeadbeef' });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('Invalid tokenAddress');
-        err.statusCode.should.equal(400);
-      }
-
-      getSpy.callCount.should.equal(0);
-    });
-
-    it('should rethrow non-404 tokenAddress lookup errors', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: () => ({
-          status: { error_code: 429, error_message: 'rate limited' }
-        })
-      });
-      cg().request = fakeRequest;
-
-      try {
-        await getFiatRates({ coin: 'USDC.e', chain: 'arb', tokenAddress });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('coinGecko rate limit');
-      }
-    });
-
-    it('should reject fiat rates tokenAddress when returned token symbol does not match coin', async () => {
-      forceGlobalCacheMisses();
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: () => ({
-          id: 'arbitrum-bridged-usdc-arbitrum',
-          symbol: 'usdc.e'
-        })
-      });
-      cg().request = fakeRequest;
-
-      try {
-        await getFiatRates({ coin: 'WBTC', chain: 'arb', tokenAddress });
-        should.fail('should have thrown');
-      } catch (err) {
-        err.message.should.equal('tokenAddress does not match coin');
-      }
-    });
 
     it('should accept array query params for days', async () => {
       const data = await getFiatRates({ coin: 'BTC', days: ['365'] });
@@ -906,40 +457,6 @@ describe('CoinGecko integration', function() {
       storeCacheStub.getCall(0).args[0].should.equal('cgFiatRates:bitcoin:usd:max');
     });
 
-    it('should bypass DB cache for token fiatrates requests', async () => {
-      const checkCacheStub = sandbox
-        .stub(cg().storage, 'checkAndUseGlobalCache')
-        .callsFake((_key, _duration, cb) => cb(null, null, null));
-      const storeCacheStub = sandbox.stub(cg().storage, 'storeGlobalCache').callsFake((_key, _values, cb) => cb(null));
-
-      const tokenAddress = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
-
-      fakeRequest = createCoinGeckoRequestStub({
-        onCoinContract: (platformId, address) => {
-          platformId.should.equal('arbitrum-one');
-          address.should.equal(tokenAddress);
-          return {
-            id: 'arbitrum-bridged-usdc-arbitrum',
-            symbol: 'usdc.e',
-            asset_platform_id: 'arbitrum-one'
-          };
-        },
-        onMarketChart: id =>
-          id === 'arbitrum-bridged-usdc-arbitrum'
-            ? { prices: [[1, 77], [2, 78]] }
-            : { prices: [[1, 1], [2, 1]] }
-      });
-      cg().request = fakeRequest;
-
-      const data = await getFiatRates({ coin: 'USDC.e', chain: 'arb', tokenAddress });
-
-      should.exist(data);
-
-      const checkedKeys = checkCacheStub.getCalls().map(c => c.args[0] as string);
-      const storedKeys = storeCacheStub.getCalls().map(c => c.args[0] as string);
-      checkedKeys.some(k => typeof k === 'string' && k.startsWith('cgFiatRates:')).should.equal(false);
-      storedKeys.some(k => typeof k === 'string' && k.startsWith('cgFiatRates:')).should.equal(false);
-    });
 
     it('should return error on invalid days', async () => {
       const getSpy = sandbox.spy();

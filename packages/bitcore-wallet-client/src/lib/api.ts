@@ -1644,9 +1644,6 @@ export class API extends EventEmitter {
     for (const o of args.outputs) {
       o.message = API._encryptMessage(o.message, this.credentials.sharedEncryptingKey) || null;
     }
-    if (args.flags) {
-      args.flags = args.flags.split(',').map(f => CWC.Utils.normalizeXrpFlag(f.trim())).join(',');
-    }
     return args;
   }
 
@@ -3282,72 +3279,6 @@ export class API extends EventEmitter {
   }
 
   /**
-   * Get Aave user account data (health factor, collateral, debt, etc.)
-   */
-  async getAaveUserAccountData(
-    opts: {
-      /** EVM chain name (e.g. 'eth', 'matic') */
-      chain: string;
-      /** Network name (e.g. 'mainnet', 'sepolia') */
-      network: string;
-      /** User wallet address */
-      address: string;
-      /** Aave protocol version. Default: 'v3' */
-      version?: string;
-    }
-  ) {
-    $.checkArgument(opts?.chain, 'Missing argument: chain at <getAaveUserAccountData()>');
-    $.checkArgument(opts?.network, 'Missing argument: network at <getAaveUserAccountData()>');
-    $.checkArgument(opts?.address, 'Missing argument: address at <getAaveUserAccountData()>');
-    const { body: accountData } = await this.request.post<object, object>('/v1/service/aave/userAccountData', opts);
-    return accountData;
-  }
-
-  /**
-   * Get Aave reserve data (variable borrow rate, etc.)
-   */
-  async getAaveReserveData(
-    opts: {
-      /** EVM chain name (e.g. 'eth', 'matic') */
-      chain: string;
-      /** Network name (e.g. 'mainnet', 'sepolia') */
-      network: string;
-      /** Reserve asset token address */
-      asset: string;
-      /** Aave protocol version. Default: 'v3' */
-      version?: string;
-    }
-  ) {
-    $.checkArgument(opts?.chain, 'Missing argument: chain at <getAaveReserveData()>');
-    $.checkArgument(opts?.network, 'Missing argument: network at <getAaveReserveData()>');
-    $.checkArgument(opts?.asset, 'Missing argument: asset at <getAaveReserveData()>');
-    const { body: reserveData } = await this.request.post<object, object>('/v1/service/aave/reserveData', opts);
-    return reserveData;
-  }
-
-  /**
-   * Get Aave reserve token addresses (aToken, variableDebtToken, etc.)
-   */
-  async getAaveReserveTokensAddresses(
-    opts: {
-      /** EVM chain name (e.g. 'eth', 'matic') */
-      chain: string;
-      /** Network name (e.g. 'mainnet', 'sepolia') */
-      network: string;
-      /** Reserve asset token address */
-      asset: string;
-      /** Aave protocol version. Default: 'v3' */
-      version?: string;
-    }
-  ) {
-    $.checkArgument(opts?.chain, 'Missing argument: chain at <getAaveReserveTokensAddresses()>');
-    $.checkArgument(opts?.network, 'Missing argument: network at <getAaveReserveTokensAddresses()>');
-    $.checkArgument(opts?.asset, 'Missing argument: asset at <getAaveReserveTokensAddresses()>');
-    const { body: tokensAddresses } = await this.request.post<object, object>('/v1/service/aave/reserveTokensAddresses', opts);
-    return tokensAddresses;
-  }
-
-  /**
    * Get wallet status based on a string identifier
    */
   async getStatusByIdentifier(
@@ -3706,14 +3637,7 @@ export class API extends EventEmitter {
           { coin: 'btc', chain: 'btc', network: 'livenet' },
           { coin: 'bch', chain: 'bch', network: 'livenet' },
           { coin: 'bch', chain: 'bch', network: 'livenet', preForkBchCheck: true }, // check for pre-fork BCH wallet
-          { coin: 'eth', chain: 'eth', network: 'livenet' },
-          { coin: 'matic', chain: 'matic', network: 'livenet' },
-          { coin: 'eth', chain: 'arb', network: 'livenet' },
-          { coin: 'eth', chain: 'base', network: 'livenet' },
-          { coin: 'eth', chain: 'op', network: 'livenet' },
-          { coin: 'arc', chain: 'arc', network: 'livenet' },
-          { coin: 'xrp', chain: 'xrp', network: 'livenet' },
-          { coin: 'sol', chain: 'sol', network: 'livenet' },
+          // UTXO chains only: this fork has no EVM, SOL or XRP wallets (#132)
           { coin: 'xec', chain: 'xec', network: 'livenet' },
           { coin: 'xpi', chain: 'xpi', network: 'livenet' },
           { coin: 'doge', chain: 'doge', network: 'livenet' },
@@ -4011,12 +3935,6 @@ export class API extends EventEmitter {
     }
   }
 
-  async getAccountFlags(params: { account: number }) {
-    const { account } = params;
-    const { body: flags } = await this.request.get<CWC.xrpl.AccountInfoAccountFlags>(`/v1/flags${account ? `?account=${account}` : ''}`);
-    return flags;
-  }
-
 
   async banxaGetQuote(data) {
     return this.request.post('/v1/service/banxa/quote', data);
@@ -4162,41 +4080,6 @@ export class API extends EventEmitter {
     return this.request.post('/v1/service/oneInch/getSwap', data);
   }
 
-  async moralisGetWalletTokenBalances(data) {
-    return this.request.post('/v1/moralis/getWalletTokenBalances', data);
-  }
-
-  async moralisGetTokenAllowance(data) {
-    return this.request.post('/v1/moralis/moralisGetTokenAllowance', data);
-  }
-
-  async moralisGetNativeBalance(data) {
-    return this.request.post('/v1/moralis/moralisGetNativeBalance', data);
-  }
-
-  async moralisGetTokenPrice(data) {
-    return this.request.post('/v1/moralis/GetTokenPrice', data);
-  }
-
-  async moralisGetMultipleERC20TokenPrices(data) {
-    return this.request.post('/v1/moralis/getMultipleERC20TokenPrices', data);
-  }
-
-  async moralisGetERC20TokenBalancesWithPricesByWallet(data) {
-    return this.request.post('/v1/moralis/getERC20TokenBalancesWithPricesByWallet', data);
-  }
-
-  async moralisGetSolWalletPortfolio(data) {
-    return this.request.post('/v1/moralis/getSolWalletPortfolio', data);
-  }
-
-  async moralisGetTransactionVerbose(data) {
-    return this.request.post('/v1/moralis/getTransactionVerbose', data);
-  }
-
-  async moralisGetMultipleSolTokenPrices(data) {
-    return this.request.post('/v1/moralis/getMultipleSolTokenPrices', data);
-  }
 };
 
 export type Network = 'livenet' | 'testnet' | 'regtest';

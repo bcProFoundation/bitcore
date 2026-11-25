@@ -879,17 +879,6 @@ describe('Transak integration', () => {
       }
     });
 
-    it('should match an EVM order address in any case', async () => {
-      const { server: ethServer } = await helpers.createAndJoinWallet(1, 1, { coin: 'eth', offset: 1 });
-      ethServer.externalServices.transak.request = fakeRequest;
-      const ethAddress = (await util.promisify(ethServer.createAddress).call(ethServer, {})).address;
-      ethAddress.should.not.equal(ethAddress.toLowerCase());
-      for (const walletAddress of [ethAddress.toLowerCase(), ethAddress.toUpperCase().replace('0X', '0x')]) {
-        orderBody = { data: { walletAddress, status: 'PROCESSING' } };
-        const data = await ethServer.externalServices.transak.transakGetOrderDetails({ headers: {}, body: { ...req.body } }, ethServer.walletId);
-        data.data.walletAddress.should.equal(walletAddress);
-      }
-    });
 
     it('should pass through a Transak error without an ownership check', async () => {
       orderStatuses = [400];

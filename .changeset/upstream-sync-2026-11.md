@@ -23,4 +23,4 @@
 '@bcpros/crypto-rpc': major
 ---
 
-Sync with upstream bitpay/bitcore v11.11.7. Node 24 is now required. Brings upstream's security fixes and dependency bumps, the BWS route split, TSS wallets, the new bitcore-logging, bitcore-tss and crypto-rpc packages, and upstream's EVM, Solana and XRP support in crypto-wallet-core, the wallet client and the wallet service. XEC, XPI, eTokens, Chronik and the AbcPay wallet service features are kept.
+Sync with upstream bitpay/bitcore v11.11.7. Node 24 is now required. Brings upstream's security fixes and dependency pins, the BWS route split, TSS wallets and the new bitcore-logging, bitcore-tss and crypto-rpc packages. XEC, XPI, eTokens, Chronik and the AbcPay wallet service features are kept. The wallet stack stays UTXO-only: upstream's EVM, Solana and XRP support is left out, as in #132.

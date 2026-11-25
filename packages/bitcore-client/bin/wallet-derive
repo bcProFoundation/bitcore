@@ -44,19 +44,20 @@ const main = async () => {
     }
 
     while (unusedAddressCounter < gap) {
-      const [address, changeAddress] = await wallet.generateAddressPair(index, !noChange);
+      const address = await wallet.generateAddressPair(index, !noChange);
 
       const transactions = await wallet.client.getAddressTxos({ address });
-      if (changeAddress) {
-        transactions.push(...await wallet.client.getAddressTxos({ address: changeAddress }));
-      }
 
       if (!transactions.length || !wallet.isUtxoChain()) {
         unusedAddressCounter++;
       } else {
         unusedAddressCounter = 0;
       }
-      console.log(`Current address index: ${index}: ${address}${changeAddress ? ` (change: ${changeAddress})` : ''}`);
+      if (!noChange) {
+        console.log(`Current change index: ${index}: ${address}`);
+      } else {
+        console.log(`Current address index: ${index}: ${address}`);
+      }
       index++;
     }
   } catch (e) {

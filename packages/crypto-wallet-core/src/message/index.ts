@@ -1,7 +1,4 @@
 import { BtcMessage } from './btc';
-import { EthMessage } from './eth';
-import { SolMessage } from './sol';
-import { XrpMessage } from './xrp';
 import type { Encoding, HDKeyType, IMessageClass, ISignedMessage, KeyType } from '../types/message';
 
 
@@ -10,14 +7,6 @@ const MessageClasses: Record<string, IMessageClass> = {
   bch: new BtcMessage(),
   doge: new BtcMessage(),
   ltc: new BtcMessage(),
-  eth: new EthMessage(),
-  matic: new EthMessage(),
-  arb: new EthMessage(),
-  base: new EthMessage(),
-  op: new EthMessage(),
-  arc: new EthMessage(),
-  sol: new SolMessage(),
-  xrp: new XrpMessage()
 };
 
 export class MessageProxy {

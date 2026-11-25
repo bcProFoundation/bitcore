@@ -1,31 +1,24 @@
 import 'source-map-support/register';
 import { PassThrough } from 'stream';
-import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { Encryption } from './encryption';
 import { Level } from './storage/level';
 import { Mongo } from './storage/mongo';
 import { TextFile } from './storage/textFile';
-import { StorageType } from './types/storage';
-import { IWallet, KeyImport } from './types/wallet';
+import { KeyImport } from './wallet';
 
-function tryParse(json: string) {
-  try {
-    return JSON.parse(json);
-  } catch {
-    return json;
-  }
-}
+const bitcoreLib = require('@bcpros/crypto-wallet-core').BitcoreLib;
 
 export class Storage {
   path: string;
   db: Array<Mongo | Level | TextFile>;
+  collection: 'bitcoreWallets';
   url?: string;
   errorIfExists?: boolean;
   createIfMissing: boolean;
-  storageType: Mongo | Level | TextFile;
-
-  constructor(params: { path?: string; createIfMissing: boolean; errorIfExists: boolean; storageType?: StorageType }) {
-    const { path, createIfMissing, errorIfExists, storageType } = params;
+  storageType: any;
+  constructor(params: { path?: string; createIfMissing: boolean; errorIfExists: boolean; storageType?: string }) {
+    const { path, createIfMissing, errorIfExists } = params;
+    let { storageType } = params;
     if (storageType && !['Mongo', 'Level', 'TextFile'].includes(storageType)) {
       throw new Error('Storage Type passed in must be Mongo, Level, or TextFile');
     }
@@ -42,17 +35,17 @@ export class Storage {
       this.db.push(new dbMap[storageType]({ createIfMissing, errorIfExists, path }));
       this.storageType = this.db[0];
     } else {
-      for (const DbType of Object.values(dbMap)) {
+      for (let DbType of Object.values(dbMap)) {
         this.db.push(new DbType({ createIfMissing, errorIfExists, path }));
       }
     }
   }
 
-  async verifyDbs(dbs: Storage['db']) {
-    for await (const db of dbs) {
-      if (typeof (db as any).testConnection === 'function') {
+  async verifyDbs(dbs) {
+    for await (let db of dbs) {
+      if (typeof db.testConnection === 'function') {
         // test mongo connection
-        if (!(await (db as any).testConnection())) {
+        if (!(await db.testConnection())) {
           // remove from dbs
           dbs.splice(dbs.indexOf(db), 1);
         }
@@ -62,33 +55,31 @@ export class Storage {
   }
 
   async close() {
-    (this.storageType as Mongo)?.close?.();
+    this.storageType?.close?.();
   }
 
-  async loadWallet(params: { name: string }): Promise<void | IWallet>
-  async loadWallet(params: { name: string; raw: true }): Promise<void | string>
-  async loadWallet(params: { name: string; raw: false }): Promise<void | IWallet>
-  async loadWallet(params: { name: string; raw?: boolean }): Promise<void | IWallet | string> {
-    const { name, raw } = params;
-    let wallet: string | void;
-    for (const db of await this.verifyDbs(this.db)) {
+  async loadWallet(params: { name: string }) {
+    const { name } = params;
+    let wallet;
+    for (let db of await this.verifyDbs(this.db)) {
       try {
         wallet = await db.loadWallet({ name });
         if (wallet) {
+          this.storageType = wallet.storageType;
           this.storageType = db;
           break;
         }
-      } catch { /* ignore */ }
+      } catch (e) {}
     }
     if (!wallet) {
       return;
     }
-    return raw ? wallet : JSON.parse(wallet) as IWallet;
+    return JSON.parse(wallet);
   }
 
   async deleteWallet(params: { name: string }) {
     const { name } = params;
-    for (const db of await this.verifyDbs(this.db)) {
+    for (let db of await this.verifyDbs(this.db)) {
       try {
         await db.deleteWallet({ name });
       } catch (e) {
@@ -100,7 +91,7 @@ export class Storage {
   async listWallets() {
     let passThrough = new PassThrough();
     const dbs = await this.verifyDbs(this.db);
-    for (const db of dbs) {
+    for (let db of dbs) {
       const listWalletStream = await db.listWallets();
       passThrough = listWalletStream.pipe(passThrough, { end: false });
       listWalletStream.once('end', () => --dbs.length === 0 && passThrough.end());
@@ -111,7 +102,7 @@ export class Storage {
   async listKeys() {
     let passThrough = new PassThrough();
     const dbs = await this.verifyDbs(this.db);
-    for (const db of dbs) {
+    for (let db of dbs) {
       const listWalletStream = await db.listKeys();
       passThrough = listWalletStream.pipe(passThrough, { end: false });
       listWalletStream.once('end', () => --dbs.length === 0 && passThrough.end());
@@ -124,7 +115,6 @@ export class Storage {
     return this.storageType.saveWallet({ wallet });
   }
 
-  /** @deprecated - Use getStoredKey */
   async getKey(params: {
     address: string;
     name: string;
@@ -144,7 +134,6 @@ export class Storage {
     }
   }
 
-  /** @deprecated - Use getStoredKeys */
   async getKeys(params: { addresses: string[]; name: string; encryptionKey: string }): Promise<Array<KeyImport>> {
     const { addresses, name, encryptionKey } = params;
     const keys = new Array<KeyImport>();
@@ -171,13 +160,12 @@ export class Storage {
     return keys;
   }
 
-  /** @deprecated - Use addKeysSafe */
   async addKeys(params: { name: string; keys: KeyImport[]; encryptionKey: string }) {
     const { name, keys, encryptionKey } = params;
     let open = true;
     for (const key of keys) {
-      const { path } = key;
-      const pubKey = key.pubKey || new BitcoreLib.PrivateKey(key.privKey).publicKey.toString();
+      let { pubKey, path } = key;
+      pubKey = pubKey || new bitcoreLib.PrivateKey(key.privKey).publicKey.toString();
       let payload = {};
       if (pubKey && key.privKey && encryptionKey) {
         const toEncrypt = JSON.stringify(key);
@@ -199,73 +187,8 @@ export class Storage {
     return this.storageType.getAddress({ name, address, keepAlive: true, open: true });
   }
 
-  async getAddresses(params: { name: string; limit?: number; skip?: number }) {
+  async getAddresses(params: { name: string, limit?: number, skip?: number }) {
     const { name, limit, skip } = params;
     return this.storageType.getAddresses({ name, limit, skip });
-  }
-
-  async addKeysSafe(params: { name: string; keys: KeyImport[] }) {
-    const { name, keys } = params;
-    let i = 0;
-    for (const key of keys) {
-      const { path } = key;
-      const pubKey = key.pubKey;
-      // key.privKey is encrypted - cannot be directly used to retrieve pubKey if required
-      if (!pubKey) {
-        throw new Error(`pubKey is undefined for ${name}. Keys not added to storage`);
-      }
-      let payload = {};
-      if (pubKey) {
-        payload = { key: JSON.stringify(key), pubKey, path };
-      }
-      const toStore = JSON.stringify(payload);
-      // open on first, close on last
-      await this.storageType.addKeys({ name, key, toStore, open: i === 0, keepAlive: i < keys.length - 1 });
-      ++i;
-    }
-  }
-
-  async getStoredKeys(params: { addresses: string[]; name: string }): Promise<Array<any>> {
-    const { addresses, name } = params;
-    const keys = new Array<any>();
-    let i = 0;
-    for (const address of addresses) {
-      try {
-        const key = await this.getStoredKey({
-          name,
-          address,
-          open: i === 0, // open on first
-          keepAlive: i < addresses.length - 1, // close on last
-        });
-        if (key) {
-          keys.push(key);
-        } else {
-          console.warn(`Key not found for address ${address}`);
-        }
-      } catch (err) {
-        // don't continue from catch - i must be incremented
-        console.error(err);
-      }
-      ++i;
-    }
-    return keys;
-  }
-
-  private async getStoredKey(params: {
-    address: string;
-    name: string;
-    keepAlive: boolean;
-    open: boolean;
-  }): Promise<any> {
-    const { address, name, keepAlive, open } = params;
-    const payload = await this.storageType.getKey({ name, address, keepAlive, open });
-    // Note: payload could be undefined if the server has an address that local storage did not save
-    const json = tryParse(payload) || payload;
-    const { key } = json || {}; // pubKey available - not needed
-    if (key) {
-      return JSON.parse(key);
-    } else {
-      return json;
-    }
   }
 }

@@ -10,7 +10,6 @@ import * as async from 'async';
 import * as crypto from 'crypto'
 import EmailValidator from 'email-validator';
 import * as _ from 'lodash';
-import Moralis from 'moralis';
 import { singleton } from 'preconditions';
 import _request from 'request';
 import 'source-map-support/register';
@@ -184,7 +183,6 @@ const ecashaddr = require('ecashaddrjs');
 let request = _request;
 let initialized = false;
 let doNotCheckV8 = false;
-let isMoralisInitialized = false;
 
 let lock: Lock;
 let storage: Storage;
@@ -754,7 +752,8 @@ export class WalletService implements IWalletService {
       return cb(new ClientError('Invalid combination of required copayers / total copayers'));
     }
 
-    if (!Utils.checkValueInCollection(opts.chain, Constants.CHAINS)) {
+    // ChainService only has the chains this fork serves (no EVM, SOL or XRP, #132)
+    if (!Utils.checkValueInCollection(opts.chain, Constants.CHAINS) || !ChainService.get(opts.chain)) {
       return cb(new ClientError('Invalid chain'));
     }
 
@@ -3891,93 +3890,6 @@ export class WalletService implements IWalletService {
           return reject(err);
         }
         return resolve(allowance);
-      });
-    });
-  }
-
-  /**
-   * Get Aave user account data (health factor, collateral, debt, etc.).
-   * @param {Object} opts
-   * @param {string} opts.chain - EVM chain name (e.g. 'eth', 'matic')
-   * @param {string} opts.network - Network name (e.g. 'mainnet', 'sepolia')
-   * @param {string} opts.address - User wallet address
-   * @param {string} [opts.version='v3'] - Aave protocol version ('v2' or 'v3')
-   * @returns {Promise<Object>} Aave account data (totalCollateralBase, totalDebtBase, healthFactor, etc.)
-   */
-  getAaveUserAccountData(opts) {
-    if (!checkRequired(opts, ['chain', 'network', 'address'])) {
-      return Promise.reject(new ClientError('getAaveUserAccountData request missing arguments'));
-    }
-    if (opts.version && !['v2', 'v3'].includes(opts.version)) {
-      return Promise.reject(new ClientError('Invalid Aave version. Supported: v2, v3'));
-    }
-    const bc = this._getBlockchainExplorer(opts.chain, opts.network);
-    return new Promise((resolve, reject) => {
-      if (!bc) return reject(new Error('Could not get blockchain explorer instance'));
-      bc.getAaveUserAccountData(opts, (err, accountData) => {
-        if (err) {
-          this.logw('Error getting Aave user account data:', err);
-          return reject(err);
-        }
-        return resolve(accountData);
-      });
-    });
-  }
-
-  /**
-   * Get Aave reserve data (variable borrow rate, etc.).
-   * @param {Object} opts
-   * @param {string} opts.chain - EVM chain name (e.g. 'eth', 'matic')
-   * @param {string} opts.network - Network name (e.g. 'mainnet', 'sepolia')
-   * @param {string} opts.asset - Reserve asset token address
-   * @param {string} [opts.version='v3'] - Aave protocol version ('v2' or 'v3')
-   * @returns {Promise<Object>} Aave reserve data (currentVariableBorrowRate, etc.)
-   */
-  getAaveReserveData(opts) {
-    if (!checkRequired(opts, ['chain', 'network', 'asset'])) {
-      return Promise.reject(new ClientError('getAaveReserveData request missing arguments'));
-    }
-    if (opts.version && !['v2', 'v3'].includes(opts.version)) {
-      return Promise.reject(new ClientError('Invalid Aave version. Supported: v2, v3'));
-    }
-    const bc = this._getBlockchainExplorer(opts.chain, opts.network);
-    return new Promise((resolve, reject) => {
-      if (!bc) return reject(new Error('Could not get blockchain explorer instance'));
-      bc.getAaveReserveData(opts, (err, reserveData) => {
-        if (err) {
-          this.logw('Error getting Aave reserve data:', err);
-          return reject(err);
-        }
-        return resolve(reserveData);
-      });
-    });
-  }
-
-  /**
-   * Get Aave reserve token addresses (aToken, variableDebtToken, etc.).
-   * @param {Object} opts
-   * @param {string} opts.chain - EVM chain name (e.g. 'eth', 'matic')
-   * @param {string} opts.network - Network name (e.g. 'mainnet', 'sepolia')
-   * @param {string} opts.asset - Reserve asset token address
-   * @param {string} [opts.version='v3'] - Aave protocol version ('v2' or 'v3')
-   * @returns {Promise<Object>} Aave reserve token addresses (variableDebtTokenAddress, etc.)
-   */
-  getAaveReserveTokensAddresses(opts) {
-    if (!checkRequired(opts, ['chain', 'network', 'asset'])) {
-      return Promise.reject(new ClientError('getAaveReserveTokensAddresses request missing arguments'));
-    }
-    if (opts.version && !['v2', 'v3'].includes(opts.version)) {
-      return Promise.reject(new ClientError('Invalid Aave version. Supported: v2, v3'));
-    }
-    const bc = this._getBlockchainExplorer(opts.chain, opts.network);
-    return new Promise((resolve, reject) => {
-      if (!bc) return reject(new Error('Could not get blockchain explorer instance'));
-      bc.getAaveReserveTokensAddresses(opts, (err, tokensAddresses) => {
-        if (err) {
-          this.logw('Error getting Aave reserve tokens addresses:', err);
-          return reject(err);
-        }
-        return resolve(tokensAddresses);
       });
     });
   }
@@ -11314,27 +11226,6 @@ export class WalletService implements IWalletService {
     });
   }
 
-  async getFlags(opts: { account: number }) {
-    try {
-      const wallet = await util.promisify(this.getWallet).call(this, {});
-      if (wallet.chain !== 'xrp') throw new Error('Flags are only supported for XRP wallets');
-
-      const addresses = await util.promisify(this.storage.fetchAddresses).call(this.storage, this.walletId);
-      const addressObj = addresses.find(a => a.path === `m/0/${opts.account || 0}`);
-      if (!addressObj) throw new Error('Could not find address for account ' + opts.account);
-
-      const bc = this._getBlockchainExplorer(wallet.chain, wallet.network);
-      if (!bc) throw new Error('Could not get blockchain explorer instance');
-
-      const address = addressObj.address.split(':')[0]; // Remove testnet suffix
-      const flags = await bc.getFlags({ address });
-      return flags;
-    } catch (err) {
-      this.logw('Error getting flags: %o', err);
-      throw err;
-    }
-  }
-
   static upgradeNeeded(
     paths: Upgrade | Upgrade[],
     opts: UpgradeCheckOpts & { clientVersion: string; userAgent: string }
@@ -11423,229 +11314,6 @@ export class WalletService implements IWalletService {
       userAgent: this.userAgent
     };
     return WalletService.upgradeNeeded(paths, _opts);
-  }
-
-  // Moralis services
-  moralisGetWalletTokenBalances(req): Promise<any> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await Moralis.EvmApi.token.getWalletTokenBalances({
-          address: req.body.address,
-          chain: req.body.chain,
-          toBlock: req.body.toBlock,
-          tokenAddresses: req.body.tokenAddresses,
-          excludeSpam: req.body.excludeSpam,
-        });
-
-        return resolve(response.raw ?? response);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-
-  moralisGetTokenAllowance(req): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!config.moralis) return reject(new Error('Moralis missing credentials'));
-      if (!checkRequired(req.body, ['address']) && !checkRequired(req.body, ['ownerAddress'])) {
-        return reject(new ClientError('moralisGetTokenAllowance request missing arguments'));
-      }
-      
-      const walletAddress = req.body.ownerAddress ?? req.body.address;
-      const headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-Api-Key': config.moralis.apiKey,
-      };
-
-      const qs = [];
-      if (req.body.chain) {
-        const chain = req.body.chain;
-        const formattedChain = typeof chain === 'number' && Number.isInteger(chain)
-          ? `0x${chain.toString(16)}`
-          : chain;
-
-        qs.push(`chain=${formattedChain}`);
-      }
-      if (req.body.cursor) qs.push('cursor=' + req.body.cursor);
-      if (req.body.limit) qs.push('limit=' + req.body.limit);
-
-      const URL: string = `https://deep-index.moralis.io/api/v2.2/wallets/${walletAddress}/approvals${qs.length > 0 ? '?' + qs.join('&') : ''}`;
-
-      this.request.get(
-        URL,
-        {
-          headers,
-          json: true
-        },
-        (err, data) => {
-          if (err) {
-            return reject(err.body ?? err);
-          } else {
-            const { spenderAddress, ownerAddress, address } = req.body;
-
-            if (spenderAddress && ownerAddress) {
-              // Workaround to keep older versions running
-              const spendersList = data?.body?.result;
-
-              if (Array.isArray(spendersList)) {
-                const spenderData = spendersList.find(s => 
-                  s.spender?.address?.toLowerCase() === spenderAddress.toLowerCase() &&
-                  s.token?.address?.toLowerCase() === address.toLowerCase()
-                );
-
-                data.body = {
-                  allowance: spenderData?.value ?? '0'
-                };
-              }
-            }
-
-            return resolve(data.body ?? data);
-          }
-        }
-      );
-    });
-  }
-
-  moralisGetNativeBalance(req): Promise<any> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await Moralis.EvmApi.balance.getNativeBalance({
-          address: req.body.address,
-          chain: req.body.chain,
-          toBlock: req.body.toBlock,
-        });
-
-        return resolve(response.raw ?? response);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-
-  moralisGetTokenPrice(req): Promise<any> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await Moralis.EvmApi.token.getTokenPrice({
-          address: req.body.address,
-          chain: req.body.chain,
-          include: req.body.include,
-          exchange: req.body.exchange,
-          toBlock: req.body.toBlock,
-        });
-
-        return resolve(response.raw ?? response);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-
-  moralisGetMultipleERC20TokenPrices(req): Promise<any> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await Moralis.EvmApi.token.getMultipleTokenPrices({
-          chain: req.body.chain,
-          include: req.body.include,
-        }, {
-          tokens: req.body.tokens,
-        });
-
-        return resolve(response.raw ?? response);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-
-  moralisGetERC20TokenBalancesWithPricesByWallet(req): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!config.moralis) return reject(new Error('Moralis missing credentials'));
-      if (!checkRequired(req.body, ['address'])) {
-        return reject(new ClientError('moralisGetERC20TokenBalancesWithPricesByWallet request missing arguments'));
-      }
-
-      const headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-Api-Key': config.moralis.apiKey,
-      };
-
-      const qs = [];
-      if (req.body.chain) qs.push('chain=' + req.body.chain);
-      if (req.body.toBlock) qs.push('to_block=' + req.body.toBlock);
-      if (req.body.tokenAddresses) qs.push('token_addresses=' + req.body.tokenAddresses);
-      if (req.body.excludeSpam) qs.push('exclude_spam=' + req.body.excludeSpam);
-      if (req.body.cursor) qs.push('cursor=' + req.body.cursor);
-      if (req.body.limit) qs.push('limit=' + req.body.limit);
-      if (req.body.excludeNative) qs.push('exclude_native=' + req.body.excludeNative);
-
-      const URL: string = `https://deep-index.moralis.io/api/v2.2/wallets/${req.body.address}/tokens${qs.length > 0 ? '?' + qs.join('&') : ''}`;
-
-      this.request.get(
-        URL,
-        {
-          headers,
-          json: true
-        },
-        (err, data) => {
-          if (err) {
-            return reject(err.body ?? err);
-          } else {
-            return resolve(data.body ?? data);
-          }
-        }
-      );
-    });
-  }
-
-  moralisGetTransactionVerbose(req): Promise<any> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await Moralis.EvmApi.transaction.getTransactionVerbose({
-          transactionHash: req.body.transactionHash,
-          chain: req.body.chain,
-        });
-
-        return resolve(response?.raw ?? response);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-
-  moralisGetMultipleSolTokenPrices(req): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!config.moralis) return reject(new Error('Moralis missing credentials'));
-      if (!checkRequired(req.body, ['addresses']) || !Array.isArray(req.body.addresses)) {
-        return reject(new ClientError('moralisGetMultipleSolTokenPrices request missing arguments'));
-      }
-
-      const network = req.body.network === 'devnet' ? 'devnet' : 'mainnet';
-      const headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-Api-Key': config.moralis.apiKey,
-      };
-
-      const URL: string = `https://solana-gateway.moralis.io/token/${network}/prices`;
-
-      this.request.post(
-        URL,
-        {
-          headers,
-          body: { addresses: req.body.addresses },
-          json: true
-        },
-        (err, data) => {
-          if (err) {
-            return reject(err.body ?? err);
-          } else {
-            return resolve(data.body ?? data);
-          }
-        }
-      );
-    });
   }
 
   // ---- AbcPay (BCPRO): Telegram address watch over Chronik ----
@@ -11838,42 +11506,6 @@ export class WalletService implements IWalletService {
     });
   }
 
-  moralisGetSolWalletPortfolio(req): Promise<any> {
-    return new Promise(async (resolve, reject) => {
-      let network;
-      const chain = req.body.network ?? req.body.chain ?? undefined;
-
-      const formattedChain = typeof chain === 'number' && Number.isInteger(chain)
-        ? `0x${chain.toString(16)}`
-        : chain;
-
-      switch (formattedChain) {
-        case '0x65':
-        case 'devnet':
-          network = 'devnet';
-          break;
-        case '0x66':
-        case 'testnet':
-          network = 'testnet';
-          break;
-        default:
-          network = 'mainnet';
-          break;
-      }
-
-      try {
-        // https://solana-gateway.moralis.io/account/:network/:address/portfolio
-        const response = await Moralis.SolApi.account.getPortfolio({
-          address: req.body.address,
-          network,
-        });
-
-        return resolve(response.raw ?? response);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
 }
 
 export function checkRequired(obj, args, cb?: (e: any) => void) {

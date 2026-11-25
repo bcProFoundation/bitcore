@@ -64,8 +64,6 @@
     "build:bitcore-logging": "turbo run build --filter=@bcpros/bitcore-logging",
     "test:bitcore-tss": "turbo run test --filter=@bcpros/bitcore-tss",
     "build:bitcore-tss": "turbo run build --filter=@bcpros/bitcore-tss",
-    "test:bitcore-cli": "turbo run test --filter=@bcpros/bitcore-cli",
-    "build:bitcore-cli": "turbo run build --filter=@bcpros/bitcore-cli",
     "test:crypto-rpc": "turbo run test --filter=@bcpros/crypto-rpc",
     "build:crypto-rpc": "turbo run build --filter=@bcpros/crypto-rpc",
     "test:bitcore-build": "turbo run test --filter=@bcpros/bitcore-build",

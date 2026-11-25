@@ -292,19 +292,4 @@ export function registerWalletRoutes(router: express.Router, context: RouteConte
       });
     });
   });
-
-  router.get('/v1/flags', (req, res) => {
-    getServerWithAuth(req, res, async server => {
-      try {
-        const opts = { account: 0 };
-        if (req.query.account) {
-          opts.account = parseInt(req.query.account as string);
-        }
-        const flags = await server.getFlags(opts);
-        res.json(flags);
-      } catch (err) {
-        returnError(err, res, req);
-      }
-    });
-  });
 }

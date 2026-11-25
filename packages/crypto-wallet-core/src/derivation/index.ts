@@ -1,34 +1,19 @@
-import { ArbDeriver } from './arb';
-import { BaseDeriver } from './base';
 import { BchDeriver } from './bch';
 import { BtcDeriver } from './btc';
 import { DogeDeriver } from './doge';
-import { EthDeriver } from './eth';
 import { LtcDeriver } from './ltc';
-import { MaticDeriver } from './matic';
-import { OpDeriver } from './op';
 import { Paths } from './paths';
-import { SolDeriver } from './sol';
 import { XecDeriver } from './xec';
 import { XpiDeriver } from './xpi';
-import { XrpDeriver } from './xrp';
 import type { IDeriver } from '../types/derivation';
 
 const derivers: { [chain: string]: IDeriver } = {
   BTC: new BtcDeriver(),
   BCH: new BchDeriver(),
-  ETH: new EthDeriver(),
-  XRP: new XrpDeriver(),
   DOGE: new DogeDeriver(),
   LTC: new LtcDeriver(),
   XEC: new XecDeriver(),
   XPI: new XpiDeriver(),
-  MATIC: new MaticDeriver(),
-  ARB: new ArbDeriver(),
-  BASE: new BaseDeriver(),
-  OP: new OpDeriver(),
-  ARC: new EthDeriver(),
-  SOL: new SolDeriver()
 };
 
 export class DeriverProxy {

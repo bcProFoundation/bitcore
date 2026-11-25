@@ -95,7 +95,6 @@
     "mongodb": "3.5.9",
     "mongodb-legacy": "^4.0.2",
     "mongodb-queue": "^4.0.0",
-    "moralis": "2.25.1",
     "multer": "^1.4.5-lts.1",
     "mustache": "2.3.2",
     "node-cron": "^3.0.3",

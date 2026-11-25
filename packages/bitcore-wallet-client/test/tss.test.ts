@@ -45,7 +45,7 @@ describe('TSS', function() {
   let dbConnection;
   let app;
   const sandbox = sinon.createSandbox();
-  const chain = 'ETH';
+  const chain = 'BTC'; // upstream runs these on ETH; this fork has no EVM wallets
   const network = 'livenet';
   const m = 2;
   const n = 3;
@@ -747,60 +747,10 @@ describe('TSS', function() {
       }
     });
 
-    it('should error if a party joins a sibling wallet before the leader creates it', async function() {
-      await expectRejection(joinSibling(1, { chain: 'arb' }), /TSS_BWS_JOIN_SECRET_NOT_FOUND/);
-    });
 
-    it('should not let a party other than the leader create a sibling wallet', async function() {
-      const walletCount = await countWallets();
-      await expectRejection(
-        createTssWallet({ ...tssWalletParams(1), walletName, opts: { chain: 'arb' } }),
-        /Only the TSS key session leader can create the wallet/
-      );
-      (await countWallets()).should.equal(walletCount);
-    });
 
-    it('should not create a sibling wallet if the leader is missing public keys of other parties', async function() {
-      const walletCount = await countWallets();
-      const credentials = Credentials.fromObj({ ...baseCredentials[0].toObj(), publicKeyRing: baseCredentials[0].publicKeyRing.slice(0, 2) });
-      await expectRejection(createSibling({ chain: 'arb' }, [credentials]), /Missing the public keys of some TSS parties/);
-      (await countWallets()).should.equal(walletCount);
-    });
 
-    it(happyPath('should create a sibling wallet on another chain'), async function() {
-      const { wallet, credentials } = await createSibling({ chain: 'arb' });
-      wallet.id.should.not.equal(baseWallet.id);
-      wallet.chain.should.equal('arb');
-      wallet.tssKeyId.should.equal(baseWallet.tssKeyId);
-      wallet.clientDerivedPublicKey.should.equal(baseWallet.clientDerivedPublicKey);
 
-      credentials.walletId.should.equal(wallet.id);
-      credentials.walletName.should.equal(`${walletName} arb`);
-      credentials.chain.should.equal('arb');
-      credentials.coin.should.equal('arb');
-      credentials.tssKeyId.should.equal(baseWallet.tssKeyId);
-      credentials.copayerId.should.equal(Utils.xPubToCopayerId('arb', baseCredentials[0].xPubKey));
-      credentials.clientDerivedPublicKey.should.equal(baseCredentials[0].clientDerivedPublicKey);
-      credentials.walletPrivKey.should.not.equal(baseCredentials[0].walletPrivKey);
-      credentials.sharedEncryptingKey.should.not.equal(baseCredentials[0].sharedEncryptingKey);
-      arbCredentials = [credentials];
-    });
-
-    it(happyPath('should join a sibling wallet on another chain'), async function() {
-      for (const partyId of [1, 2]) {
-        const { wallet, credentials } = await joinSibling(partyId, { chain: 'arb' });
-        wallet.id.should.equal(arbCredentials[0].walletId);
-        credentials.walletId.should.equal(wallet.id);
-        credentials.walletName.should.equal(`${walletName} arb`);
-        credentials.chain.should.equal('arb');
-        credentials.tssKeyId.should.equal(baseWallet.tssKeyId);
-        credentials.copayerId.should.equal(Utils.xPubToCopayerId('arb', baseCredentials[partyId].xPubKey));
-        credentials.walletPrivKey.should.equal(arbCredentials[0].walletPrivKey);
-        credentials.sharedEncryptingKey.should.equal(arbCredentials[0].sharedEncryptingKey);
-        arbCredentials.push(credentials);
-      }
-      (await fetchWallet(arbCredentials[0].walletId)).copayers.length.should.equal(n);
-    });
 
     it('should open the sibling wallet with its credentials', async function() {
       for (const [partyId, credentials] of arbCredentials.entries()) {
@@ -821,90 +771,10 @@ describe('TSS', function() {
       arbAddress.address.should.equal(baseAddress.address);
     });
 
-    it('should return the existing sibling wallet when creating or joining it again', async function() {
-      const { wallet, credentials } = await createSibling({ chain: 'arb' });
-      wallet.id.should.equal(arbCredentials[0].walletId);
-      credentials.walletPrivKey.should.equal(arbCredentials[0].walletPrivKey);
-      credentials.walletName.should.equal(`${walletName} arb`);
 
-      for (const partyId of [1, 2]) {
-        const { wallet, credentials } = await joinSibling(partyId, { chain: 'arb' });
-        wallet.id.should.equal(arbCredentials[0].walletId);
-        credentials.walletPrivKey.should.equal(arbCredentials[0].walletPrivKey);
-      }
-      (await fetchWallet(arbCredentials[0].walletId)).copayers.length.should.equal(n);
-    });
 
-    it('should let the parties join if the leader retries after failing to store the join secrets', async function() {
-      sandbox.stub(BwsTssKeyGen, 'storeBwsJoinSecrets').rejects(new Error('db unavailable'));
-      await expectRejection(createSibling({ chain: 'op' }), /./);
-      sandbox.restore();
-      await expectRejection(joinSibling(1, { chain: 'op' }), /TSS_BWS_JOIN_SECRET_NOT_FOUND/);
 
-      const { wallet } = await createSibling({ chain: 'op' });
-      for (const partyId of [1, 2]) {
-        (await joinSibling(partyId, { chain: 'op' })).wallet.id.should.equal(wallet.id);
-      }
-      (await fetchWallet(wallet.id)).copayers.length.should.equal(n);
-    });
 
-    it('should create and join a sibling wallet from another sibling wallet', async function() {
-      const { wallet } = await createSibling({ chain: 'base' }, arbCredentials);
-      wallet.chain.should.equal('base');
-      for (const partyId of [1, 2]) {
-        (await joinSibling(partyId, { chain: 'base' }, arbCredentials)).wallet.id.should.equal(wallet.id);
-      }
-      (await fetchWallet(wallet.id)).copayers.length.should.equal(n);
-    });
-
-    it('should use the base wallet chain for keys generated before keygenChain was stored', async function() {
-      const legacyKeys = tssKeys.map(key => {
-        const obj = key.toObj();
-        delete obj.metadata.keygenChain;
-        return new TssKey(obj);
-      });
-      const params = (partyId: number, credentials?: Credentials[]) => ({ ...tssWalletParams(partyId, credentials), baseKey: legacyKeys[partyId] });
-      const { wallet, credentials } = await createTssWallet({ ...params(0), walletName, opts: { chain: 'matic' } });
-      const maticCredentials = [credentials];
-      for (const partyId of [1, 2]) {
-        const { wallet: joined, credentials } = await joinTssWallet({ ...params(partyId), opts: { chain: 'matic' } });
-        joined.id.should.equal(wallet.id);
-        maticCredentials.push(credentials);
-      }
-
-      // The keygen chain is stored on the key so that it isn't lost when the key is saved with the sibling wallet
-      for (const key of legacyKeys) {
-        key.metadata.keygenChain.should.equal(walletChain);
-        key.toObj().metadata.keygenChain.should.equal(walletChain);
-      }
-
-      // Use the sibling wallet as the base wallet
-      for (const [partyId, credentials] of maticCredentials.entries()) {
-        const client = getClient(credentials);
-        await client.openWallet();
-        maticCredentials[partyId] = client.credentials;
-      }
-      (await createTssWallet({ ...params(0, maticCredentials), walletName, opts: { chain: 'matic' } })).wallet.id.should.equal(wallet.id);
-      for (const partyId of [1, 2]) {
-        (await joinTssWallet({ ...params(partyId, maticCredentials), opts: { chain: 'matic' } })).wallet.id.should.equal(wallet.id);
-      }
-    });
-
-    it('should create a sibling wallet on another network with the copayer xPubKey of that network', async function() {
-      const { wallet, credentials } = await createSibling({ chain: 'arb', network: 'testnet' });
-      wallet.network.should.equal('sepolia'); // BWS normalizes EVM testnets
-      credentials.xPubKey.should.match(/^tpub/);
-      credentials.copayerId.should.equal(Utils.xPubToCopayerId('arb', credentials.xPubKey));
-      // Same key, only serialized for another network
-      new BitcoreLib.HDPublicKey(credentials.xPubKey).publicKey.toString()
-        .should.equal(new BitcoreLib.HDPublicKey(baseCredentials[0].xPubKey).publicKey.toString());
-
-      for (const partyId of [1, 2]) {
-        const { wallet: joined, credentials } = await joinSibling(partyId, { chain: 'arb', network: 'testnet' });
-        joined.id.should.equal(wallet.id);
-        credentials.xPubKey.should.match(/^tpub/);
-      }
-    });
   });
 
 

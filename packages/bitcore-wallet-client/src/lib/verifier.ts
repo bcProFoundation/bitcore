@@ -5,8 +5,7 @@ import {
   BitcoreLibLtc,
   Utils as CWCUtils,
   Validation as CWCValidation,
-  Transactions,
-  Web3
+  Transactions
 } from '@bcpros/crypto-wallet-core';
 import { singleton } from 'preconditions';
 import { Constants, Utils } from './common';
@@ -885,8 +884,8 @@ export class Verifier {
    * address rather than silently accepting it.
    */
   private static normalizeEvmAddress(address: string): string {
-    if (!Web3.utils.isAddress(address)) throw new Error('invalid EVM address');
-    return Web3.utils.toChecksumAddress(address);
+    // EVM chains are not part of this fork's wallet stack (removed in #132)
+    throw new Error('EVM chains are not supported: ' + address);
   }
 
   /**

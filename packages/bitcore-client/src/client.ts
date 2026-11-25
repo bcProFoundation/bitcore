@@ -1,22 +1,17 @@
-import { URL } from 'url';
-import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import requestStream from 'request';
 import request from 'request-promise-native';
 import * as secp256k1 from 'secp256k1';
+import { URL } from 'url';
 import { utils } from './utils';
-
-const usingBrowser = (global as any).window;
+let usingBrowser = (global as any).window;
 const URLClass = usingBrowser ? usingBrowser.URL : URL;
+const bitcoreLib = require('@bcpros/crypto-wallet-core').BitcoreLib;
+
 export class Client {
   apiUrl: string;
   authKey: any;
-
-  constructor(params: {
-    apiUrl: string;
-    authKey: BitcoreLib.PrivateKey;
-  }) {
-    this.apiUrl = params.apiUrl;
-    this.authKey = params.authKey;
+  constructor(params) {
+    Object.assign(this, params);
   }
 
   async _request(params: request.OptionsWithUrl) {
@@ -33,7 +28,7 @@ export class Client {
   }
 
   _buildQueryString( params: any) {
-    const query = [];
+    let query = [];
     for (const [key, value] of Object.entries(params)) {
       value && query.push(`${key}=${value}`);
     }
@@ -49,7 +44,7 @@ export class Client {
   sign(params: { method: string; url: string; payload?: any }) {
     const message = this.getMessage(params);
     const privateKey = this.authKey.toBuffer();
-    const messageHash = BitcoreLib.crypto.Hash.sha256sha256(Buffer.from(message));
+    const messageHash = bitcoreLib.crypto.Hash.sha256sha256(Buffer.from(message));
     return secp256k1.sign(messageHash, privateKey).signature.toString('hex');
   }
 
@@ -70,11 +65,6 @@ export class Client {
 
   async getToken(contractAddress) {
     const url = `${this.apiUrl}/token/${contractAddress}`;
-    return this._request({ method: 'GET', url, json: true });
-  }
-
-  async getSolanaTokens(address) {
-    const url = `${this.apiUrl}/ata/${address}`;
     return this._request({ method: 'GET', url, json: true });
   }
 
@@ -104,9 +94,9 @@ export class Client {
     });
   }
 
-  async getTransaction(params: { txid: string; populated?: boolean }) {
+  async getTransaction(params: { txid: string, populated?: boolean }) {
     const { txid, populated } = params;
-    const url = `${this.apiUrl}/tx/${txid}${populated ? '/populated' : ''}`;
+    let url = `${this.apiUrl}/tx/${txid}${populated ? '/populated' : ''}`;
     return this._request({ method: 'GET', url, json: true });
   }
 
@@ -135,7 +125,7 @@ export class Client {
   }
 
   listTransactions(params) {
-    const { pubKey, startBlock, startDate, endBlock, endDate, includeMempool, payload, tokenContractAddress, limit } = params;
+    const { pubKey, startBlock, startDate, endBlock, endDate, includeMempool, payload, tokenContractAddress } = params;
     let url = `${this.apiUrl}/wallet/${pubKey}/transactions`;
     let query = '';
     if (startBlock) {
@@ -151,15 +141,11 @@ export class Client {
       query += `endDate=${endDate}&`;
     }
     if (includeMempool) {
-      query += 'includeMempool=true&';
+      query += 'includeMempool=true';
     }
     if (tokenContractAddress) {
-      query += `tokenAddress=${tokenContractAddress}&`;
+      query += `tokenAddress=${tokenContractAddress}`;
     }
-    if (limit) {
-      query += `limit=${limit}&`;
-    }
-    query = query.endsWith('&') ? query.slice(0, -1) : query;
     if (query) {
       url += '?' + query;
     }
@@ -183,7 +169,7 @@ export class Client {
 
   async getPriorityFee(params) {
     const { percentile } = params;
-    const url = `${this.apiUrl}/priorityFee/${percentile}`;
+    let url = `${this.apiUrl}/priorityFee/${percentile}`;
     const result = await this._request({ method: 'GET', url, json: true });
     if (result.errors?.length) {
       throw new Error(result.errors[0]);
@@ -194,15 +180,11 @@ export class Client {
   async importAddresses(params: { pubKey: string; payload: Array<{ address: string }> }): Promise<void> {
     const { payload, pubKey } = params;
     const url = `${this.apiUrl}/wallet/${pubKey}`;
-    const pageSize = 100;
 
-    for (let i = 0; i < payload.length; i += pageSize) {
-      const body = payload.slice(i, i + pageSize);
-      if (payload.length > pageSize) {
-        // If we're paginating through a long list of addresses, log progress so the user knows something is happening
-        console.log(`Importing addresses ${i + 1}-${i + body.length} of ${payload.length}`);
-      }
-      if (i >= pageSize) {
+    for (let i = 0; i < payload.length; i += 100) {
+      const body = payload.slice(i, i + 100);
+      console.log(`Importing addresses ${i + 1}-${i + body.length} of ${payload.length}`);
+      if (i >= 100) {
         await utils.sleep(1000); // cooldown
       }
       
@@ -266,10 +248,5 @@ export class Client {
     const body = { rawTx };
     const url = `${this.apiUrl}/l1/fee${safe ? '?safe=true' : ''}`;
     return this._request({ method: 'POST', url, json: true, body });
-  }
-
-  getBlockTip() {
-    const url = `${this.apiUrl}/block/tip`;
-    return this._request({ method: 'GET', url, json: true });
   }
 }

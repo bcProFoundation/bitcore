@@ -171,7 +171,6 @@ npm run node
 - [Bitcore Wallet](packages/bitcore-wallet) - A command-line based wallet client
 - [Bitcore Wallet Client](packages/bitcore-wallet-client) - A client for Bitcore Wallet Service
 - [Bitcore Wallet Service](packages/bitcore-wallet-service) - A coordination service for multisig wallets
-- [Bitcore CLI](packages/bitcore-cli) - A command line interface for using BWS and BWC
 
 ## Libraries
 

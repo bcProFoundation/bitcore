@@ -7,7 +7,7 @@ export class ParseApiStream extends Transform {
 
   _write(data, _encoding, cb) {
     const stringDatas = data.toString().split('\n');
-    for (const stringData of stringDatas) {
+    for (let stringData of stringDatas) {
       const normalized = stringData.endsWith(',') ? stringData.slice(0, stringData.length - 1) : stringData;
       if (normalized.includes('{') && normalized.includes('}')) {
         this.push(JSON.parse(normalized));
@@ -54,8 +54,8 @@ function jsonlBufferToObjectMode() {
     writableObjectMode: false,
     readableObjectMode: true,
     transform(chunk, encoding, callback) {
-      const buffer = chunk;
-      const lineArray = buffer.toString().split('\n');
+      let buffer = chunk;
+      let lineArray = buffer.toString().split('\n');
       while (lineArray.length > 1) {
         try {
           const data = lineArray.shift();

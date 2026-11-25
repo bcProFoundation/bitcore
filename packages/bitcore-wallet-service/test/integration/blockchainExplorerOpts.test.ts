@@ -127,21 +127,6 @@ describe('WalletService#_getBlockchainExplorer', function() {
       });
     }
 
-    it('should not let a public request break the database for later requests', async function() {
-      const before = ownNames();
-      let requestErr, dbErr, written;
-      try {
-        requestErr = await server.getTokenAllowance({
-          chain: 'eth', network: '__proto__', tokenAddress: 'a', ownerAddress: 'b', spenderAddress: 'c'
-        }).then(() => null, err => err);
-        dbErr = await storage.db.collection('wallets').findOne({ id: 'none' }).then(() => null, err => err);
-      } finally {
-        written = undoWritesSince(before);
-      }
-      written.should.deep.equal([]);
-      should.not.exist(dbErr);
-      requestErr.message.should.equal('Could not get blockchain explorer instance');
-    });
   });
 
   describe('lookups', function() {

@@ -384,7 +384,7 @@ describe('Address reads', function() {
     });
 
     it('the single-address paths build only the first address', async function() {
-      for (const [coin, singleAddress] of [['eth', false], ['xrp', false], ['btc', true]] as Array<[string, boolean]>) {
+      for (const [coin, singleAddress] of [['btc', true]] as Array<[string, boolean]>) {
         const { server, wallet } = await helpers.createAndJoinWallet(1, 1, { coin, singleAddress, offset: coin === 'xrp' ? 1 : coin === 'btc' ? 2 : 0 });
         await helpers.createAddresses(server, wallet, 10, 0);
         const docs = await addresses().find({ walletId: wallet.id }).toArray();
@@ -432,7 +432,7 @@ describe('Address reads', function() {
       restores.push(() => { blockchainExplorer.getRentMinimum = getRentMinimum; });
     };
 
-    for (const coin of ['eth', 'xrp', 'sol']) {
+    for (const coin of []) {
       it(`${coin} balance lists the first address`, async function() {
         const { server, wallet } = await helpers.createAndJoinWallet(1, 1, { coin });
         const address = await firstAddress(coin, server, wallet);
@@ -463,29 +463,6 @@ describe('Address reads', function() {
       return (await addresses().findOne({ walletId: wallet.id, path: 'm/0/10' })).address;
     };
 
-    it('the first address is the first by createdOn, then by path as a string', async function() {
-      const { server: eth, wallet: ethWallet } = await helpers.createAndJoinWallet(1, 1, { coin: 'eth' });
-      const ethFirst = await tieForFirst(eth, ethWallet);
-      await helpers.stubUtxos(eth, ethWallet, [1]);
-      (await call(eth, 'getBalance')).byAddress.map(a => a.address).should.deep.equal([ethFirst]);
-
-      const { server: btc, wallet: btcWallet } = await helpers.createAndJoinWallet(1, 1, { singleAddress: true, offset: 1 });
-      const btcFirst = await tieForFirst(btc, btcWallet);
-      (await call(btc, 'createAddress')).address.should.equal(btcFirst);
-      // the change goes to the first address too
-      await helpers.stubUtxos(btc, btcWallet, [1]);
-      const txp = await helpers.createAndPublishTx(btc, {
-        outputs: [{ toAddress: '18PzpUFkFZE8zKWUPvfykkTxmB9oMR8qP7', amount: 0.5e8 }],
-        feePerKb: 100e2
-      }, TestData.copayers[1].privKey_1H_0);
-      txp.changeAddress.address.should.equal(btcFirst);
-
-      const { server: sol, wallet: solWallet } = await helpers.createAndJoinWallet(1, 1, { coin: 'sol', offset: 2 });
-      await firstAddress('sol', sol, solWallet);
-      await addresses().insertOne({ walletId: solWallet.id, address: SOL_ADDRESS_2, path: 'm/0/1', isChange: false, publicKeys: [], coin: 'sol', chain: 'sol', network: 'livenet', createdOn: 2000 });
-      await stubBalance('sol', sol, solWallet);
-      (await call(sol, 'getBalance')).byAddress.map(a => a.address).should.deep.equal([SOL_ADDRESS]);
-    });
 
     it('a single-address BTC wallet sends change to its first address', async function() {
       const { server, wallet } = await helpers.createAndJoinWallet(1, 1, { singleAddress: true });

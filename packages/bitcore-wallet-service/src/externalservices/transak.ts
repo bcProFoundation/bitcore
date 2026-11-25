@@ -1,5 +1,4 @@
 import * as crypto from 'crypto';
-import { Web3 } from '@bcpros/crypto-wallet-core';
 import * as request from 'request';
 import config from '../config';
 import { Utils } from '../lib/common/utils';
@@ -389,8 +388,8 @@ export class TransakService {
     if (!walletId || !address || typeof address !== 'string') return Promise.resolve(false);
     const candidates = new Set([address]);
     if (/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      // no EVM wallets in this fork (#132), so no checksummed form to look up
       candidates.add(address.toLowerCase());
-      candidates.add(Web3.utils.toChecksumAddress(address));
     }
     return new Promise(resolve => {
       this.storage.fetchAddressesByWalletId(walletId, [...candidates], (err, addresses) => {

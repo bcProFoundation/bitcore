@@ -1,4 +1,6 @@
-import { Wallet, type IWalletExt } from '@bcpros/bitcore-client';
+import { Wallet } from '@bcpros/bitcore-client';
+// this fork's bitcore-client has no IWalletExt type
+type IWalletExt = any;
 import { expect } from 'chai';
 import config from '../../../src/config';
 import { WalletStorage } from '../../../src/models/wallet';

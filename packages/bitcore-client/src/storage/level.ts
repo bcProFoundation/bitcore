@@ -1,16 +1,21 @@
 import * as fs from 'fs';
+import { LevelDown } from 'leveldown';
+import levelup, { LevelUp } from 'levelup';
 import * as os from 'os';
 import { Transform } from 'stream';
-import leveldn from 'leveldown';
-import levelup, { LevelUp } from 'levelup';
 
-const usingBrowser = 'window' in globalThis;
+let lvldwn: LevelDown;
+let usingBrowser = (global as any).window;
+if (usingBrowser) {
+  lvldwn = require('level-js');
+} else {
+  lvldwn = require('leveldown');
+}
 const StorageCache: { [path: string]: LevelUp } = {};
 
 export class Level {
   path: string;
   db: LevelUp;
-
   constructor(params: { path?: string; createIfMissing: boolean; errorIfExists: boolean }) {
     const { path, createIfMissing, errorIfExists } = params;
     let basePath;
@@ -31,14 +36,14 @@ export class Level {
       const walletExists =
         fs.existsSync(this.path) && fs.existsSync(this.path + '/LOCK') && fs.existsSync(this.path + '/LOG');
       if (!walletExists) {
-        throw new Error('Not a valid wallet path: ' + this.path);
+        throw new Error('Not a valid wallet path');
       }
     }
     if (StorageCache[this.path]) {
       this.db = StorageCache[this.path];
     } else {
       console.log('using wallets at', this.path);
-      this.db = StorageCache[this.path] = levelup(leveldn(this.path), {
+      this.db = StorageCache[this.path] = levelup(lvldwn(this.path), {
         createIfMissing,
         errorIfExists
       });
@@ -54,7 +59,7 @@ export class Level {
     const { name } = params;
     // await this.db.del(`wallet|${name}`);
     const keysToDelete = await new Promise<string[]>((resolve, reject) => {
-      const walletKeys = [];
+      let walletKeys = [];
       this.db.createKeyStream()
         .on('data', (key: Buffer) => {
           if (key.toString().startsWith(`wallet|${name}`)) {
@@ -71,7 +76,7 @@ export class Level {
         });
     });
     let batch = this.db.batch();
-    for (const key of keysToDelete) {
+    for (let key of keysToDelete) {
       batch = batch.del(key);
     }
     await batch.write();

@@ -1,8 +1,6 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as stream from 'stream';
-import { pipeline } from 'stream/promises';
-import { IWallet } from 'src/types/wallet';
 import { StreamUtil } from '../stream-util';
 import { Wallet } from '../wallet';
 
@@ -10,7 +8,6 @@ export class TextFile {
   db: string;
   walletFileName: string;
   addressFileName: string;
-
   constructor(params: { path?: string; createIfMissing: boolean; errorIfExists: boolean }) {
     const { path, createIfMissing } = params;
     let basePath;
@@ -30,7 +27,7 @@ export class TextFile {
     if (!createIfMissing) {
       const walletPath = fs.existsSync(this.db);
       if (!walletPath) {
-        throw new Error('Not a valid wallet path: ' + this.db);
+        throw new Error('Not a valid wallet path');
       }
     }
     console.log('using wallets at', this.db);
@@ -45,7 +42,7 @@ export class TextFile {
       });
       readStream
         .pipe(StreamUtil.jsonlBufferToObjectMode())
-        .on('data', (wallet: IWallet) => {
+        .on('data', wallet => {
           if (wallet.name === name) {
             resolve(JSON.stringify(wallet));
           }
@@ -56,10 +53,7 @@ export class TextFile {
     });
   }
 
-  async deleteWallet(params: { name: string; keepAddresses?: boolean }): Promise<void> {
-    if (!fs.existsSync(this.walletFileName)) {
-      return; // nothing to delete if the wallet file doesn't exist
-    }
+  async deleteWallet(params: { name: string; keepAddresses: boolean }) {
     const { name, keepAddresses } = params;
     const wallets: Array<object> = await new Promise((resolve, reject) => {
       const walletArray = [];
@@ -148,14 +142,14 @@ export class TextFile {
     );
   }
 
-  async saveWallet(params: { wallet: Wallet }) {
+  async saveWallet(params) {
     const { wallet } = params;
     delete wallet.storage;
-    const wallets: Array<IWallet> = await new Promise((resolve, reject) => {
-      const walletArray: IWallet[] = [];
+    const wallets: Array<Wallet> = await new Promise((resolve, reject) => {
+      const walletArray = [];
       fs.createReadStream(this.walletFileName, { flags: 'r', encoding: 'utf8' })
         .pipe(StreamUtil.jsonlBufferToObjectMode())
-        .on('data', (wallet: IWallet) => {
+        .on('data', wallet => {
           walletArray.push(wallet);
         })
         .on('end', () => {
@@ -197,14 +191,6 @@ export class TextFile {
 
   async addKeys(params: { name: string; key: any; toStore: string; keepAlive: boolean; open: boolean }) {
     const { name, key, toStore } = params;
-    /**
-     * `addresses.txt` is stored as JSONL: one address record per line.
-     *
-     * That line-oriented contract matters beyond normal reads/writes. The migration
-     * rewrite path reparses the file as individual JSON records, transforms selected
-     * records, and writes the file back out. If this writer ever stops emitting exactly
-     * one serialized address object per line, `migrate()` would need to change too.
-     */
     const objectToSave = { name, address: key.address, toStore };
     return new Promise<void>(resolve => {
       const readStream = new stream.Readable({ objectMode: true });
@@ -216,71 +202,6 @@ export class TextFile {
         resolve();
       });
     });
-  }
-
-  /**
-   * Rewrite the address file in place for a specific migration version.
-   */
-  async migrate(params: { version: number; name: string; keys: any[] }) {
-    const { version, name, keys } = params;
-    if (version !== 1) {
-      throw new Error(`TextFile migration for wallet version ${version} is not supported`);
-    }
-
-    const replacementRecords = new Map(
-      keys.map(key => {
-        const { path, pubKey } = key;
-        if (!pubKey) {
-          throw new Error(`pubKey is undefined for ${name}. TextFile migration aborted`);
-        }
-        const toStore = JSON.stringify({ key: JSON.stringify(key), pubKey, path });
-        return [key.address, { name, address: key.address, toStore }];
-      })
-    );
-
-    const tempAddressFileName = `${this.addressFileName}.v${version}.migrating`;
-
-    const migrationTransform = new stream.Transform({
-      writableObjectMode: true,
-      readableObjectMode: true,
-      transform(record, _encoding, callback) {
-        try {
-          // Not target wallet - pass through unchanged
-          if (record.name !== name) {
-            this.push(record);
-            callback();
-            return;
-          }
-
-          const replacement = replacementRecords.get(record.address);
-          /**
-           * If replacement not in map, indicates a prior-existing address which was not included in the keys to migrate.
-           * Warn & fall back to prior.
-           */
-          if (!replacement) {
-            console.warn(`TextFile migration warning: found address ${record.address} for wallet ${name}, but no replacement key was provided. Keeping original record.`);
-          }
-          this.push(replacement ?? record);
-          callback();
-        } catch (err) {
-          callback(err as Error);
-        }
-      }
-    });
-
-    try {
-      await pipeline(
-        fs.createReadStream(this.addressFileName, { flags: 'r', encoding: 'utf8' }),
-        StreamUtil.jsonlBufferToObjectMode(),
-        migrationTransform,
-        StreamUtil.objectModeToJsonlBuffer(),
-        fs.createWriteStream(tempAddressFileName, { flags: 'w', encoding: 'utf8' })
-      );
-      await fs.promises.rename(tempAddressFileName, this.addressFileName);
-    } catch (err) {
-      await fs.promises.rm(tempAddressFileName, { force: true }).catch(() => undefined);
-      throw err;
-    }
   }
 
   async getAddress(params: { name: string; address: string; keepAlive: boolean; open: boolean }) {

@@ -4,15 +4,6 @@ import * as BitcoreLibDoge from '@bcpros/bitcore-lib-doge';
 import * as BitcoreLibLtc from '@bcpros/bitcore-lib-ltc';
 import * as BitcoreLibXec from '@bcpros/bitcore-lib-xec';
 import * as BitcoreLibXpi from '@bcpros/bitcore-lib-xpi';
-import * as SolKit from '@solana/kit';
-import * as ComputeBudget from '@solana-program/compute-budget';
-import * as Memo from '@solana-program/memo';
-import * as System from '@solana-program/system';
-import * as Token from '@solana-program/token';
-import * as HDKey from 'ed25519-hd-key';
-import { ethers } from 'ethers';
-import Web3 from 'web3';
-import * as xrpl from 'xrpl';
 import { Constants } from './constants';
 import Deriver from './derivation';
 import Message from './message';
@@ -21,16 +12,8 @@ import * as Utils from './utils';
 import Validation from './validation';
 
 export type * as Types from './types';
-export type * as Web3Types from 'web3-types';
 
 
-const SolanaProgram = {
-  ComputeBudget,
-  Memo,
-  System,
-  Token,
-  HDKey
-};
 export {
   BitcoreLib,
   BitcoreLibCash,
@@ -42,11 +25,6 @@ export {
   Message,
   Transactions,
   Validation,
-  ethers,
-  Web3,
-  SolKit,
-  SolanaProgram,
   Constants,
-  xrpl,
   Utils
 };

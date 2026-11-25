@@ -3,7 +3,9 @@ export const UTXO_CHAINS = ['btc', 'bch', 'doge', 'ltc', 'xec', 'xpi'];
 export const EVM_CHAINS = ['eth', 'matic', 'arb', 'base', 'op', 'arc'];
 export const SVM_CHAINS = ['sol'];
 export const RIPPLE_CHAINS = ['xrp'];
-export const CHAINS = [...UTXO_CHAINS, ...EVM_CHAINS, ...SVM_CHAINS, ...RIPPLE_CHAINS];
+// This fork's wallet stack serves the UTXO chains only (EVM, SVM and XRP were removed in #132).
+// The other lists stay for code that names those chains.
+export const CHAINS = [...UTXO_CHAINS];
 
 export const MULTISIG_CHAINS = UTXO_CHAINS;
 

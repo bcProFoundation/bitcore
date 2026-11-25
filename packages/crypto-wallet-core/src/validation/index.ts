@@ -1,34 +1,18 @@
-import { ArbValidation } from './arb';
-import { ArcValidation } from './arc';
-import { BaseValidation } from './base';
 import { BchValidation } from './bch';
 import { BtcValidation } from './btc';
 import { DogeValidation } from './doge';
-import { EthValidation } from './eth';
 import { LtcValidation } from './ltc';
-import { MaticValidation } from './matic';
-import { OpValidation } from './op';
-import { SolValidation } from './sol';
 import { XecValidation } from './xec';
 import { XpiValidation } from './xpi';
-import { XrpValidation } from './xrp';
 import type { IValidation } from '../types/validation';
 
 const validation: { [chain: string]: IValidation } = {
   BTC: new BtcValidation(),
   BCH: new BchValidation(),
-  ETH: new EthValidation(),
-  XRP: new XrpValidation(),
   DOGE: new DogeValidation(),
   LTC: new LtcValidation(),
   XEC: new XecValidation(),
   XPI: new XpiValidation(),
-  MATIC: new MaticValidation(),
-  ARB: new ArbValidation(),
-  BASE: new BaseValidation(),
-  OP: new OpValidation(),
-  ARC: new ArcValidation(),
-  SOL: new SolValidation(),
 };
 
 export class ValidationProxy {
@@ -38,11 +22,14 @@ export class ValidationProxy {
   }
 
   validateAddress(chain, network, address) {
-    return this.get(chain).validateAddress(network, address);
+    // chains this fork does not serve have no validator: treat their addresses as invalid
+    const validator = this.get(chain);
+    return validator ? validator.validateAddress(network, address) : false;
   }
 
   validateUri(chain, addressUri) {
-    return this.get(chain).validateUri(addressUri);
+    const validator = this.get(chain);
+    return validator ? validator.validateUri(addressUri) : false;
   }
 }
 

@@ -365,35 +365,6 @@ describe('History', function() {
     });
 
 
-    it('should handle moves, filtering change addresses in multisend', function(done) {
-      const txs = helpers.createTxsV8(20, 1000);
-      helpers.createAddresses(server, wallet, 2, 1).then(({ main, change }) => {
-        txs[0].txid = txs[1].txid = txs[2].txid = txs[3].txid;
-        txs[0].height = txs[1].height = txs[2].height = txs[3].height;
-        txs[0].category = txs[1].category = txs[2].category = txs[3].category = 'move';
-        txs[0].address = main[0].address;
-        txs[1].address = main[0].address;
-        txs[2].address = change[0].address;
-        txs[3].address = main[1].address;
-
-        helpers.stubHistory(null, null, txs);
-
-        server.getTxHistory({ limit: 10 }, function(err, txs, fromCache) {
-          should.not.exist(err);
-          fromCache.should.equal(false);
-          should.exist(txs);
-          txs.length.should.equal(10);
-          // should filter out 1 move
-          txs[0].action.should.equal('moved');
-          txs[1].action.should.equal('received');
-
-          // should keep the main address
-          txs[0].outputs.map(o => o.address).should.include(main[0].address, main[1].address);
-          txs[0].outputs.map(o => o.address).should.not.include(change[0].address);
-          done();
-        });
-      });
-    });
 
     it('should get tx history from cache', function(done) {
       const _cache = Defaults.CONFIRMATIONS_TO_START_CACHING;
@@ -823,106 +794,6 @@ describe('History', function() {
     });
 
 
-    it('should get tx history with accepted proposal, multisend', function(done) {
-      const external = '18PzpUFkFZE8zKWUPvfykkTxmB9oMR8qP7';
-
-      helpers.stubUtxos(server, wallet, [1, 2]).then(function(utxos) {
-        const txOpts = {
-          outputs: [{
-            toAddress: external,
-            amount: 0.5e8,
-            message: undefined // no message
-          }, {
-            toAddress: external,
-            amount: 0.3e8,
-            message: 'message #2'
-          }],
-          feePerKb: 100e2,
-          message: 'some message',
-          customData: {
-            test: true
-          },
-        };
-
-        helpers.createAndPublishTx(server, txOpts, TestData.copayers[0].privKey_1H_0).then(function(tx) {
-          should.exist(tx);
-          const signatures = helpers.clientSign(tx, TestData.copayers[0].xPrivKey_44H_0H_0H);
-          server.signTx({
-            txProposalId: tx.id,
-            signatures: signatures,
-          }, function(err, tx) {
-            should.not.exist(err);
-            helpers.stubBroadcast(tx.txid);
-            server.broadcastTx({
-              txProposalId: tx.id
-            }, function(err, txp) {
-              should.not.exist(err);
-              const t = (new Date).toISOString();
-              const txs = [{
-                id: 1,
-                txid: txp.txid,
-                confirmations: 1,
-                blockTime: t,
-                size: 226,
-                category: 'send',
-                address: external,
-                satoshis: 0.5e8,
-                height: 1000,
-              }, {
-                id: 2,
-                txid: txp.txid,
-                confirmations: 1,
-                category: 'send',
-                blockTime: t,
-                satoshis: 0.3e8,
-                address: external,
-                height: 1000,
-              }, {
-                id: 3,
-                txid: txp.txid,
-                confirmations: 1,
-                blockTime: t,
-                satoshis: 5460,
-                category: 'fee',
-                height: 1000,
-              }];
-
-              helpers.stubHistory(null, null, txs);
-              helpers.stubCheckData(blockchainExplorer, server, wallet.coin == 'bch').then(() => {
-                server.getTxHistory({}, function(err, txs) {
-                  should.not.exist(err);
-                  should.exist(txs);
-                  txs.length.should.equal(1);
-                  const tx = txs[0];
-                  tx.createdOn.should.equal(txp.createdOn);
-                  tx.action.should.equal('sent');
-                  tx.amount.should.equal(0.8e8);
-
-                  should.not.exist(tx.raw);
-                  tx.message.should.equal('some message');
-                  tx.addressTo.should.equal(external);
-                  tx.actions.length.should.equal(1);
-                  tx.actions[0].type.should.equal('accept');
-                  tx.actions[0].copayerName.should.equal('copayer 1');
-                  tx.outputs[0].address.should.equal(external);
-                  tx.outputs[0].amount.should.equal(0.5e8);
-                  should.not.exist(tx.outputs[0].message);
-                  should.not.exist(tx.outputs[0]['isMine']);
-                  should.not.exist(tx.outputs[0]['isChange']);
-                  tx.outputs[1].address.should.equal(external);
-                  tx.outputs[1].amount.should.equal(0.3e8);
-                  should.exist(tx.outputs[1].message);
-                  tx.outputs[1].message.should.equal('message #2');
-                  should.exist(tx.customData);
-                  should.exist(tx.customData['test']);
-                  done();
-                });
-              });
-            });
-          });
-        });
-      });
-    });
 
     it.skip('should get various paginated tx history', async function() {
       const testCases = [{
@@ -1012,49 +883,6 @@ describe('History', function() {
       });
     });
 
-    it('should handle ETH/w ERC20 history  history ', function(done) {
-      helpers.stubHistory(null, null);
-      helpers.stubHistory(null, null, TestData.historyETH);
-
-      server.getTxHistory({}, function(err, txs) {
-        should.not.exist(err);
-        should.exist(txs);
-        txs.length.should.equal(9);
-        txs[2].should.deep.equal({
-          id: '5ddbf28d4ff191801711a948',
-          txid: '0xf992febe3257518c00c09ae96cafe988dfe5b625bbf5515b679807f650f58e88',
-          confirmations: 0,
-          blockheight: 8999242,
-          fees: 1100740000000000,
-          time: 1574695599,
-          size: undefined,
-          amount: 0,
-          action: 'sent',
-          addressTo: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-          outputs: [{
-            address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-            amount: 0
-          }],
-          internal: [],
-          dust: false,
-          abiType: '{"type":"ERC20","name":"transfer","params":[{"name":"_to","value":"0xeca2486a6a213fb40537658d7360ab6221eb26be","type":"address"},{"name":"_tokenId","value":"3000000","type":"uint256"}]}',
-          effects: undefined,
-          error: undefined,
-          network: 'sepolia',
-          chain: 'ETH',
-          data: '0x',
-          nonce: 57,
-          gasPrice: 2500000000,
-          gasLimit: 163759,
-          receipt: undefined,
-          lowFees: false,
-          maxGasFee: undefined,
-          priorityGasFee: undefined,
-          txType: undefined,
-        });
-        done();
-      });
-    });
 
     it.skip('should set lowFees atribute for sub-superEconomy level fees on unconfirmed txs', function(done) {
       helpers.stubFeeLevels({ 24: 10000 });

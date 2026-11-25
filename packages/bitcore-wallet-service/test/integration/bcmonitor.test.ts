@@ -58,7 +58,7 @@ describe('Blockchain monitor', function() {
 
         if (tx.abiType && tx.abiType.type === 'ERC20') {
           tokenAddress = tx.to;
-          address = CWC.Web3.utils.toChecksumAddress(tx.abiType.params[0].value);
+          address = tx.abiType.params[0].value; // EVM only, not used in this fork
           amount = tx.abiType.params[1].value;
         } else {
           address = tx.to;
@@ -167,79 +167,7 @@ describe('Blockchain monitor', function() {
     });
   });
 
-  it('should notify copayers of incoming txs ETH, amount = 0', function(done) {
-    helpers.createAndJoinWallet(1, 1, { coin: 'eth' }).then(function({ server, wallet }) {
-      server.createAddress({}, function(err, address) {
-        should.not.exist(err);
 
-        const incoming = {
-          tx: {
-            chain: 'ETH',
-            network: 'mainnet',
-            to: address.address,
-            value: 0,
-            txid: '123'
-          }
-        };
-        socket.handlers['tx'](incoming);
-
-        setTimeout(function() {
-          server.getNotifications({}, function(err, notifications) {
-            should.not.exist(err);
-            const notification = notifications.find(n => n.type === 'NewIncomingTx');
-            should.exist(notification);
-            notification.data.txid.should.equal('123');
-            notification.data.address.should.equal(address.address);
-            notification.data.amount.should.equal(0);
-            done();
-          });
-        }, 100);
-      });
-    });
-  });
-
-  describe('EVM tx events, as bitcore-node emits them', function() {
-    const token = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-    const sender = '0xC877cBCF020A8AA259A1Efab1559B2A3A7259086';
-    // passes a tx event through the chain's onTx to the monitor, as the v8 explorer's wallets socket does
-    const receive = tx => bcmonitor._handleIncomingPayments('eth', 'livenet', ChainService.onTx('eth', tx));
-    const incomingNotifications = async s => {
-      const notifications = await util.promisify(s.getNotifications).call(s, {});
-      return notifications.filter(n => n.type === 'NewIncomingTx');
-    };
-    const ethAddress = async () => {
-      const { server: s } = await helpers.createAndJoinWallet(1, 1, { coin: 'eth' });
-      const address = await util.promisify(s.createAddress).call(s, {});
-      return { s, address: address.address };
-    };
-
-    it('notifies the recipient of a native transfer', async function() {
-      const { s, address } = await ethAddress();
-      receive({ chain: 'ETH', network: 'mainnet', txid: '0x01', to: address, from: sender, value: 5000, effects: [] });
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const notifications = await incomingNotifications(s);
-      notifications.length.should.equal(1);
-      notifications[0].data.should.include({ txid: '0x01', address, amount: 5000 });
-      should.not.exist(notifications[0].data.tokenAddress);
-    });
-
-    it('notifies the recipient of an ERC20 transfer, with the token', async function() {
-      const { s, address } = await ethAddress();
-      receive({
-        chain: 'ETH',
-        network: 'mainnet',
-        txid: '0x02',
-        to: token,
-        from: sender,
-        value: 0,
-        effects: [{ type: 'ERC20:transfer', to: address, from: sender, amount: '1000000', contractAddress: token, callStack: '' }]
-      });
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const notifications = await incomingNotifications(s);
-      notifications.length.should.equal(1);
-      notifications[0].data.should.include({ txid: '0x02', address, amount: '1000000', tokenAddress: token });
-    });
-  });
 
   it('should not notify copayers of incoming txs more than once', function(done) {
     server.createAddress({}, function(err, address) {
@@ -266,47 +194,6 @@ describe('Blockchain monitor', function() {
     });
   });
 
-  it('should not notify copayers of incoming txs more than once for ETH wallet', function(done) {
-    helpers.createAndJoinWallet(1, 1, { coin: 'eth' }).then(function({ server: s, wallet }) {
-      s.createAddress({}, function(err, address) {
-        should.not.exist(err);
-        const incoming = {
-          tx: {
-            chain: 'ETH',
-            network: 'mainnet',
-            blockHeight: -1,
-            blockHash: null,
-            data: 'MHhhOTA1OWNiYjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDk4MmZhMTBhZDliOTc1NzQ5YzhmY2UxM2YyMmQ3ZWNlNGVhMjM5MjEwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMTU1Y2Mw',
-            txid: '0x2fb6db15ac76eea2118e04b5a93036eb75c3ea56652bf99bcb9798ae77019378',
-            blockTime: '2019-12-04T19:19:25.504Z',
-            blockTimeNormalized: '2019-12-04T19:19:25.504Z',
-            fee: 198995000000000,
-            transactionIndex: 0,
-            value: 0,
-            wallets: ['5d8b6c452522995f80c27bf5', '5d924a407eca6e5f89d2be5c'],
-            to: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-            from: '0xC877cBCF020A8AA259A1Efab1559B2A3A7259086',
-            gasLimit: 39799,
-            gasPrice: 5000000000,
-            nonce: 52,
-            internal: [],
-            abiType: { type: 'ERC20', name: 'transfer', params: [{ value: address.address }, { value: 1e10 }] }
-          }
-        };
-        socket.handlers['tx'](incoming);
-        socket.handlers['tx'](incoming);
-        setTimeout(function() {
-          s.getNotifications({}, function(err, notifications) {
-            should.not.exist(err);
-            const notification = notifications.filter(n => n.type === 'NewIncomingTx');
-            notification[0].data.amount.should.equal(1e10);
-            notification.length.should.equal(1);
-            done();
-          });
-        }, 100);
-      });
-    });
-  });
 
 
   it('should parse v8 amount ', function(done) {

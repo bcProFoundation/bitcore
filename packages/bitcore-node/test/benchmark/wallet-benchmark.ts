@@ -1,4 +1,6 @@
-import { Wallet, IWalletExt } from '@bcpros/bitcore-client';
+import { Wallet } from '@bcpros/bitcore-client';
+// this fork's bitcore-client has no IWalletExt type
+type IWalletExt = any;
 import { CoinStorage } from '../../src/models/coin';
 import { Storage } from '../../src/services/storage';
 import { uniq } from '../../src/utils';
