@@ -13,9 +13,9 @@ module.exports = {
   // https: true,
   // privateKeyFile: 'private.pem',
   // certificateFile: 'cert.pem',
-  ////// The following is only for certs which are not
-  ////// trusted by nodejs 'https' by default
-  ////// CAs like Verisign do not require this
+  // //// The following is only for certs which are not
+  // //// trusted by nodejs 'https' by default
+  // //// CAs like Verisign do not require this
   // CAinter1: '', // ex. 'COMODORSADomainValidationSecureServerCA.crt'
   // CAinter2: '', // ex. 'COMODORSAAddTrustCA.crt'
   // CAroot: '', // ex. 'AddTrustExternalCARoot.crt'
@@ -56,7 +56,7 @@ module.exports = {
         url: 'https://api.bitcore.io',
         regtestEnabled: false
       },
-      testnet3:{
+      testnet3: {
         url: 'https://api.bitcore.io'
       },
       testnet4: {
@@ -165,6 +165,10 @@ module.exports = {
       moonpay: {
         disabled: false,
         removed: false
+      },
+      simplex: {
+        disabled: false,
+        removed: false
       }
     },
     swapCrypto: {
@@ -210,10 +214,11 @@ module.exports = {
   // moonpay: {
   //   sandbox: {
   //     apiKey: 'moonpay_sandbox_api_key_here',
-  //     api: 'https://api.moonpay.com',
+  //     api: 'https://api.moonpay.dev',
   //     widgetApi: 'https://buy-sandbox.moonpay.com',
   //     sellWidgetApi: 'https://sell-sandbox.moonpay.com',
   //     secretKey: 'moonpay_sandbox_secret_key_here',
+  //     secretKeyEmbedded: 'moonpay_sandbox_secret_key_embedded_here',
   //   },
   //   production: {
   //     apiKey: 'moonpay_production_api_key_here',
@@ -221,10 +226,11 @@ module.exports = {
   //     widgetApi: 'https://buy.moonpay.com',
   //     sellWidgetApi: 'https://sell.moonpay.com',
   //     secretKey: 'moonpay_production_secret_key_here',
+  //     secretKeyEmbedded: 'moonpay_production_secret_key_embedded_here',
   //   },
   //   sandboxWeb: {
   //     apiKey: 'moonpay_sandbox_web_api_key_here',
-  //     api: 'https://api.moonpay.com',
+  //     api: 'https://api.moonpay.dev',
   //     widgetApi: 'https://buy-sandbox.moonpay.com',
   //     sellWidgetApi: 'https://sell-sandbox.moonpay.com',
   //     secretKey: 'moonpay_sandbox_web_secret_key_here',
@@ -240,23 +246,27 @@ module.exports = {
   // ramp: {
   //   sandbox: {
   //     apiKey: 'ramp_sandbox_api_key_here',
-  //     api: 'https://api.demo.ramp.network/api',
-  //     widgetApi: 'https://app.demo.ramp.network/',
+  //     api: 'https://api.demo.rampnetwork.com/api',
+  //     widgetApi: 'https://app.demo.rampnetwork.com/',
+  //     signingKey: 'ramp_sandbox_signing_key_here',
   //   },
   //   production: {
   //     apiKey: 'ramp_production_api_key_here',
-  //     api: 'https://api.ramp.network/api',
-  //     widgetApi: 'https://app.ramp.network',
+  //     api: 'https://api.rampnetwork.com/api',
+  //     widgetApi: 'https://app.rampnetwork.com/',
+  //     signingKey: 'ramp_production_signing_key_here',
   //   },
   //   sandboxWeb: {
   //     apiKey: 'ramp_sandbox_web_api_key_here',
-  //     api: 'https://api.demo.ramp.network/api',
-  //     widgetApi: 'https://app.demo.ramp.network/',
+  //     api: 'https://api.demo.rampnetwork.com/api',
+  //     widgetApi: 'https://app.demo.rampnetwork.com/',
+  //     signingKey: 'ramp_sandbox_web_signing_key_here',
   //   },
   //   productionWeb: {
   //     apiKey: 'ramp_production_web_api_key_here',
-  //     api: 'https://api.ramp.network/api',
-  //     widgetApi: 'https://app.ramp.network',
+  //     api: 'https://api.rampnetwork.com/api',
+  //     widgetApi: 'https://app.rampnetwork.com/',
+  //     signingKey: 'ramp_production_web_signing_key_here',
   //   }
   // },
   // sardine: {
@@ -285,25 +295,37 @@ module.exports = {
   //   sandbox: {
   //     apiKey: 'simplex_sandbox_api_key_here',
   //     api: 'https://sandbox.test-simplexcc.com',
-  //     appProviderId: 'simplex_provider_id_here'
+  //     apiSell: 'https://sell-checkout-waf.sandbox.test-simplexcc.com',
+  //     appProviderId: 'simplex_provider_id_here',
+  //     appSellRefId: 'simplex_sell_ref_id_here',
+  //     publicKey: 'simplex_sandbox_public_key_here',
   //   },
   //   production: {
   //     apiKey: 'simplex_production_api_key_here',
   //     api: 'https://backend-wallet-api.simplexcc.com',
-  //     appProviderId: 'simplex_provider_id_here'
+  //     apiSell: 'https://sell-checkout-widget.simplex.com',
+  //     appProviderId: 'simplex_provider_id_here',
+  //     appSellRefId: 'simplex_sell_ref_id_here',
+  //     publicKey: 'simplex_public_key_here',
   //   },
   //   sandboxWeb: {
   //     apiKey: 'simplex_sandbox_web_api_key_here',
   //     api: 'https://sandbox.test-simplexcc.com',
-  //     appProviderId: 'simplex_web_provider_id_here'
+  //     apiSell: 'https://sell-checkout-waf.sandbox.test-simplexcc.com',
+  //     appProviderId: 'simplex_web_provider_id_here',
+  //     appSellRefId: 'simplex_web_sell_ref_id_here',
+  //     publicKey: 'simplex_web_sandbox_public_key_here',
   //   },
   //   productionWeb: {
   //     apiKey: 'simplex_production_web_api_key_here',
   //     api: 'https://backend-wallet-api.simplexcc.com',
-  //     appProviderId: 'simplex_web_provider_id_here'
+  //     apiSell: 'https://sell-checkout-widget.simplex.com',
+  //     appProviderId: 'simplex_web_provider_id_here',
+  //     appSellRefId: 'simplex_web_sell_ref_id_here',
+  //     publicKey: 'simplex_web_public_key_here',
   //   }
   // },
-  // thorswap : {
+  // thorswap: {
   //   sandbox: {
   //     api: 'https://dev-api.thorswap.net',
   //     apiKey: 'thorswap_sandbox_api_key_here',
@@ -317,31 +339,32 @@ module.exports = {
   //     referer: 'thorswap_production_referer_here'
   //   },
   // },
-  // transak : {
+  // transak: {
   //   sandbox: {
   //     api: 'https://api-stg.transak.com',
-  //     widgetApi: 'https://global-stg.transak.com',
+  //     widgetApi: 'https://api-gateway-stg.transak.com',
   //     apiKey: 'transak_sandbox_api_key_here',
   //     secretKey: 'transak_sandbox_secret_key_here',
   //   },
   //   production: {
   //     api: 'https://api.transak.com',
-  //     widgetApi: 'https://global.transak.com',
+  //     widgetApi: 'https://api-gateway.transak.com',
   //     apiKey: 'transak_production_api_key_here',
   //     secretKey: 'transak_production_secret_key_here',
   //   },
   //   sandboxWeb: {
   //     api: 'https://api-stg.transak.com',
-  //     widgetApi: 'https://global-stg.transak.com',
+  //     widgetApi: 'https://api-gateway-stg.transak.com',
   //     apiKey: 'transak_sandbox_web_api_key_here',
   //     secretKey: 'transak_sandbox_web_secret_key_here',
   //   },
   //   productionWeb: {
   //     api: 'https://api.transak.com',
-  //     widgetApi: 'https://global.transak.com',
+  //     widgetApi: 'https://api-gateway.transak.com',
   //     apiKey: 'transak_production_web_api_key_here',
   //     secretKey: 'transak_production_web_secret_key_here',
-  //   }
+  //   },
+  //   whitelist: []
   // },
   // wyre: {
   //   sandbox: {
@@ -371,7 +394,7 @@ module.exports = {
   //   }
   // },
   // oneInch: {
-  //   api: 'https://api.1inch.dev/swap',
+  //   api: 'https://api.1inch.dev',
   //   apiKey: 'one_inch_api_key',
   //   referrerAddress: 'one_inch_referrer_address', // ETH
   //   referrerFee: 'one_inch_referrer_fee', // min: 0; max: 3; (represents percentage)

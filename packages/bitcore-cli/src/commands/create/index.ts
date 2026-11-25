@@ -1,0 +1,46 @@
+import { Constants } from '@bcpros/crypto-wallet-core';
+import { getChain, getIsMultiParty, getMofN, getMultiPartyScheme, getNetwork } from '../../prompts';
+import { Utils } from '../../utils';
+import { createMultiSigWallet } from './createMultiSig';
+import { createSingleSigWallet } from './createSingleSig';
+import { createThresholdSigWallet } from './createThresholdSig';
+import type { CommonArgs } from '../../../types/cli';
+
+export async function createWallet(args: CommonArgs<{ mnemonic?: string }>) {
+  const { wallet, opts } = args;
+
+  await wallet.getClient({});
+
+  const chain = await getChain();
+  const network = await getNetwork();
+  // No solana support for multi-party wallets right now (TSS is ECDSA only)
+  const isMultiParty = chain === 'sol' ? false : await getIsMultiParty();
+
+  let mnemonic;
+  if (!isMultiParty) {
+    ({ mnemonic } = await createSingleSigWallet({ wallet, chain, network, opts }));
+  } else {
+    let useTss = true;
+    if (Constants.MULTISIG_CHAINS.includes(chain)) {
+      const scheme = await getMultiPartyScheme();
+      useTss = scheme === 'tss';
+    }
+
+    const mOfN = await getMofN();
+    const [m, n] = Utils.parseMN(mOfN);
+
+    if (useTss) {
+      await createThresholdSigWallet({ wallet, chain, network, opts, m, n });
+    } else {
+      ({ mnemonic } = await createMultiSigWallet({ wallet, chain, network, opts, m, n }));
+    }
+  }
+  
+  // Re-fetch the client to ensure it has the latest state
+  // and to complete the wallet creation process
+  await wallet.getClient({});
+
+  if (!opts.mnemonic && mnemonic) {
+    await Utils.showMnemonic(wallet.name, mnemonic, opts);
+  }
+};

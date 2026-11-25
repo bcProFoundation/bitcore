@@ -1,8 +1,6 @@
 import { EventEmitter } from 'events';
-import { Request, Response } from 'express';
-import { FindCursor, ObjectId } from 'mongodb-legacy';
-import { Db, MongoClient } from 'mongodb-legacy';
-import { Readable, Transform } from 'stream';
+import { Readable } from 'stream';
+import { Db, FindCursor, MongoClient, ObjectId } from 'mongodb-legacy';
 import { LoggifyClass } from '../decorators/Loggify';
 import logger from '../logger';
 import '../models';
@@ -31,13 +29,13 @@ export class StorageService {
 
   start(args: Partial<ConfigType> = {}): Promise<MongoClient> {
     return new Promise((resolve, reject) => {
-      let options = Object.assign({}, this.configService.get(), args);
-      let { dbUrl, dbName, dbHost, dbPort, dbUser, dbPass, dbReadPreference } = options;
-      let auth = dbUser !== '' && dbPass !== '' ? `${dbUser}:${dbPass}@` : '';
+      const options = Object.assign({}, this.configService.get(), args);
+      const { dbUrl, dbName, dbHost, dbPort, dbUser, dbPass, dbReadPreference } = options;
+      const auth = dbUser !== '' && dbPass !== '' ? `${dbUser}:${dbPass}@` : '';
       const connectUrl = dbUrl
         ? dbUrl
         : `mongodb://${auth}${dbHost}:${dbPort}/${dbName}?socketTimeoutMS=3600000&noDelay=true${dbReadPreference ? `?readPreference=${dbReadPreference}` : ''}`;
-      let attemptConnect = async () => {
+      const attemptConnect = async () => {
         return MongoClient.connect(connectUrl, {
           maxPoolSize: options.maxPoolSize || 50,
           minPoolSize: 1,
@@ -50,48 +48,24 @@ export class StorageService {
         });
       };
       let attempted = 0;
-      let attemptConnectId = setInterval(async () => {
-        try {
-          this.client = await attemptConnect();
-
-          // Add connection pool monitoring
-          this.client.on('connectionPoolCreated', (event) => {
-            logger.info('Connection pool created:', event);
-          });
-
-          this.client.on('connectionPoolClosed', (event) => {
-            logger.warn('Connection pool closed:', event);
-          });
-
-          this.client.on('connectionCreated', (event) => {
-            logger.debug('Connection created:', { connectionId: event.connectionId });
-          });
-
-          this.client.on('connectionClosed', (event) => {
-            logger.warn('Connection closed:', {
-              connectionId: event.connectionId,
-              reason: event.reason
-            });
-          });
-
-          this.client.on('connectionPoolCleared', (event) => {
-            logger.error('Connection pool cleared:', event);
-          });
-
-
-          this.db = this.client.db(dbName);
-          this.connected = true;
-          clearInterval(attemptConnectId);
-          this.connection.emit('CONNECTED');
-          resolve(this.client);
-        } catch (err: any) {
-          logger.error('%o', err);
-          attempted++;
-          if (attempted > 5) {
+      const attemptConnectId = setInterval(() => {
+        (async () => {
+          try {
+            this.client = await attemptConnect();
+            this.db = this.client.db(dbName);
+            this.connected = true;
             clearInterval(attemptConnectId);
-            reject(new Error('Failed to connect to database'));
+            this.connection.emit('CONNECTED');
+            resolve(this.client);
+          } catch (err: any) {
+            logger.error('%o', err);
+            attempted++;
+            if (attempted > 5) {
+              clearInterval(attemptConnectId);
+              reject(new Error('Failed to connect to database'));
+            }
           }
-        }
+        })();
       }, 5000);
     });
   }
@@ -120,8 +94,8 @@ export class StorageService {
   typecastForDb<T>(model: TransformableModel<T>, modelKey: keyof MongoBound<T>, modelValue: T[keyof T] | ObjectId) {
     let typecastedValue = modelValue;
     if (modelKey) {
-      let oldValue = modelValue as any;
-      let optionsType = model.allowedPaging.find(prop => prop.key === modelKey);
+      const oldValue = modelValue as any;
+      const optionsType = model.allowedPaging.find(prop => prop.key === modelKey);
       if (optionsType) {
         switch (optionsType.type) {
           case 'number':
@@ -141,95 +115,10 @@ export class StorageService {
     return typecastedValue;
   }
 
-  stream(input: Readable, req: Request, res: Response) {
-    let closed = false;
-    req.on('close', function () {
-      closed = true;
-    });
-    res.on('close', function () {
-      closed = true;
-    });
-    input.on('error', function (err) {
-      if (!closed) {
-        closed = true;
-        return res.status(500).end(err.message);
-      }
-      return;
-    });
-    let isFirst = true;
-    res.type('json');
-    input.on('data', function (data) {
-      if (!closed) {
-        if (isFirst) {
-          res.write('[\n');
-          isFirst = false;
-        } else {
-          res.write(',\n');
-        }
-        res.write(JSON.stringify(data));
-      }
-    });
-    input.on('end', function () {
-      if (!closed) {
-        if (isFirst) {
-          // there was no data
-          res.write('[]');
-        } else {
-          res.write('\n]');
-        }
-        res.end();
-      }
-    });
-  }
-
-  apiStream(cursor: Readable, req: Request, res: Response) {
-    let closed = false;
-    req.on('close', function () {
-      closed = true;
-      cursor.destroy();
-    });
-    res.on('close', function () {
-      closed = true;
-      cursor.destroy();
-    });
-    cursor.on('error', function (err) {
-      if (!closed) {
-        closed = true;
-        return res.status(500).end(err.message);
-      }
-      return;
-    });
-    let isFirst = true;
-    res.type('json');
-    cursor.on('data', function (data) {
-      if (!closed) {
-        if (isFirst) {
-          res.write('[\n');
-          isFirst = false;
-        } else {
-          res.write(',\n');
-        }
-        res.write(data);
-      } else {
-        cursor.destroy();
-      }
-    });
-    cursor.on('end', function () {
-      if (!closed) {
-        if (isFirst) {
-          // there was no data
-          res.write('[]');
-        } else {
-          res.write('\n]');
-        }
-        res.end();
-      }
-    });
-  }
   getFindOptions<T>(model: TransformableModel<T>, originalOptions: StreamingFindOptions<T>) {
-    let query: any = {};
+    const query: any = {};
     let since: any = null;
-    let options: StreamingFindOptions<T> = {};
+    const options: StreamingFindOptions<T> = {};
 
     if (originalOptions.sort) {
       options.sort = originalOptions.sort;
@@ -260,10 +149,8 @@ export class StorageService {
     model: TransformableModel<T>,
     originalQuery: any,
     originalOptions: StreamingFindOptions<T>,
-    req: Request,
-    res: Response,
     transform?: (data: T) => string | Buffer
-  ) {
+  ): Readable & { close?: () => void } {
     const { query, options } = this.getFindOptions(model, originalOptions);
     const finalQuery = Object.assign({}, originalQuery, query);
     let cursor = model.collection
@@ -273,23 +160,16 @@ export class StorageService {
     if (options.sort) {
       cursor = cursor.sort(options.sort);
     }
-
-    const stream = cursor.stream();
-
-    const transformStream = new Transform({
-      objectMode: true,
-      transform: (doc, _, callback) => {
-        try {
-          const transformed = (transform || model._apiTransform.bind(model))(doc);
-          callback(null, transformed);
-        } catch (err) {
-          callback(err as Error);
-        }
-      }
-    });
-
-    return this.apiStream(stream.pipe(transformStream), req, res);
+    // With the 4.x+ driver (mongodb-legacy) a cursor is not a Readable itself: stream it,
+    // and keep close() on the stream so callers can release the cursor as before.
+    const stream = cursor.stream({
+      transform: (transform || model._apiTransform.bind(model)) as any
+    }) as Readable & { close?: () => void };
+    stream.close = () => {
+      cursor.close().catch(err => logger.warn('Failed to close cursor: %o', err));
+    };
+    return stream;
   }
 }
 
-export let Storage = new StorageService();
+export const Storage = new StorageService();

@@ -1,7 +1,7 @@
 import cluster from 'cluster';
 import 'source-map-support/register';
 import logger from '../logger';
-import { Modules } from '../modules';
+import { loadModules } from '../modules';
 import { Api } from '../services/api';
 import { Event } from '../services/event';
 import { P2P } from '../services/p2p';
@@ -10,7 +10,7 @@ import { Worker } from '../services/worker';
 import parseArgv from '../utils/parseArgv';
 import '../utils/polyfills';
 
-let args = parseArgv([], [{ arg: 'DEBUG', type: 'bool' }]);
+const args = parseArgv([], [{ arg: 'DEBUG', type: 'bool' }]);
 const services: Array<any> = [];
 
 export const FullClusteredWorker = async () => {
@@ -33,7 +33,7 @@ export const FullClusteredWorker = async () => {
     services.push(Api);
   }
 
-  Modules.loadConfigured();
+  loadModules();
 
   for (const service of services) {
     await service.start();

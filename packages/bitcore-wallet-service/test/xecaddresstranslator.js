@@ -4,7 +4,7 @@ var _ = require('lodash');
 var chai = require('chai');
 var sinon = require('sinon');
 var should = chai.should();
-var x = require('../ts_build/lib/xecaddresstranslator');
+var x = require('../ts_build/src/lib/xecaddresstranslator');
 
 describe('XEC Address translator', function() {
 

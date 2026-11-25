@@ -1,5 +1,5 @@
-import { ObjectId } from 'mongodb-legacy';
 import { Readable, Transform, Writable } from 'stream';
+import { ObjectId } from 'mongodb-legacy';
 import { StorageService } from '../services/storage';
 import { TransformOptions } from '../types/TransformOptions';
 import { partition } from '../utils';
@@ -30,7 +30,7 @@ export class WalletAddressModel extends BaseModel<IWalletAddress> {
   }
 
   _apiTransform(walletAddress: { address: string }, options?: TransformOptions) {
-    let transform = { address: walletAddress.address };
+    const transform = { address: walletAddress.address };
     if (options && options.object) {
       return transform;
     }
@@ -152,7 +152,8 @@ export class WalletAddressModel extends BaseModel<IWalletAddress> {
         }
         const coinStream = CoinStorage.collection
           .find({ chain, network, address: { $in: addressBatch } })
-          .project({ mintTxid: 1, spentTxid: 1 });
+          .project({ mintTxid: 1, spentTxid: 1 })
+          .stream();
         coinStream.on('data', (coin: ICoin) => {
           if (!this.txids[coin.mintTxid]) {
             this.txids[coin.mintTxid] = true;
@@ -166,7 +167,7 @@ export class WalletAddressModel extends BaseModel<IWalletAddress> {
         let errored = false;
         coinStream.on('error', err => {
           errored = true;
-          coinStream.close();
+          coinStream.destroy();
           callback(err);
         });
         coinStream.on('end', () => {
@@ -272,4 +273,4 @@ export class WalletAddressModel extends BaseModel<IWalletAddress> {
   }
 }
 
-export let WalletAddressStorage = new WalletAddressModel();
+export const WalletAddressStorage = new WalletAddressModel();

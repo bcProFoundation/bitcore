@@ -1,5 +1,5 @@
 import config from '../../src/config';
-import { Modules } from '../../src/modules';
+import { loadModules } from '../../src/modules';
 import { Storage } from '../../src/services/storage';
 import { wait } from '../../src/utils';
 
@@ -12,7 +12,7 @@ let loaded = false;
 export async function intBeforeHelper() {
   try {
     if (!loaded) {
-      Modules.loadConfigured();
+      loadModules();
       loaded = true;
     }
     if (!Storage.connected) {
@@ -26,7 +26,6 @@ export async function intBeforeHelper() {
 
 export async function intAfterHelper(describeContext?: any) {
   try {
-    describeContext = describeContext;
     if (describeContext && describeContext.timeout) {
       describeContext.timeout(1);
     }

@@ -1,9 +1,12 @@
-import * as async from 'async';
 import * as fs from 'fs';
+import path from 'path';
+import * as async from 'async';
 import _ from 'lodash';
 import 'source-map-support/register';
-
+import Mustache from 'mustache';
 import request from 'request';
+import defaultRequest from 'request';
+import sjcl from 'sjcl';
 import config from '../config';
 import { Common } from './common';
 import logger from './logger';
@@ -11,13 +14,9 @@ import { MessageBroker } from './messagebroker';
 import { INotification, IPreferences, Preferences } from './model';
 import { Storage } from './storage';
 
-const Mustache = require('mustache');
-const defaultRequest = require('request');
-const path = require('path');
 const Utils = Common.Utils;
 const Defaults = Common.Defaults;
 const Constants = Common.Constants;
-const sjcl = require('sjcl');
 
 const PUSHNOTIFICATIONS_TYPES = {
   NewCopayer: {
@@ -48,10 +47,10 @@ const PUSHNOTIFICATIONS_TYPES = {
     dataOnly: true,
     broadcastToActiveUsers: true
   },
-  NewBlock: {
-    dataOnly: true,
-    broadcastToActiveUsers: true
-  },
+  // NewBlock: {
+  //   dataOnly: true,
+  //   broadcastToActiveUsers: true
+  // },
   TxProposalAcceptedBy: {
     dataOnly: true
   },
@@ -163,7 +162,7 @@ export class PushNotificationsService {
   _sendPushNotifications(notification, cb) {
     cb = cb || function() {};
 
-    const notifType = _.cloneDeep(PUSHNOTIFICATIONS_TYPES[notification.type]);
+    const notifType = _.cloneDeep(PUSHNOTIFICATIONS_TYPES[notification?.type]);
     if (!notifType) return cb();
 
     if (notification.type === 'NewIncomingTx') {
@@ -225,6 +224,7 @@ export class PushNotificationsService {
                 const chain = notification?.data?.chain || notification?.data?.coin;
                 const coin = chain; // backwards compatibility
                 const network = notification?.data?.network ? Utils.getNetworkName(chain, notification.data.network) : null;
+                const txid = typeof notification?.data?.txid === 'string' ? notification.data.txid : null;
 
                 if (sub.token) {
                   notificationData = {
@@ -268,10 +268,11 @@ export class PushNotificationsService {
                     network,
                     tokenAddress,
                     multisigContractAddress,
+                    txid,
                     title,
                     body
                   };
-                  const custom_uri = `bitpay://wallet?walletId=${walletId}&tokenAddress=${tokenAddress}&multisigContractAddress=${multisigContractAddress}&copayerId=${copayerId}&coin=${coin}&chain=${chain}&network=${network}&notification_type=${notification_type}&title=${title}&body=${body}`;
+                  const custom_uri = `bitpay://wallet?walletId=${walletId}&tokenAddress=${tokenAddress}&multisigContractAddress=${multisigContractAddress}&copayerId=${copayerId}&coin=${coin}&chain=${chain}&network=${network}&notification_type=${notification_type}&txid=${txid}&title=${title}&body=${body}`;
                   notificationData = {
                     external_user_ids: [sub.externalUserId],
                     messages: {
@@ -359,7 +360,8 @@ export class PushNotificationsService {
   _checkShouldSendNotif(notification, cb) {
     if (notification.type != 'NewTxProposal') return cb(null, true);
     this.storage.fetchWallet(notification.walletId, (err, wallet) => {
-      return cb(err, wallet && wallet.m > 1);
+      // TSS wallets are stored as m=1 but still need other signers
+      return cb(err, wallet && (wallet.m > 1 || !!wallet.tssKeyId));
     });
   }
 
@@ -479,6 +481,7 @@ export class PushNotificationsService {
       xec: 'XEC',
       eth: 'ETH',
       matic: 'MATIC',
+      arc: 'USDC',
       xrp: 'XRP',
       doge: 'DOGE',
       ltc: 'LTC',
@@ -493,9 +496,11 @@ export class PushNotificationsService {
       ape: 'APE',
       euroc: 'EUROC',
       usdt: 'USDT',
+      xaut: 'XAUT',
       weth: 'WETH',
-     'usdc.e': 'USDC.e',
-      xpi: 'XPI'
+      'usdc.e': 'USDC.e',
+      xpi: 'XPI',
+      sol: 'SOL'
     };
     const data = _.cloneDeep(notification.data);
     data.subjectPrefix = _.trim(this.subjectPrefix + ' ');
@@ -503,7 +508,7 @@ export class PushNotificationsService {
       try {
         let unit = recipient.unit.toLowerCase();
         let label = UNIT_LABELS[unit];
-        let opts = {} as any;
+        const opts = {} as any;
         if (data.tokenAddress) {
           const tokenAddress = data.tokenAddress.toLowerCase();
           if (Constants.ETH_TOKEN_OPTS[tokenAddress]) {
@@ -521,18 +526,23 @@ export class PushNotificationsService {
           } else if (Constants.BASE_TOKEN_OPTS[tokenAddress]) {
             unit = Constants.BASE_TOKEN_OPTS[tokenAddress].symbol.toLowerCase();
             label = UNIT_LABELS[unit];
+          } else if (Constants.SOL_TOKEN_OPTS[tokenAddress]) {
+            unit = Constants.SOL_TOKEN_OPTS[tokenAddress].symbol.toLowerCase();
+            label = UNIT_LABELS[unit];
           } else {
             let customTokensData;
+            let tokenData;
             try {
               customTokensData = await this.getTokenData(data.address.coin);
-            } catch (error) {
+              tokenData = customTokensData.find(t => t.address === tokenAddress);
+            } catch {
               return cb(new Error('Could not get custom tokens data'));
             }
-            if (customTokensData && customTokensData[tokenAddress]) {
+            if (tokenData) {
               // check for eth tokens
-              unit = customTokensData[tokenAddress].symbol.toLowerCase();
+              unit = tokenData.symbol.toLowerCase();
               label = unit.toUpperCase();
-              opts.toSatoshis = 10 ** customTokensData[tokenAddress].decimals;
+              opts.toSatoshis = 10 ** tokenData.decimals;
               opts.decimals = {
                 maxDecimals: 6,
                 minDecimals: 2
@@ -721,50 +731,93 @@ export class PushNotificationsService {
     );
   }
 
-  private oneInchGetCredentials() {
-    if (!config.oneInch) throw new Error('1Inch missing credentials');
+  private coinGeckoGetCredentials() {
+    if (!config.coinGecko) throw new Error('coinGecko missing credentials');
 
     const credentials = {
-      API: config.oneInch.api,
-      API_KEY: config.oneInch.apiKey,
-      referrerAddress: config.oneInch.referrerAddress,
-      referrerFee: config.oneInch.referrerFee
+      API: config.coinGecko.api,
+      API_KEY: config.coinGecko.apiKey,
     };
 
     return credentials;
   }
 
-  getTokenData(chain: string) {
+  getTokenData(chain: string): Promise<Array<{
+    chainId: number;
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    logoURI: string;
+  }>> {
     return new Promise((resolve, reject) => {
-      try {
-        const credentials = this.oneInchGetCredentials();
-        const chainIdMap = {
-          eth: 1,
-          matic: 137
+      const cacheKey = `cgTokenList:${chain}`;
+      const credentials = this.coinGeckoGetCredentials();
+
+      this.storage.checkAndUseGlobalCache(cacheKey, Defaults.COIN_GECKO_CACHE_DURATION, (err, values, oldvalues) => {
+        if (err) logger.warn('Cache check failed', err);
+        if (values) return resolve(values);
+
+        const assetPlatformMap = {
+          eth: 'ethereum',
+          matic: 'polygon-pos',
+          pol: 'polygon-pos',
+          arb: 'arbitrum-one',
+          base: 'base',
+          op: 'optimistic-ethereum',
+          arc: 'arc',
+          sol: 'solana',
         };
-        this.request(
+
+        const assetId = assetPlatformMap[chain];
+        if (!assetId) return reject(new Error(`Unsupported chain '${chain}'`));
+
+        const URL: string = `${credentials.API}/v3/token_lists/${assetId}/all.json`;
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-cg-pro-api-key': credentials.API_KEY
+        };
+
+        this.request.get(
+          URL,
           {
-            url: `${credentials.API}/v5.2/${chainIdMap[chain]}/tokens`,
-            method: 'GET',
-            json: true,
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              Authorization: 'Bearer ' + credentials.API_KEY,
-            }
+            headers,
+            json: true
           },
           (err, data) => {
-            if (err) return reject(err);
-            if (data?.statusCode === 429) {
-              // oneinch rate limit
-              return reject();
+            const tokens = data?.body?.tokens;
+            const status = data?.body?.status;
+            if (err) {
+              logger.warn('An error occured while retrieving the token list', err);
+              if (oldvalues) {
+                logger.warn('Using old cached values');
+                return resolve(oldvalues);
+              }
+              return reject(err.body ?? err);
+            } else if (status?.error_code === 429 && oldvalues) {
+              return resolve(oldvalues);
+            } else {
+              if (!tokens) {
+                if (oldvalues) {
+                  logger.warn('No token list available... using old cached values');
+                  return resolve(oldvalues);
+                }
+                return reject(new Error(`Could not get tokens list. Code: ${status?.error_code}. Error: ${status?.error_message || 'Unknown error'}`));
+              }
+              const updatedTokens = tokens.map(token => {
+                if (token.logoURI?.includes('/thumb/')) {
+                  token.logoURI = token.logoURI.replace('/thumb/', '/large/');
+                }
+                return token;
+              });
+              this.storage.storeGlobalCache(cacheKey, updatedTokens, storeErr => {
+                if (storeErr) logger.warn('Could not cache token list', storeErr);
+                return resolve(updatedTokens);
+              });
             }
-            return resolve(data?.body?.tokens);
-          }
-        );
-      } catch (err) {
-        return reject(err);
-      }
+          });
+      });
     });
   }
 }

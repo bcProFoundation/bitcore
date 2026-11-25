@@ -1,6 +1,6 @@
 # bitcore-wallet-client
 
-[![NPM Package](https://img.shields.io/npm/v/bitcore-wallet-client.svg?style=flat-square)](https://www.npmjs.org/package/bitcore-wallet-client)
+[![NPM Package](https://img.shields.io/npm/v/@bcpros/bitcore-wallet-client.svg?style=flat-square)](https://www.npmjs.org/package/@bcpros/bitcore-wallet-client)
 [![Build Status](https://img.shields.io/travis/bitpay/bitcore-wallet-client.svg?branch=master&style=flat-square)](https://travis-ci.org/bitpay/bitcore-wallet-client)
 [![Coverage Status](https://coveralls.io/repos/bitpay/bitcore-wallet-client/badge.svg)](https://coveralls.io/r/bitpay/bitcore-wallet-client)
 
@@ -10,11 +10,11 @@ The *official* client library for [bitcore-wallet-service](https://github.com/bi
 
 This package communicates with BWS [Bitcore wallet service](https://github.com/bitpay/bitcore-wallet-service) using the REST API. All REST endpoints are wrapped as simple async methods. All relevant responses from BWS are checked independently by the peers, thus the importance of using this library when talking to a third party BWS instance.
 
-See [Bitcore-wallet] (https://github.com/bitpay/bitcore-wallet) for a simple CLI wallet implementation that relays on BWS and uses bitcore-wallet-client.
+See [Bitcore-CLI] (https://github.com/bitpay/bitcore/tree/master/packages/bitcore-cli) for a simple CLI wallet implementation that relies on BWS and uses bitcore-wallet-client.
 
 ## Get Started
 
-You can start using bitcore-wallet-client via [NPM](https://www.npmjs.com/package/bitcore-wallet-client): by running `npm install bitcore-wallet-client` from your console.
+You can start using bitcore-wallet-client via [NPM](https://www.npmjs.com/package/@bcpros/bitcore-wallet-client): by running `npm install @bcpros/bitcore-wallet-client` from your console.
 
 ## Example
 
@@ -84,9 +84,11 @@ client.joinWallet(secret, "Tomas", {}, function(err, wallet) {
       console.log('error: ', err);
       return
     };
-    console.log('\n\n** Wallet Info', ret); //TODO
+    // Example output for demonstration / debugging purposes
+    console.log('\n\n** Wallet Info', ret);
 
-    console.log('\n\nCreating first address:', ret); //TODO
+    console.log('\n\nCreating first address:', ret);
+
     if (ret.wallet.status == 'complete') {
       client.createAddress({}, function(err,addr){
         if (err) {
@@ -104,7 +106,7 @@ client.joinWallet(secret, "Tomas", {}, function(err, wallet) {
 Install `bitcore-wallet-client` before start:
 
 ```sh
-npm i bitcore-wallet-client
+npm i @bcpros/bitcore-wallet-client
 ```
 
 Create a new wallet with the first script:

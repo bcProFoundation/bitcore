@@ -6,10 +6,11 @@
   "main": "index.js",
   "scripts": {
     "test": "gulp --tasks && gulp test",
-    "test:ci": "npm run test",
-    "coverage": "gulp coverage",
     "build": "gulp",
-    "pub": "npm run build && npm publish"
+    "pub": "pnpm run build && npm publish",
+    "prepack": "gulp browser:compressed",
+    "test:ci": "npm run test",
+    "coverage": "gulp coverage"
   },
   "keywords": [
     "dogecoin",
@@ -46,14 +47,20 @@
   },
   "devDependencies": {
     "@bcpros/bitcore-build": "workspace:*",
+    "@bcpros/bitcore-lib-ltc": "workspace:*",
     "brfs": "^2.0.1",
     "chai": "^4.2.0",
     "gulp": "^4.0.0",
     "sinon": "^7.1.1"
   },
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "lib",
+    "bitcore-lib.js",
+    "bitcore-lib.min.js"
+  ],
   "publishConfig": {
     "access": "public"
-  },
-  "license": "MIT",
-  "gitHead": "169e28b0b13c25c386faccf38a2fdc4e1275a5db"
+  }
 }

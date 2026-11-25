@@ -19,6 +19,9 @@ export const Defaults = {
   // TODO: should allow different gap sizes for external/internal chains
   SCAN_ADDRESS_GAP: 30,
 
+  // Lookback window (in seconds) for scanning broadcasted txps during nonce assignment
+  BROADCASTED_NONCE_SCAN_WINDOW: 24 * 3600,
+
   FEE_LEVELS: {
     btc: [
       {
@@ -205,6 +208,34 @@ export const Defaults = {
         defaultValue: 2000000000
       }
     ],
+    // Fallbacks must meet Arc's testnet gas-price floor. Live estimates still take precedence.
+    arc: [
+      {
+        name: 'urgent',
+        nbBlocks: 1,
+        defaultValue: 20000000000
+      },
+      {
+        name: 'priority',
+        nbBlocks: 2,
+        defaultValue: 20000000000
+      },
+      {
+        name: 'normal',
+        nbBlocks: 3,
+        defaultValue: 20000000000
+      },
+      {
+        name: 'economy',
+        nbBlocks: 4,
+        defaultValue: 20000000000
+      },
+      {
+        name: 'superEconomy',
+        nbBlocks: 4,
+        defaultValue: 20000000000
+      }
+    ],
     xrp: [
       {
         name: 'normal',
@@ -245,7 +276,14 @@ export const Defaults = {
         nbBlocks: 24,
         defaultValue: 10000
       }
-    ]
+    ],
+    sol: [
+      {
+        name: 'normal',
+        nbBlocks: 1,
+        defaultValue: 5000
+      }
+    ],
   },
 
   // How many levels to fallback to if the value returned by the network for a given nbBlocks is -1
@@ -291,10 +329,10 @@ export const Defaults = {
   BALANCE_CACHE_DURATION: 10,
 
   // Cache time for blockchain height (in ms)
-  // this is actually erased on 'new block' notifications
-  // so, 30m seems fine
-  BLOCKHEIGHT_CACHE_TIME: 30 * 60 * 1000,
-
+  BLOCKHEIGHT_CACHE_TIME: {
+    default: 30 * 60 * 1000, // this is erased on 'new block' notifications so, 30m seems fine
+    sol: 5 * 1000 // 5 seconds - Solana needs to maintain the freshes blockheight to land txs consistently
+  },
   // Cache time fee levels (in ms)
   FEE_LEVEL_CACHE_DURATION: 6 * 60 * 1000,
 
@@ -304,8 +342,10 @@ export const Defaults = {
   // Oneinch token list cache duration (in ms)
   ONE_INCH_CACHE_DURATION: 1 * 60 * 1000,
 
-  // Coingecko token rates cache duration (in ms)
-  COIN_GECKO_CACHE_DURATION: 5 * 60 * 1000,
+  // Coingecko get token cache duration (in ms)
+  COIN_GECKO_CACHE_DURATION: 1 * 24 * 60 * 60 * 1000,
+
+  COIN_GECKO_MARKET_STATS_CACHE_DURATION: 5 * 60 * 1000,
 
   // Max allowed timespan for notification queries in seconds
   MAX_NOTIFICATIONS_TIMESPAN: 60 * 60 * 24 * 14, // ~ 2 weeks
@@ -346,7 +386,7 @@ export const Defaults = {
   ADDRESS_SYNC_BATCH_SIZE: 500000,
 
   LOCK_WAIT_TIME: 5 * 1000, // wait time 5s
-  LOCK_EXE_TIME: 40 * 1000, // max lock time 50s
+  LOCK_EXE_TIME: 40 * 1000, // max lock time 40s
   SERVER_EXE_TIME: 40 * 1000 * 1.5,
 
   BE_KEY_SALT: 'bws-auth-keysalt',
@@ -358,13 +398,8 @@ export const Defaults = {
    */
 
   MAX_TX_SIZE_IN_KB_BTC: 100,
-
   MAX_TX_SIZE_IN_KB_BCH: 100,
-
   MAX_TX_SIZE_IN_KB_DOGE: 100,
-
-  // MAX_TX_SIZE_IN_KB_ETH: 500, // not used
-  // MAX_TX_SIZE_IN_KB_XRP: 1000, // not used
 
   MAX_FEE_PER_KB: {
     btc: 10000 * 1000, // 10k sat/b
@@ -374,11 +409,13 @@ export const Defaults = {
     arb: 1000000000000, // 50 Gwei,
     base: 1000000000000, // 50 Gwei,
     op: 1000000000000, // 50 Gwei,
+    arc: 1000000000000,
     xrp: 1000000000000,
     xpi: 1000000000000,
     doge: 100000000 * 100,
     xec: 100 * 100,
-    ltc: 10000 * 1000 // 10k sat/b
+    ltc: 10000 * 1000, // 10k sat/b
+    sol: 15000 // Lamports per signature
   },
 
   MIN_TX_FEE: {
@@ -389,11 +426,13 @@ export const Defaults = {
     arb: 0,
     base: 0,
     op: 0,
+    arc: 0,
     xrp: 0,
     doge: 0,
     xpi: 0,
     xec: 0,
-    ltc: 0
+    ltc: 0,
+    sol: 0,
   },
 
   MAX_TX_FEE: {
@@ -404,6 +443,7 @@ export const Defaults = {
     arb: 1 * 1e18, // 1 eth
     base: 1 * 1e18, // 1 eth
     op: 1 * 1e18, // 1 eth
+    arc: 1 * 1e18, // 1 USDC
     xrp: 1 * 1e6, // 1 xrp
     doge: 400 * 1e8,
     xpi: 1 * 1e6, // 1 xpi
@@ -423,7 +463,18 @@ export const Defaults = {
   MS_GAS_LIMIT_BUFFER_PERCENT: 10 / 100,
 
   // XRP has a non-refundable mininum activation fee / balance
-  MIN_XRP_BALANCE: 10000000,
+  MIN_XRP_BALANCE: 1000000,
+
+  // SOL has a non-refundable rent fee / balance
+  MIN_SOL_BALANCE: 1002240,
+
+  SOL_BASE_FEE: 5000,
+
+  // SOL prioritization fee: CWC raises any priority fee to at least this many micro-lamports per compute unit
+  SOL_MIN_PRIORITY_FEE: 1000,
+  // Compute unit limit the runtime reserves per instruction when no limit is set, and the per-tx maximum
+  SOL_COMPUTE_UNITS_PER_INSTRUCTION: 200000,
+  SOL_MAX_COMPUTE_UNITS: 1400000,
 
   // Time to get the latest push notification subscriptions. In ms.
   PUSH_NOTIFICATION_SUBS_TIME: 10 * 60 * 1000, // 10 min.
@@ -622,5 +673,17 @@ export const Defaults = {
     { code: 'ZWG', name: 'Zimbabwe Gold Bond' },
     { code: 'ZWL', name: 'Zimbabwean Dollar' }
   ],
-  FIAT_CURRENCY: { code: 'USD', name: 'US Dollar' }
+  FIAT_CURRENCY: { code: 'USD', name: 'US Dollar' },
+
+  // In general, the major version represents server upgrades or major security upgrades, and the minor version represents client upgrades.
+  // Example1: If the server has an API response overhaul, that's a breaking change for older clients - it should increment the major version.
+  //           This will result in an UPGRADE_NEEDED error for older clients.
+  // Example2: If the client upgrades the encryption scheme, older clients will still be compatible with the server and
+  //           other older clients - it should increment the minor version. Mismatching client versions will still break the process, but
+  //           the difference from a major version bump is that matching older clients will still work.
+  TSS_KEYGEN_SCHEME_VERSION: 1.1,
+  TSS_SIGGEN_SCHEME_VERSION: 1.1,
+
+  TSS_KEYGEN_TIME_LIMIT: 20, // minutes
+  TSS_SIGGEN_TIME_LIMIT: 60 * 24, // minutes - 1 day (TODO tighten this up after testing)
 };

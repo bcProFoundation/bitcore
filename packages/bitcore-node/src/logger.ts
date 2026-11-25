@@ -7,7 +7,7 @@ const logLevel = args.DEBUG ? 'debug' : (process.env.BCN_LOG_LEVEL || 'info');
 
 export const transport = new winston.transports.DailyRotateFile({
   filename: 'bcn-%DATE%.log',
-  handleExceptions: true,
+  handleExceptions: !process.env.MOCHA_TEST,
   maxSize: '40m',
   maxFiles: '14d',
   dirname: './logs',
@@ -53,7 +53,7 @@ export const logger = winston.createLogger({
     }),
     transport
   ],
-  exceptionHandlers: [new winston.transports.File({ filename: 'exceptions.log', dirname: './logs' })],
+  exceptionHandlers: !process.env.MOCHA_TEST ? [new winston.transports.File({ filename: 'exceptions.log', dirname: './logs' })] : [],
   exitOnError: false
 });
 
@@ -103,29 +103,36 @@ export function logWithCallStack(level: string, message: string): void {
   logger.log(level, `${message}\nCall Stack:\n${stack}`);
 }
 
-// Error handler for global exceptions
-process.on('uncaughtException', (error) => {
-  const message = typeof error === 'string' ? error : error.message;
-  logger.error({
-    message: `Uncaught Exception: ${message}`,
-    error: error && error.stack ? error.stack : error,
-    timestamp: timestamp()
+// Under mocha (MOCHA_TEST) these handlers would exit on the first failing assertion,
+// so they are only installed outside tests.
+if (!process.env.MOCHA_TEST) {
+  // Error handler for global exceptions
+  process.on('uncaughtException', (error) => {
+    const message = typeof error === 'string' ? error : error.message;
+    logger.error({
+      message: `Uncaught Exception: ${message}`,
+      error: error && error.stack ? error.stack : error,
+      timestamp: timestamp()
+    });
+    // Exit the process to allow Docker to restart the container
+    process.exit(1);
   });
-  // Exit the process to allow Docker to restart the container
-  process.exit(1);
-});
 
-// Error handler for unhandled promise rejections
-process.on('unhandledRejection', (reason, _) => {
-  const error = reason instanceof Error ? reason : new Error(String(reason));
-  console.error(error);
-  logger.error({
-    message: 'Unhandled Promise Rejection',
-    error: error && error.stack ? error.stack : error,
-    timestamp: timestamp()
+  // Error handler for unhandled promise rejections
+  process.on('unhandledRejection', (reason, _) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    console.error(error);
+    logger.error({
+      message: 'Unhandled Promise Rejection',
+      error: error && error.stack ? error.stack : error,
+      timestamp: timestamp()
+    });
+    // Exit the process to allow Docker to restart the container
+    process.exit(1);
   });
-  // Exit the process to allow Docker to restart the container
-  process.exit(1);
-});
+}
 
 export default logger;
+
+// Upstream code reads the transports from the logger module.
+export const transports = logger.transports;

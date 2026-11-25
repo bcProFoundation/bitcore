@@ -1,7 +1,7 @@
 'use strict';
 
 import {
-  BitcoreLib as Bitcore,
+  BitcoreLib,
   BitcoreLibCash,
   BitcoreLibDoge,
   BitcoreLibLtc,
@@ -12,29 +12,31 @@ import {
 } from '@bcpros/crypto-wallet-core';
 import Stringify from 'json-stable-stringify';
 import { singleton } from 'preconditions';
-import sjcl from 'sjcl';
 import { Constants } from './constants';
 import { Defaults } from './defaults';
+import { Encryption } from './encryption';
 
 const $ = singleton();
 
 const Bitcore_ = {
-  btc: Bitcore,
+  btc: BitcoreLib,
   bch: BitcoreLibCash,
-  eth: Bitcore,
-  matic: Bitcore,
-  arb: Bitcore,
-  base: Bitcore,
-  op: Bitcore,
-  xrp: Bitcore,
+  eth: BitcoreLib,
+  matic: BitcoreLib,
+  arb: BitcoreLib,
+  base: BitcoreLib,
+  op: BitcoreLib,
+  arc: BitcoreLib,
+  xrp: BitcoreLib,
   doge: BitcoreLibDoge,
+  ltc: BitcoreLibLtc,
   xec: BitcoreLibXec,
   xpi: BitcoreLibXpi,
-  ltc: BitcoreLibLtc
+  sol: BitcoreLib
 };
-const PrivateKey = Bitcore.PrivateKey;
-const PublicKey = Bitcore.PublicKey;
-const crypto = Bitcore.crypto;
+const PrivateKey = BitcoreLib.PrivateKey;
+const PublicKey = BitcoreLib.PublicKey;
+const crypto = BitcoreLib.crypto;
 
 const MAX_DECIMAL_ANY_CHAIN = 18; // more that 14 gives rounding errors
 
@@ -52,75 +54,65 @@ export class Utils {
         normalizedChain = 'eth';
       }
       return normalizedChain;
-    } catch (_) {
+    } catch {
       return 'btc'; // coin should always exist but most unit test don't have it -> return btc as default
     }
   }
 
   static encryptMessage(message, encryptingKey) {
-    var key = sjcl.codec.base64.toBits(encryptingKey);
-    return sjcl.encrypt(
-      key,
-      message,
-      {
-        ks: 128,
-        iter: 1
-      }
-    );
+    return JSON.stringify(Encryption.encryptWithKey(message, encryptingKey));
   }
 
   // Will throw if it can't decrypt
-  static decryptMessage(cyphertextJson, encryptingKey) {
-    if (!cyphertextJson) return;
-
-    if (!encryptingKey) throw new Error('No key');
-
-    var key = sjcl.codec.base64.toBits(encryptingKey);
-    return sjcl.decrypt(key, cyphertextJson);
+  static decryptMessage(ciphertextJson, encryptingKey) {
+    if (!ciphertextJson) return;
+    if (!encryptingKey) throw new Error('Missing encrypting key');
+    return Encryption.decryptWithKey(ciphertextJson, encryptingKey).toString();
   }
 
-  static decryptMessageNoThrow(cyphertextJson, encryptingKey) {
+  static decryptMessageNoThrow(ciphertextJson, encryptingKey) {
     if (!encryptingKey) return '<ECANNOTDECRYPT>';
+    if (!ciphertextJson) return '';
 
-    if (!cyphertextJson) return '';
-
-    // no sjcl encrypted json
-    var r = this.isJsonString(cyphertextJson);
+    // encrypted json (e.g. { ks: 256, v: 1, ct: 'ciphertext'  ... })
+    const r = this.isJsonString(ciphertextJson);
     if (!r || !r.iv || !r.ct) {
-      return cyphertextJson;
+      return ciphertextJson;
     }
 
     try {
-      return this.decryptMessage(cyphertextJson, encryptingKey);
-    } catch (e) {
+      return this.decryptMessage(ciphertextJson, encryptingKey);
+    } catch {
       return '<ECANNOTDECRYPT>';
     }
   }
 
   static isJsonString(str) {
-    var r;
+    let r;
     try {
       r = JSON.parse(str);
-    } catch (e) {
+    } catch {
       return false;
     }
     return r;
   }
-  /* TODO: It would be nice to be compatible with bitcoind signmessage. How
-   * the hash is calculated there? */
+  /** 
+   * TODO: It would be nice to be compatible with bitcoind signmessage. How
+   * is the hash is calculated there?
+   */
   static hashMessage(text) {
     $.checkArgument(text);
-    var buf = Buffer.from(text);
-    var ret = crypto.Hash.sha256sha256(buf);
-    ret = new Bitcore.encoding.BufferReader(ret).readReverse();
+    const buf = Buffer.from(text);
+    let ret = crypto.Hash.sha256sha256(buf);
+    ret = new BitcoreLib.encoding.BufferReader(ret).readReverse();
     return ret;
   }
 
   static signMessage(message, privKey) {
     $.checkArgument(message);
-    var priv = new PrivateKey(privKey);
+    const priv = new PrivateKey(privKey);
     const flattenedMessage = Array.isArray(message) ? message.join(',') : message;
-    var hash = this.hashMessage(flattenedMessage);
+    const hash = this.hashMessage(flattenedMessage);
     return crypto.ECDSA.sign(hash, priv, { endian: 'little' }).toString();
   }
 
@@ -130,25 +122,25 @@ export class Utils {
 
     if (!signature) return false;
 
-    var pub = new PublicKey(pubKey);
+    const pub = new PublicKey(pubKey);
     const flattenedMessage = Array.isArray(message) ? message.join(',') : message;
-    const hash = this.hashMessage(flattenedMessage);
     try {
-      var sig = new crypto.Signature.fromString(signature);
+      // hashMessage rejects an empty message, which an array argument reaches by being empty or by holding
+      // only empty strings. A message we cannot hash is a message we cannot verify, so report it as such
+      // instead of throwing at callers who are asking a yes or no question.
+      const hash = this.hashMessage(flattenedMessage);
+      const sig = new crypto.Signature.fromString(signature);
       return crypto.ECDSA.verify(hash, sig, pub, { endian: 'little' });
-    } catch (e) {
+    } catch {
       return false;
     }
   }
 
   static privateKeyToAESKey(privKey) {
     $.checkArgument(privKey && typeof privKey === 'string');
-    $.checkArgument(
-      Bitcore.PrivateKey.isValid(privKey),
-      'The private key received is invalid'
-    );
-    var pk = Bitcore.PrivateKey.fromString(privKey);
-    return Bitcore.crypto.Hash.sha256(pk.toBuffer())
+    $.checkArgument(BitcoreLib.PrivateKey.isValid(privKey), 'The private key received is invalid');
+    const pk = BitcoreLib.PrivateKey.fromString(privKey);
+    return BitcoreLib.crypto.Hash.sha256(pk.toBuffer())
       .slice(0, 16)
       .toString('base64');
   }
@@ -185,27 +177,34 @@ export class Utils {
     network,
     chain,
     escrowInputs?,
-    hardwareSourcePublicKey?
+    hardwareSourcePublicKey?,
+    clientDerivedPublicKey?
   ) {
     $.checkArgument(Object.values(Constants.SCRIPT_TYPES).includes(scriptType));
-
-    if (hardwareSourcePublicKey) {
-      const bitcoreAddress = Deriver.getAddress(chain.toUpperCase(), network, hardwareSourcePublicKey, scriptType);
+    const externSourcePublicKey = hardwareSourcePublicKey || clientDerivedPublicKey;
+    if (externSourcePublicKey) {
+      let bitcoreAddress;
+      try {
+        bitcoreAddress = Deriver.deriveAddressWithPath(chain.toUpperCase(), network, externSourcePublicKey, path, scriptType);
+      } catch {
+        // some chains (e.g. SOL) cannot derive address along path from pub key.
+        bitcoreAddress = Deriver.getAddress(chain.toUpperCase(), network, externSourcePublicKey, scriptType);
+      }
       return {
         address: bitcoreAddress.toString(),
         path,
-        publicKeys: [hardwareSourcePublicKey]
-      }
+        publicKeys: [externSourcePublicKey]
+      };
     }
 
     chain = chain || 'btc';
     const bitcore = Bitcore_[chain];
     let publicKeys = (publicKeyRing || []).map(item => {
-      var xpub = new bitcore.HDPublicKey(item.xPubKey);
+      const xpub = new bitcore.HDPublicKey(item.xPubKey);
       return xpub.deriveChild(path).publicKey;
     });
 
-    var bitcoreAddress;
+    let bitcoreAddress;
     switch (scriptType) {
       case Constants.SCRIPT_TYPES.P2WSH:
         const nestedWitness = false;
@@ -219,10 +218,8 @@ export class Utils {
         break;
       case Constants.SCRIPT_TYPES.P2SH:
         if (escrowInputs) {
-          var xpub = new bitcore.HDPublicKey(publicKeyRing[0].xPubKey);
-          const inputPublicKeys = escrowInputs.map(
-            input => xpub.deriveChild(input.path).publicKey
-          );
+          const xpub = new bitcore.HDPublicKey(publicKeyRing[0].xPubKey);
+          const inputPublicKeys = escrowInputs.map(input => xpub.deriveChild(input.path).publicKey);
           bitcoreAddress = bitcore.Address.createEscrow(
             inputPublicKeys,
             publicKeys[0],
@@ -284,27 +281,27 @@ export class Utils {
   // testnet xpub starts with t.
   // livenet xpub starts with x.
   // no matter WHICH chain
-  static xPubToCopayerId(_chain, xpub): string {
+  static xPubToCopayerId(chain: string, xpub: string): string {
     // this was introduced because we allowed coinType = 0' wallets for BCH
-    // for the  "wallet duplication" feature
+    // for the "wallet duplication" feature
     // now it is effective for all coins.
 
-    const chain = _chain.toLowerCase();
-    var str = chain == 'btc' ? xpub : chain + xpub;
+    chain = chain.toLowerCase();
+    const str = chain == 'btc' ? xpub : (chain + xpub);
 
-    var hash = sjcl.hash.sha256.hash(str);
-    return sjcl.codec.hex.fromBits(hash);
+    const hash = BitcoreLib.crypto.Hash.sha256(Buffer.from(str));
+    return hash.toString('hex');
   }
 
   static signRequestPubKey(requestPubKey, xPrivKey) {
-    var priv = new Bitcore.HDPrivateKey(xPrivKey).deriveChild(
+    const priv = new BitcoreLib.HDPrivateKey(xPrivKey).deriveChild(
       Constants.PATHS.REQUEST_KEY_AUTH
     ).privateKey;
     return this.signMessage(requestPubKey, priv);
   }
 
   static verifyRequestPubKey(requestPubKey, signature, xPubKey) {
-    var pub = new Bitcore.HDPublicKey(xPubKey).deriveChild(
+    const pub = new BitcoreLib.HDPublicKey(xPubKey).deriveChild(
       Constants.PATHS.REQUEST_KEY_AUTH
     ).publicKey;
     return this.verifyMessage(requestPubKey, signature, pub.toString());
@@ -313,29 +310,29 @@ export class Utils {
   static formatAmount(satoshis, unit, opts?) {
     $.shouldBeNumber(satoshis);
 
-    var clipDecimals = (number, decimals) => {
+    const clipDecimals = (number, decimals) => {
       let str = number.toString();
       if (str.indexOf('e') >= 0) {
         // fixes eth small balances
         str = number.toFixed(MAX_DECIMAL_ANY_CHAIN);
       }
-      var x = str.split('.');
+      const x = str.split('.');
 
-      var d = (x[1] || '0').substring(0, decimals);
+      const d = (x[1] || '0').substring(0, decimals);
       const ret = parseFloat(x[0] + '.' + d);
       return ret;
     };
 
-    var addSeparators = (nStr, thousands, decimal, minDecimals) => {
+    const addSeparators = (nStr, thousands, decimal, minDecimals) => {
       nStr = nStr.replace('.', decimal);
-      var x = nStr.split(decimal);
-      var x0 = x[0];
-      var x1 = x[1] || '';
+      const x = nStr.split(decimal);
+      let x0 = x[0];
+      let x1 = x[1] || '';
 
       while (x1.endsWith('0') && x1.length > minDecimals) {
         x1 = x1.slice(0, -1);
       }
-      var x2 = x.length > 1 ? decimal + x1 : '';
+      const x2 = x.length > 1 ? decimal + x1 : '';
 
       x0 = x0.replace(/\B(?=(\d{3})+(?!\d))/g, thousands);
       return x0 + x2;
@@ -343,11 +340,11 @@ export class Utils {
 
     opts = opts || {};
 
-    var u = Constants.UNITS[unit];
-    var precision = opts.fullPrecision ? 'full' : 'short';
-    var decimals = opts.decimals ? opts.decimals[precision] : u[precision];
-    var toSatoshis = opts.toSatoshis ? opts.toSatoshis : u.toSatoshis;
-    var amount = clipDecimals(
+    const u = Constants.UNITS[unit];
+    const precision = opts.fullPrecision ? 'full' : 'short';
+    const decimals = opts.decimals ? opts.decimals[precision] : u[precision];
+    const toSatoshis = opts.toSatoshis ? opts.toSatoshis : u.toSatoshis;
+    const amount = clipDecimals(
       satoshis / toSatoshis,
       decimals.maxDecimals
     ).toFixed(decimals.maxDecimals);
@@ -360,12 +357,12 @@ export class Utils {
   }
 
   static buildTx(txp) {
-    var chain = txp.chain?.toLowerCase() || Utils.getChain(txp.coin); // getChain -> backwards compatibility
+    const chain = txp.chain?.toLowerCase() || Utils.getChain(txp.coin); // getChain -> backwards compatibility
 
     if (Constants.UTXO_CHAINS.includes(chain)) {
-      var bitcore = Bitcore_[chain];
+      const bitcore = Bitcore_[chain];
 
-      var t = new bitcore.Transaction();
+      const t = new bitcore.Transaction();
 
       if (txp.version >= 4) {
         t.setVersion(2);
@@ -415,11 +412,14 @@ export class Utils {
       if (txp.instantAcceptanceEscrow && txp.escrowAddress) {
         t.escrow(
           txp.escrowAddress.address,
-          txp.instantAcceptanceEscrow + txp.fee
+          Number(txp.instantAcceptanceEscrow) + Number(txp.fee)
         );
       }
 
-      t.change(txp.changeAddress.address);
+      if (!txp.sendMax) {
+        $.checkState(txp.changeAddress?.address, 'Failed state: missing changeAddress for non sendMax transaction');
+        t.change(txp.changeAddress.address);
+      }
 
       // backup opreturnOutput for checking other output
       let opReturnOutput = null;
@@ -453,7 +453,7 @@ export class Utils {
       }
       return t;
     } else {
-      // ETH ERC20 XRP
+      // ETH ERC20 XRP SOL
       const {
         data,
         destinationTag,
@@ -481,17 +481,18 @@ export class Utils {
       }
       const unsignedTxs = [];
       // If it is a token swap its an already created ERC20 transaction so we skip it and go directly to ETH transaction create
-      const isERC20 = tokenAddress && !payProUrl && !isTokenSwap;
+      const isToken = tokenAddress && !payProUrl && !isTokenSwap;
       const isMULTISIG = multisigContractAddress;
       const chainName = chain.toUpperCase();
+      const tokenType = chainName === 'SOL' ? 'SPL' : 'ERC20';
       const _chain = isMULTISIG
         ? chainName + 'MULTISIG'
-        : isERC20
-          ? chainName + 'ERC20'
+        : isToken
+          ? chainName + tokenType
           : chainName;
 
       if (multiSendContractAddress) {
-        let multiSendParams = {
+        const multiSendParams = {
           nonce: Number(txp.nonce),
           recipients,
           chain: _chain,
@@ -510,18 +511,25 @@ export class Utils {
             amount: outputs[outputIdx].amount,
             address: outputs[outputIdx].toAddress,
             tag: outputs[outputIdx].tag
-          }
+          };
           const _tag = recepient?.tag || destinationTag;
           const rawTx = Transactions.create({
             ...txp,
             ...recepient,
             tag: _tag ? Number(_tag) : undefined,
             chain: _chain,
-            nonce: Number(txp.nonce) + Number(index),
+            nonce: this.formatNonce(chainName, txp.nonce, index),
             recipients: [recepient]
           });
           unsignedTxs.push(rawTx);
         }
+      } else if (chainName === 'SOL') {
+        const rawTx = Transactions.create({
+          ...txp,
+          chain: _chain,
+          recipients,
+        });
+        unsignedTxs.push(rawTx);
       } else {
         for (let index = 0; index < recipients.length; index++) {
           const rawTx = Transactions.create({
@@ -529,8 +537,8 @@ export class Utils {
             ...recipients[index],
             tag: destinationTag ? Number(destinationTag) : undefined,
             chain: _chain,
-            nonce: Number(txp.nonce) + Number(index),
-            recipients: [recipients[index]]
+            nonce: this.formatNonce(chainName, txp.nonce, index),
+            recipients: [recipients[index]],
           });
           unsignedTxs.push(rawTx);
         }
@@ -539,7 +547,18 @@ export class Utils {
     }
   }
 
+  static formatNonce(chain, nonce, index) {
+    if (Constants.SVM_CHAINS.includes(chain.toLowerCase())) {
+      return nonce;
+    } else {
+      return Number(nonce) + Number(index);
+    }
+  }
+
   static getCurrencyCodeFromCoinAndChain(coin: string, chain: string): string {
+    if (coin.toLowerCase() === 'arc' && chain.toLowerCase() === 'arc') {
+      return 'USDC_arc';
+    }
     if (coin.toLowerCase() === chain.toLowerCase()) {
       return coin.toUpperCase();
     }
@@ -585,5 +604,25 @@ export class Utils {
       default:
         return undefined; // non-segwit addressType
     }
+  }
+
+  static isUtxoChain(chain: string): boolean {
+    return Constants.UTXO_CHAINS.includes(chain.toLowerCase());
+  }
+
+  static isSvmChain(chain: string): boolean {
+    return Constants.SVM_CHAINS.includes(chain.toLowerCase());
+  }
+
+  static isEvmChain(chain: string): boolean {
+    return Constants.EVM_CHAINS.includes(chain.toLowerCase());
+  }
+
+  static isXrpChain(chain: string): boolean {
+    return ['xrp'].includes(chain.toLowerCase());
+  }
+
+  static isSingleAddressChain(chain: string): boolean {
+    return !Utils.isUtxoChain(chain);
   }
 }

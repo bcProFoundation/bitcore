@@ -9,13 +9,13 @@ Mnemonics is implemented as a separate module and you must add it to your depend
 For node projects:
 
 ```sh
-npm install bitcore-mnemonic --save
+npm install @bcpros/bitcore-mnemonic --save
 ```
 
 For client-side projects:
 
 ```sh
-bower install bitcore-mnemonic --save
+bower install @bcpros/bitcore-mnemonic --save
 ```
 
 ## Mnemonic generation

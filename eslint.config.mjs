@@ -1,0 +1,174 @@
+import js from '@eslint/js';
+import stylistic from '@stylistic/eslint-plugin';
+import { defineConfig } from 'eslint/config';
+import importPlugin from 'eslint-plugin-import';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+const es2023Message = 'ES2023+ built-in, not available in every runtime of the mobile app packages (Hermes, Node 18). Use an ES2022 equivalent, e.g. arr.slice().sort() instead of arr.toSorted().';
+const es2023Restrictions = [
+  ...['toSorted', 'toReversed', 'toSpliced', 'with']
+    .map(property => ({ property, message: es2023Message })),
+  ...['union', 'intersection', 'symmetricDifference', 'isSubsetOf', 'isSupersetOf', 'isDisjointFrom']
+    .map(property => ({ property, message: es2023Message })),
+  { property: 'difference', allowObjects: ['_', 'CWCUtils'], message: es2023Message },
+  { object: 'Object', property: 'groupBy', message: es2023Message },
+  { object: 'Map', property: 'groupBy', message: es2023Message },
+  { object: 'Promise', property: 'withResolvers', message: es2023Message },
+  { object: 'Array', property: 'fromAsync', message: es2023Message }
+];
+
+export default defineConfig([
+  js.configs.recommended,
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/build/**',
+      '**/ts_build/**',
+      'packages/insight/**',
+    ]
+  },
+  {
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    plugins: { js, import: importPlugin },
+    extends: ['js/recommended'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: {
+        ...globals.node,
+        'NodeJS': 'readonly',
+        'BufferEncoding': 'readonly',
+      },
+      parserOptions: {
+        impliedStrict: true
+      }
+    }
+  },
+  tseslint.configs.recommended,
+  { // TypeScript files
+    files: ['**/*.{ts,mts,cts}'],
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      '@stylistic': stylistic,
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'warn',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-asserted-optional-chain': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-duplicate-enum-values': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    }
+  },
+  {
+    plugins: {
+      '@stylistic': stylistic,
+    },
+    rules: {
+      quotes: ['error', 'single', { avoidEscape: true }],
+      'prefer-const': 'warn',
+      'no-var': 'warn',
+      'no-undef': 'error',
+      'no-async-promise-executor': 'off',
+      'semi': ['error', 'always'],
+      'no-case-declarations': 'off',
+      'no-bitwise': 'error',
+      'spaced-comment': ['error', 'always', { exceptions: ['-', '+'] }],
+      '@stylistic/object-curly-spacing': ['error', 'always'],
+      '@stylistic/indent': ['error', 2, { SwitchCase: 1 }],
+      '@stylistic/member-delimiter-style': ['error', {
+        multiline: {
+          delimiter: 'semi',
+          requireLast: true
+        },
+        singleline: {
+          delimiter: 'semi',
+          requireLast: false
+        }
+      }],
+      'object-curly-spacing': ['error', 'always'],
+      'key-spacing': ['error', { beforeColon: false, afterColon: true }],
+      'comma-spacing': ['error', { before: false, after: true }],
+      'space-before-blocks': ['error', 'always'],
+      'keyword-spacing': ['error', { before: true, after: true }],
+      'no-multi-spaces': ['error', { ignoreEOLComments: true }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.type="MemberExpression"][callee.property.name="forEach"]',
+          message: 'Use for...of loop or array methods like map/filter instead of forEach'
+        }
+      ],
+      'sort-imports': ['error', {
+        ignoreDeclarationSort: true, // rule cannot be auto-fixed
+        ignoreMemberSort: false // import { b, a } from 'X' -> import { a, b } from 'X'
+      }],
+      'import/order': ['error', {
+        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
+        'newlines-between': 'never',
+        alphabetize: { order: 'asc', caseInsensitive: false }
+      }],
+      'import/newline-after-import': 'error'
+    }
+  },
+  {
+    files: [
+      'packages/bitcore-build/**/*.js',
+      'packages/bitcore-lib*/**/*.js',
+      'packages/bitcore-p2p*/**/*.js',
+      'packages/bitcore-tss/**/*.js',
+      'packages/bitcore-build/**/*.js'
+    ],
+    languageOptions: { sourceType: 'commonjs' },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'warn',
+      'no-bitwise': 'off',
+      '@typescript-eslint/no-unused-vars': 'warn',
+    }
+  },
+  {
+    // CommonJS tooling and its fixtures/tests: `.cjs` forces
+    // CommonJS regardless of root package.json, so `require` is the only
+    // option, not a style choice -- same rationale as the legacy-package
+    // override above.
+    files: [
+      'packages/bitcore-build/test/**/*.cjs',
+    ],
+    languageOptions: { sourceType: 'commonjs' },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'warn',
+    }
+  },
+  {
+    files: [
+      'packages/bitcore-lib*/index.js',
+      'packages/bitcore-lib*/lib/**/*.js',
+      'packages/bitcore-mnemonic/index.js',
+      'packages/bitcore-mnemonic/lib/**/*.js',
+      'packages/bitcore-tss/index.js',
+      'packages/bitcore-tss/ecdsa/**/*.js',
+      'packages/bitcore-tss/ecies/**/*.js',
+      'packages/crypto-wallet-core/src/**/*.ts',
+      'packages/bitcore-wallet-client/src/**/*.ts'
+    ],
+    rules: {
+      'no-restricted-properties': ['error', ...es2023Restrictions]
+    }
+  },
+  // Test files -- needs to be last so it can override other settings
+  {
+    files: ['**/test/**/*.{ts,js}'],
+    languageOptions: {
+      globals: {
+        ...globals.mocha
+      }
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-this-alias': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      'sort-imports': 'off',
+      'import/order': 'off'
+    }
+  }
+]);

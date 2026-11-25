@@ -7,7 +7,7 @@
 Install with:
 
 ```sh
-npm install bitcore-build
+npm install @bcpros/bitcore-build
 ```
 
 And use and require in your gulp file:
@@ -32,7 +32,7 @@ bitcoreTasks('submodule', {skipBrowsers: true});
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/bitpay/bitcore/blob/master/Contributing.md) on the main bitcore repo for information about how to contribute.
+See [CONTRIBUTING.md](https://github.com/bitpay/bitcore/blob/master/CONTRIBUTING.md) on the main bitcore repo for information about how to contribute.
 
 ## License
 

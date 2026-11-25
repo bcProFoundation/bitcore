@@ -1,11 +1,12 @@
 'use strict';
 
-var Message = require('../message');
-var inherits = require('util').inherits;
-var bitcore = require('@bcpros/bitcore-lib-cash');
-var utils = require('../utils');
-var BufferReader = bitcore.encoding.BufferReader;
-var BufferWriter = bitcore.encoding.BufferWriter;
+const Message = require('../message');
+const inherits = require('util').inherits;
+const bitcore = require('@bcpros/bitcore-lib-cash');
+const utils = require('../utils');
+
+const BufferReader = bitcore.encoding.BufferReader;
+const BufferWriter = bitcore.encoding.BufferWriter;
 
 /**
  * @param {Object=} arg
@@ -21,20 +22,20 @@ function AlertMessage(arg, options) {
   if (!arg) {
     arg = {};
   }
-  this.payload = arg.payload || new Buffer(32);
-  this.signature = arg.signature || new Buffer(32);
+  this.payload = arg.payload || Buffer.alloc(32);
+  this.signature = arg.signature || Buffer.alloc(32);
 }
 inherits(AlertMessage, Message);
 
 AlertMessage.prototype.setPayload = function(payload) {
-  var parser = new BufferReader(payload);
+  const parser = new BufferReader(payload);
   this.payload = parser.readVarLengthBuffer();
   this.signature = parser.readVarLengthBuffer();
   utils.checkFinished(parser);
 };
 
 AlertMessage.prototype.getPayload = function() {
-  var bw = new BufferWriter();
+  const bw = new BufferWriter();
   bw.writeVarintNum(this.payload.length);
   bw.write(this.payload);
 

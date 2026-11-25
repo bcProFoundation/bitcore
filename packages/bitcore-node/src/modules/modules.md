@@ -13,6 +13,7 @@ The modules in this table will automatically register with `bitcore-node` if you
 | DOGE           | dogecoin       | ./dogecoin     |
 | XRP            | ripple         | ./ripple       |
 | MATIC          | matic          | ./matic        |
+| SOLANA         | solana         | ./solana       |
 | Multiple (EVM) | moralis        | ./moralis      |
 
 If there is a custom or third-party module you'd like to use, follow the example below.
@@ -23,13 +24,12 @@ Let's say we have a node_module, named `bitcore-node-bch` with the following cod
 ```
 // index.js
 
-module.exports = class BitcoinCashModule {
-  constructor(services, chain, network, config) {
-    // chain === 'BCH'
-    services.Libs.register(chain, 'bitcore-lib-cash', 'bitcore-p2p-cash');
-    services.P2P.register(chain, network, services.P2P.get('BTC'));
-  }
+const registerModule: RegisterModule = (chain, network) => {
+  // chain === 'BCH'
+    Libs.register(chain, '@bcpros/bitcore-lib-cash', '@bcpros/bitcore-p2p-cash');
+    P2P.register(chain, network, P2P.get('BTC'));
 }
+module.exports.default = registerModule
 ```
 
 The module has the following dependencies
@@ -37,8 +37,8 @@ The module has the following dependencies
 // package.json
 
   "dependencies": {
-    "bitcore-lib-cash": "^8.3.4",
-    "bitcore-p2p-cash": "^8.3.4"
+    "@bcpros/bitcore-lib-cash": "^11.5.1",
+    "@bcpros/bitcore-p2p-cash": "^11.5.1"
   }
 
 ```

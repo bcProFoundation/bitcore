@@ -1,4 +1,4 @@
-export let UNITS = {
+export const UNITS = {
   btc: {
     toSatoshis: 100000000,
     full: {
@@ -103,6 +103,17 @@ export let UNITS = {
     full: {
       maxDecimals: 8,
       minDecimals: 8
+    },
+    short: {
+      maxDecimals: 6,
+      minDecimals: 2
+    }
+  },
+  arc: {
+    toSatoshis: 1e18,
+    full: {
+      maxDecimals: 6,
+      minDecimals: 6
     },
     short: {
       maxDecimals: 6,
@@ -299,6 +310,17 @@ export let UNITS = {
   },
   weth: {
     toSatoshis: 1e18,
+    full: {
+      maxDecimals: 8,
+      minDecimals: 8
+    },
+    short: {
+      maxDecimals: 6,
+      minDecimals: 2
+    }
+  },
+  xaut: {
+    toSatoshis: 1e6,
     full: {
       maxDecimals: 8,
       minDecimals: 8

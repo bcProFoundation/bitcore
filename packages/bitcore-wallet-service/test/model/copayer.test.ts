@@ -1,0 +1,259 @@
+'use strict';
+
+import * as chai from 'chai';
+import 'chai/register-should';
+import { IWallet, Wallet } from '../../src/lib/model/wallet';
+import { Copayer } from '../../src/lib/model/copayer';
+
+const should = chai.should();
+
+describe('Copayer', function() {
+  // xPubKey is the canonical copayer identity: the ID is always derived from it, and
+  // hardwareSourcePublicKey / clientDerivedPublicKey are persisted ancillary metadata
+  // that never select identity.
+
+  // 20 Aug '26 - support for hardware wallets lacking xPubKey will
+  // change the above statement and change the nature of these tests
+  describe('#xPubToCopayerId', function() {
+    it('should reject a missing xPubKey for the default coin', function() {
+      should.throw(() => Copayer.xPubToCopayerId('btc', undefined), 'Missing xPubKey for copayer id derivation');
+    });
+
+    it('should reject a missing xPubKey for a non-default coin instead of hashing "<coin>undefined"', function() {
+      should.throw(() => Copayer.xPubToCopayerId('bch', undefined), 'Missing xPubKey for copayer id derivation');
+    });
+
+    it('should reject null and empty xPubKey values', function() {
+      should.throw(() => Copayer.xPubToCopayerId('btc', null), 'Missing xPubKey for copayer id derivation');
+      should.throw(() => Copayer.xPubToCopayerId('btc', ''), 'Missing xPubKey for copayer id derivation');
+    });
+
+    it('should preserve existing copayer IDs for valid xPubKey inputs', function() {
+      const xPubKey = 'xpub661MyMwAqRbcFLRkhYzK8eQdoywNHJVsJCMQNDoMks5bZymuMcyDgYfnVQYq2Q9npnVmdTAthYGc3N3uxm5sEdnTpSqBc4YYTAhNnoSxCm9';
+      // Pinned hash so a change to the derivation (e.g. algorithm, encoding, or the
+      // coin == Defaults.COIN branch) would break existing wallets' copayer ids silently.
+      Copayer.xPubToCopayerId('btc', xPubKey).should.equal(
+        '77a8752fdddbe10fb9c290bd55ea8efbb1ad72adb4e68e8b57bf04adc3cc3ebb'
+      );
+    });
+  });
+
+  describe('#create identity', function() {
+    // `chain` is passed explicitly below because the service layer
+    // (joinWallet / _addCopayerToWallet) always supplies a resolved chain (backfilled
+    // from coin via Wallet.fromObj); these model tests encode the identity contract
+    // under that precondition rather than pinning a coin-only input shape.
+    const baseOpts = {
+      coin: 'btc',
+      chain: 'btc',
+      name: 'me',
+      requestPubKey: '03814ac7decf64321a3c6967bfb746112fdb5b583531cd512cc3787eaf578947dc',
+      signature: 'dummy-signature',
+    };
+
+    it('should derive the ID from xPubKey alone', function() {
+      const xPubKey = 'xpub-abc';
+      const c = Copayer.create({ ...baseOpts, xPubKey });
+      c.id.should.equal(Copayer.xPubToCopayerId('btc', xPubKey));
+    });
+
+    it('should prefer xPubKey when hardwareSourcePublicKey is also present', function() {
+      const xPubKey = 'xpub-abc';
+      const hardwareSourcePublicKey = 'hw-key';
+
+      const c = Copayer.create({ ...baseOpts, xPubKey, hardwareSourcePublicKey });
+      c.id.should.equal(Copayer.xPubToCopayerId('btc', xPubKey));
+    });
+
+    it('should prefer xPubKey when both alternate credentials are also present', function() {
+      const xPubKey = 'xpub-abc';
+      const hardwareSourcePublicKey = 'hw-key';
+      const clientDerivedPublicKey = 'cdk-key';
+
+      const c = Copayer.create({
+        ...baseOpts,
+        xPubKey,
+        hardwareSourcePublicKey,
+        clientDerivedPublicKey,
+      });
+      c.id.should.equal(Copayer.xPubToCopayerId('btc', xPubKey));
+    });
+
+    it('should derive the same xpub-based ID on a non-default chain', function() {
+      const xPubKey = 'xpub-abc';
+      const opts = { ...baseOpts, coin: 'bch', chain: 'bch' };
+      const c = Copayer.create({ ...opts, xPubKey });
+      c.id.should.equal(Copayer.xPubToCopayerId('bch', xPubKey));
+    });
+
+    it('should reject creation without xPubKey and without ancillary fields', function() {
+      should.throw(() => Copayer.create({ ...baseOpts }));
+    });
+
+    it('should reject an xPubKey-less copayer with hardwareSourcePublicKey until alternative ID derivation is implemented', function() {
+      // Copayer.create's own xPubKey guard is skipped when hardwareSourcePublicKey is present
+      // (that's the carve-out left for a future hardware-derived identity), but there is no
+      // alternative ID derivation yet, so the id assignment below falls through to
+      // xPubToCopayerId(chain, undefined), which still throws.
+      should.throw(() => Copayer.create({ ...baseOpts, hardwareSourcePublicKey: 'hw-key' }));
+    });
+
+    it('should reject an xPubKey-less copayer with clientDerivedPublicKey until alternative ID derivation is implemented', function() {
+      should.throw(() => Copayer.create({ ...baseOpts, clientDerivedPublicKey: 'cdk-key' }));
+    });
+
+    it('should continue deriving the copayer ID from xPubKey when ancillary public keys are also present', function() {
+      const xPubKey = 'xpub-abc';
+      const c = Copayer.create({
+        ...baseOpts,
+        xPubKey,
+        hardwareSourcePublicKey: 'hw-key',
+        clientDerivedPublicKey: 'cdk-key',
+      });
+      c.id.should.equal(Copayer.xPubToCopayerId('btc', xPubKey));
+    });
+
+    it('should persist the supplied ancillary fields and leave unsupplied ones absent', function() {
+      const xPubKey = 'xpub-abc';
+      const hardwareSourcePublicKey = 'hw-key';
+
+      const c = Copayer.create({ ...baseOpts, xPubKey, hardwareSourcePublicKey });
+      c.xPubKey.should.equal(xPubKey);
+      c.hardwareSourcePublicKey.should.equal(hardwareSourcePublicKey);
+      should.not.exist(c.clientDerivedPublicKey);
+    });
+
+    it('should persist both ancillary fields without changing the xpub-derived ID', function() {
+      const xPubKey = 'xpub-abc';
+      const hardwareSourcePublicKey = 'hw-key';
+      const clientDerivedPublicKey = 'cdk-key';
+
+      const c = Copayer.create({ ...baseOpts, xPubKey, hardwareSourcePublicKey, clientDerivedPublicKey });
+      c.id.should.equal(Copayer.xPubToCopayerId('btc', xPubKey));
+      c.xPubKey.should.equal(xPubKey);
+      c.hardwareSourcePublicKey.should.equal(hardwareSourcePublicKey);
+      c.clientDerivedPublicKey.should.equal(clientDerivedPublicKey);
+    });
+  });
+
+  describe('#fromObj', function() {
+    it('read a copayer', function() {
+      const c = Copayer.fromObj(testWallet.copayers[0]);
+      c.name.should.equal('copayer 1');
+    });
+  });
+  describe('#createAddress', function() {
+    it('should create an address', function() {
+      const w = Wallet.fromObj(testWallet);
+      const c = Copayer.fromObj(testWallet.copayers[2]);
+      should.exist(c.requestPubKeys);
+      c.requestPubKeys.length.should.equal(1);
+      const a1 = c.createAddress(w, true);
+      a1.address.should.equal('3AXmDe2FkWY9g5LpRaTs1U7pXKtkNm3NBf');
+      a1.path.should.equal('m/2/1/0');
+      a1.createdOn.should.be.above(1);
+      const a2 = c.createAddress(w, true);
+      a2.path.should.equal('m/2/1/1');
+    });
+  });
+});
+
+
+const testWallet: IWallet = {
+  addressManager: {
+    version: 1,
+    receiveAddressIndex: 0,
+    changeAddressIndex: 0,
+    copayerIndex: 2147483647,
+    derivationStrategy: 'BIP45',
+    skippedPaths: []
+  },
+  createdOn: 1422904188,
+  id: '123',
+  name: '123 wallet',
+  coin: 'btc',
+  chain: 'btc',
+  network: 'livenet',
+  m: 2,
+  n: 3,
+  status: 'complete',
+  publicKeyRing: [{
+    xPubKey: 'xpub661MyMwAqRbcFLRkhYzK8eQdoywNHJVsJCMQNDoMks5bZymuMcyDgYfnVQYq2Q9npnVmdTAthYGc3N3uxm5sEdnTpSqBc4YYTAhNnoSxCm9',
+    requestPubKey: '03814ac7decf64321a3c6967bfb746112fdb5b583531cd512cc3787eaf578947dc'
+  }, {
+    xPubKey: 'xpub661MyMwAqRbcEzHgVwwxoXksq21rRNsJsn7AFy4VD4PzsEmjjWwsyEiTjsdQviXbqZ5yHVWJR8zFUDgUKkq4R97su3UyNo36Z8hSaCPrv6o',
+    requestPubKey: '03fc086d2bd8b6507b1909b24c198c946e68775d745492ea4ca70adfce7be92a60'
+  }, {
+    xPubKey: 'xpub661MyMwAqRbcFXUfkjfSaRwxJbAPpzNUvTiNFjgZwDJ8sZuhyodkP24L4LvsrgThYAAwKkVVSSmL7Ts7o9EHEHPB3EE89roAra7njoSeiMd',
+    requestPubKey: '0246c30040eda1e36e02629ae8cd2a845fcfa947239c4c703f7ea7550d39cfb43a'
+  }, ],
+  copayers: [{
+    createdOn: 1422904189,
+    id: '1',
+    name: 'copayer 1',
+    xPubKey: 'xpub661MyMwAqRbcFLRkhYzK8eQdoywNHJVsJCMQNDoMks5bZymuMcyDgYfnVQYq2Q9npnVmdTAthYGc3N3uxm5sEdnTpSqBc4YYTAhNnoSxCm9',
+    requestPubKey: '03814ac7decf64321a3c6967bfb746112fdb5b583531cd512cc3787eaf578947dc',
+    signature: '30440220192ae7345d980f45f908bd63ccad60ce04270d07b91f1a9d92424a07a38af85202201591f0f71dd4e79d9206d2306862e6b8375e13a62c193953d768e884b6fb5a46',
+    version: 1,
+    requestPubKeys: [],
+    coin: 'btc',
+    walletId: '123',
+    customData: null,
+    addressManager: {
+      version: 1,
+      receiveAddressIndex: 0,
+      changeAddressIndex: 0,
+      copayerIndex: 0,
+      derivationStrategy: 'BIP45',
+      skippedPaths: []
+    }
+  }, {
+    createdOn: 1422904189,
+    id: '2',
+    name: 'copayer 2',
+    xPubKey: 'xpub661MyMwAqRbcEzHgVwwxoXksq21rRNsJsn7AFy4VD4PzsEmjjWwsyEiTjsdQviXbqZ5yHVWJR8zFUDgUKkq4R97su3UyNo36Z8hSaCPrv6o',
+    requestPubKey: '03fc086d2bd8b6507b1909b24c198c946e68775d745492ea4ca70adfce7be92a60',
+    signature: '30440220134d13139323ba16ff26471c415035679ee18b2281bf85550ccdf6a370899153022066ef56ff97091b9be7dede8e40f50a3a8aad8205f2e3d8e194f39c20f3d15c62',
+    version: 1,
+    requestPubKeys: [],
+    coin: 'btc',
+    walletId: '123',
+    customData: null,
+    addressManager: {
+      version: 1,
+      receiveAddressIndex: 0,
+      changeAddressIndex: 0,
+      copayerIndex: 1,
+      derivationStrategy: 'BIP45',
+      skippedPaths: []
+    }
+  }, {
+    createdOn: 1422904189,
+    id: '3',
+    name: 'copayer 3',
+    xPubKey: 'xpub661MyMwAqRbcFXUfkjfSaRwxJbAPpzNUvTiNFjgZwDJ8sZuhyodkP24L4LvsrgThYAAwKkVVSSmL7Ts7o9EHEHPB3EE89roAra7njoSeiMd',
+    requestPubKey: '0246c30040eda1e36e02629ae8cd2a845fcfa947239c4c703f7ea7550d39cfb43a',
+    signature: '304402207a4e7067d823a98fa634f9c9d991b8c42cd0f82da24f686992acf96cdeb5e387022021ceba729bf763fc8e4277f6851fc2b856a82a22b35f20d2eeb23d99c5f5a41c',
+    version: 1,
+    requestPubKeys: [],
+    coin: 'btc',
+    walletId: '123',
+    customData: null,
+    addressManager: {
+      version: 1,
+      receiveAddressIndex: 0,
+      changeAddressIndex: 0,
+      copayerIndex: 2,
+      derivationStrategy: 'BIP45',
+      skippedPaths: []
+    }
+  }],
+  addressType: 'P2SH',
+  singleAddress: false,
+  addressIndex: 0,
+  derivationStrategy: 'BIP45',
+  beRegistered: false,
+  version: '1.0.0',
+  pubKey: '{"x":"6092daeed8ecb2212869395770e956ffc9bf453f803e700f64ffa70c97a00d80","y":"ba5e7082351115af6f8a9eb218979c7ed1f8aa94214f627ae624ab00048b8650","compressed":true}',
+  isTestnet: false
+};

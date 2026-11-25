@@ -1,25 +1,25 @@
 'use strict';
 
-var chai = require('chai');
-var should = chai.should();
+const chai = require('chai');
+const Buffers = require('buffers');
+const P2P = require('../../');
+const bitcore = require('@bcpros/bitcore-lib');
+const Data = require('../data/messages'); // todo merge with commandData
+const commandData = require('../data/messages.json');
 
-var Buffers = require('buffers');
-var P2P = require('../../');
-var Messages = P2P.Messages;
-var messages = new Messages();
-var bitcore = require('@bcpros/bitcore-lib');
-var Data = require('../data/messages'); //todo merge with commandData
-var commandData = require('../data/messages.json');
+const should = chai.should();
+const Messages = P2P.Messages;
+const messages = new Messages();
 
 function getPayloadBuffer(messageBuffer) {
-  return new Buffer(messageBuffer.slice(48), 'hex');
+  return Buffer.from(messageBuffer.slice(48), 'hex');
 }
 
 describe('Messages', function() {
 
   var buildMessage = function(hex) {
     var m = Buffers();
-    m.push(new Buffer(hex, 'hex'));
+    m.push(Buffer.from(hex, 'hex'));
     return m;
   };
 
@@ -78,7 +78,7 @@ describe('Messages', function() {
         var outputBuffer = message.getPayload();
         outputBuffer.toString('hex').should.equal(payloadBuffer.toString('hex'));
         outputBuffer.should.deep.equal(payloadBuffer);
-        var expectedBuffer = new Buffer(commandData[command].message, 'hex');
+        var expectedBuffer = Buffer.from(commandData[command].message, 'hex');
         message.toBuffer().should.deep.equal(expectedBuffer);
         done();
       });

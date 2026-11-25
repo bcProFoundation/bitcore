@@ -1,9 +1,9 @@
 'use strict';
 
-import { BitcoreLib as Bitcore } from '@bcpros/crypto-wallet-core';
 import query from 'querystring';
-import superagent from 'superagent';
 import url from 'url';
+import { BitcoreLib as Bitcore } from '@bcpros/crypto-wallet-core';
+import superagent from 'superagent';
 import dfltTrustedKeys from '../util/JsonPaymentProtocolKeys';
 import { Errors } from './errors';
 
@@ -13,16 +13,18 @@ const BN = Bitcore.crypto.BN;
 const MAX_FEE_PER_KB = {
   btc: 10000 * 1000, // 10k sat/b
   bch: 10000 * 1000, // 10k sat/b
-  eth: 1000000000000, // 1000 Gwei
-  matic: 1000000000000, // 1000 Gwei
-  arb: 1000000000000, // 1000 Gwei
-  base: 1000000000000, // 1000 Gwei
-  op: 1000000000000, // 1000 Gwei
-  xrp: 1000000000000,
+  eth: 1000 * 1e9, // 1000 Gwei
+  matic: 30000 * 1e9, // 30,000 Gwei
+  arb: 1000 * 1e9, // 1000 Gwei
+  base: 1000 * 1e9, // 1000 Gwei
+  op: 1000 * 1e9, // 1000 Gwei
+  arc: 1000 * 1e9, // 1000 Gwei
+  xrp: 1000 * 1e6, // 1000 XRP
   doge: 10000 * 1000, // 10k sat/b
+  ltc: 10000 * 1000, // 10k sat/b
   xec: 10000 * 1000, // 10k sat/b
   xpi: 10000 * 1000, // 10k sat/b
-  ltc: 10000 * 1000 // 10k sat/b
+  sol: 15000
 };
 
 // PayPro Network Map
@@ -38,7 +40,8 @@ export class PayProV2 {
     args: '',
     agent: false
   };
-  static request = superagent;
+  // loose typing b/c tests substitube lightweight fake request client
+  static request: any = superagent;
   static trustedKeys = dfltTrustedKeys;
 
   constructor(requestOptions = {}, trustedKeys = dfltTrustedKeys) {
@@ -59,7 +62,7 @@ export class PayProV2 {
     options
   ): Promise<{ rawBody: string; headers: object }> {
     return new Promise((resolve, reject) => {
-      let requestOptions = Object.assign({}, PayProV2.options, options);
+      const requestOptions = Object.assign({}, PayProV2.options, options);
 
       // Copy headers directly as they're objects
       requestOptions.headers = Object.assign(
@@ -68,7 +71,7 @@ export class PayProV2 {
         options.headers
       );
 
-      var r = this.request[requestOptions.method](requestOptions.url);
+      const r = this.request[requestOptions.method](requestOptions.url);
       for (const [k, v] of Object.entries(requestOptions.headers || {})) {
         if (v) r.set(k, v);
       }
@@ -119,7 +122,7 @@ export class PayProV2 {
       case errMsg.includes('We were unable to parse your payment.'):
         return new Errors.UNABLE_TO_PARSE_PAYMENT();
       case errMsg.includes('Request must include exactly one'):
-        return new Errors.NO_TRASACTION();
+        return new Errors.NO_TRANSACTION();
       case errMsg.includes('Your transaction was an in an invalid format'):
         return new Errors.INVALID_TX_FORMAT();
       case errMsg.includes('We were unable to parse the transaction you sent'):
@@ -167,7 +170,7 @@ export class PayProV2 {
       paymentUrlObject.protocol !== 'http:' &&
       paymentUrlObject.protocol !== 'https:'
     ) {
-      let uriQuery = query.decode(paymentUrlObject.query);
+      const uriQuery = query.decode(paymentUrlObject.query);
       if (!uriQuery.r) {
         throw new Error('Invalid payment protocol url');
       } else {
@@ -196,21 +199,20 @@ export class PayProV2 {
 
   /**
    * Selects which chain and currency option the user will be using for payment
-   * @param {string} paymentUrl the payment protocol specific url
-   * @param chain
-   * @param currency
-   * @param unsafeBypassValidation
    * @return {Promise<{payProDetails: Object}>}
    */
-  static async selectPaymentOption({
-    paymentUrl,
-    chain,
-    currency,
-    payload,
-    unsafeBypassValidation = false
+  static async selectPaymentOption(args: {
+    /** The payment protocol specific url */
+    paymentUrl: string;
+    chain?: string;
+    currency?: string;
+    payload?: any;
+    unsafeBypassValidation?: boolean;
   }) {
+    const { paymentUrl, chain, payload, unsafeBypassValidation } = args;
+    let { currency } = args;
     if (currency === 'USDP') currency = 'PAX'; // TODO workaround. Remove this when usdp is accepted as an option
-    let { rawBody, headers } = await PayProV2._asyncRequest({
+    const { rawBody, headers } = await PayProV2._asyncRequest({
       url: paymentUrl,
       method: 'post',
       headers: {
@@ -252,7 +254,7 @@ export class PayProV2 {
     unsafeBypassValidation = false
   }) {
     if (currency === 'USDP') currency = 'PAX'; // TODO workaround. Remove this when usdp is accepted as an option
-    let { rawBody, headers } = await PayProV2._asyncRequest({
+    const { rawBody, headers } = await PayProV2._asyncRequest({
       url: paymentUrl,
       method: 'post',
       headers: {
@@ -295,7 +297,7 @@ export class PayProV2 {
     bpPartner
   }) {
     if (currency === 'USDP') currency = 'PAX'; // TODO workaround. Remove this when usdp is accepted as an option
-    let { rawBody, headers } = await this._asyncRequest({
+    const { rawBody, headers } = await this._asyncRequest({
       url: paymentUrl,
       method: 'post',
       headers: {
@@ -348,16 +350,11 @@ export class PayProV2 {
     let responseData;
     try {
       responseData = JSON.parse(rawBody);
-    } catch (e) {
+    } catch {
       throw new Error('Invalid JSON in response body');
     }
 
-    let payProDetails;
-    try {
-      payProDetails = this.processResponse(responseData);
-    } catch (e) {
-      throw e;
-    }
+    const payProDetails = this.processResponse(responseData);
 
     if (unsafeBypassValidation) {
       return payProDetails;
@@ -371,7 +368,7 @@ export class PayProV2 {
 
     try {
       host = url.parse(requestUrl).hostname;
-    } catch (e) {}
+    } catch {/** no op */}
 
     if (!host) {
       throw new Error('Invalid requestUrl');
@@ -421,12 +418,12 @@ export class PayProV2 {
     const hashbuf = Buffer.from(hash, 'hex');
     const sigbuf = Buffer.from(signature, 'hex');
 
-    let s_r = BN.fromBuffer(sigbuf.slice(0, 32));
-    let s_s = BN.fromBuffer(sigbuf.slice(32));
+    const s_r = BN.fromBuffer(sigbuf.slice(0, 32));
+    const s_s = BN.fromBuffer(sigbuf.slice(32));
 
-    let pub = Bitcore.PublicKey.fromString(keyData.publicKey);
-    let sig = new Bitcore.crypto.Signature(s_r, s_s);
-    let valid = Bitcore.crypto.ECDSA.verify(hashbuf, sig, pub);
+    const pub = Bitcore.PublicKey.fromString(keyData.publicKey);
+    const sig = new Bitcore.crypto.Signature(s_r, s_s);
+    const valid = Bitcore.crypto.ECDSA.verify(hashbuf, sig, pub);
 
     if (!valid) {
       throw new Error('Response signature invalid');
@@ -443,7 +440,7 @@ export class PayProV2 {
    */
 
   static processResponse(responseData) {
-    let payProDetails: any = {
+    const payProDetails: any = {
       paymentId: responseData.paymentId,
       payProUrl: responseData.paymentUrl,
       memo: responseData.memo
@@ -454,9 +451,9 @@ export class PayProV2 {
 
     if (responseData.paymentOptions) {
       payProDetails.paymentOptions = responseData.paymentOptions;
-      payProDetails.paymentOptions.forEach(option => {
+      for (const option of payProDetails.paymentOptions) {
         option.network = NetworkMap[option.network];
-      });
+      }
     }
 
     if (responseData.network) {
@@ -474,7 +471,7 @@ export class PayProV2 {
     if (responseData.expires) {
       try {
         payProDetails.expires = new Date(responseData.expires).toISOString();
-      } catch (e) {
+      } catch {
         throw new Error('Bad expiration');
       }
     }
@@ -482,18 +479,18 @@ export class PayProV2 {
     if (responseData.time) {
       try {
         payProDetails.time = new Date(responseData.time).toISOString();
-      } catch (e) {
+      } catch {
         throw new Error('Bad time');
       }
     }
 
     if (responseData.instructions) {
       payProDetails.instructions = responseData.instructions;
-      payProDetails.instructions.forEach(output => {
+      for (const output of payProDetails.instructions) {
         output.toAddress = output.to || output.outputs[0].address;
         output.amount =
           output.value !== undefined ? output.value : output.outputs[0].amount;
-      });
+      }
       const { requiredFeeRate, gasPrice } = responseData.instructions[0];
       payProDetails.requiredFeeRate = requiredFeeRate || gasPrice;
 

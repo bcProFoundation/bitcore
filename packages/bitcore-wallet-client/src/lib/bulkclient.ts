@@ -1,20 +1,22 @@
 'use strict';
 
 import { singleton } from 'preconditions';
-import { API } from './api';
+import { API, Status } from './api';
 import { Utils } from './common';
+import { Credentials } from './credentials';
+import log from './log';
 import { Request } from './request';
 
 const $ = singleton();
 
-export class BulkClient extends Request {
-  /**
-   * BulkClient constructor
-   * @param {String} url base URL for client
-   * @param {Object} opts configuration values
-   * @constructor
-   */
-  constructor(url?, opts?) {
+export class BulkClient extends Request<Array<Credentials>> {
+
+  constructor(
+    /** base URL for client */
+    url?: string,
+    /** configuration options */
+    opts?
+  ) {
     super(url, opts);
   }
 
@@ -37,7 +39,7 @@ export class BulkClient extends Request {
     }
   }
 
-  checkStateOfMultipleCredentials(failureMessage, opts) {
+  checkStateOfMultipleCredentials(failureMessage: string, opts?: { ignoreIncomplete?: boolean }) {
     if (!opts) opts = {};
     if (this.credentials && this.credentials.length > 0) {
       $.checkState(
@@ -55,64 +57,73 @@ export class BulkClient extends Request {
 
   /**
    * Get wallet balance for all wallets
-   * @param {Credentials} credentials { requestPrivKey: string, copayerIds: string[] }
-   * @param {Object} opts
-   * @param {boolean} [opts.includeExtendedInfo]
-   * @param {boolean} [opts.twoStep]
-   * @param {boolean} [opts.silentFailure]
-   * @param {Object} [opts.wallets]
-   * @param {string} [opts.wallets.copayerId]
-   * @param {string} [opts.wallets.copayerId.tokenAddress]
-   * @param {string} [opts.wallets.copayerId.multisigContractAddress]
    * @param {function} cb Callback function in the standard form (err, results)
    * @returns
    */
-  getStatusAll(credentials, opts, cb) {
-    if (!cb) {
+  async getStatusAll(
+    /** Array of credentials */
+    credentials: Array<Credentials>,
+    opts?: {
+      includeExtendedInfo?: boolean;
+      ignoreIncomplete?: boolean;
+      twoStep?: boolean;
+      silentFailure?: boolean;
+      wallets?: {
+        [copayerId: string]: {
+          tokenAddresses?: string[];
+          multisigContractAddress?: string;
+        };
+      };
+    },
+    /** @deprecated */
+    cb?: (err: Error | null, results?: any) => void
+  ) {
+    if (!cb && typeof opts === 'function') {
       cb = opts;
       opts = {};
     }
-
-    this.setCredentials(credentials);
-
-    var qs = [];
-    qs.push('includeExtendedInfo=' + (opts.includeExtendedInfo ? '1' : '0'));
-    qs.push('twoStep=' + (opts.twoStep ? '1' : '0'));
-    qs.push('serverMessageArray=1');
-    qs.push('silentFailure=' + (opts.silentFailure ? '1' : '0'));
-
-    let wallets = opts.wallets;
-    if (wallets) {
-      Object.keys(wallets).forEach(copayerId => {
-        if (wallets[copayerId].tokenAddresses) {
-          wallets[copayerId].tokenAddresses.forEach(address => {
-            qs.push(`${copayerId}:tokenAddress=` + address);
-          });
-        }
-
-        if (wallets[copayerId].multisigContractAddress) {
-          qs.push(
-            `${copayerId}:multisigContractAddress=` +
-              wallets[copayerId].multisigContractAddress
-          );
-          qs.push(
-            `${copayerId}:network=` +
-              this.credentials.find(cred => cred.copayerId == copayerId).network
-          );
-        }
-      });
+    if (cb) {
+      log.warn('DEPRECATED: getStatusAll will remove callback support in the future.');
     }
 
-    this.checkStateOfMultipleCredentials('Failed state: this.credentials at <getStatusAll()>', { ignoreIncomplete: opts.ignoreIncomplete });
+    try {
+      this.setCredentials(credentials);
 
-    return this.get('/v1/wallets/all/?' + qs.join('&'), (err, results) => {
-      if (err || !results) return cb(err, results);
+      const qs = [];
+      qs.push('includeExtendedInfo=' + (opts.includeExtendedInfo ? '1' : '0'));
+      qs.push('twoStep=' + (opts.twoStep ? '1' : '0'));
+      qs.push('serverMessageArray=1');
+      qs.push('silentFailure=' + (opts.silentFailure ? '1' : '0'));
 
-      [].concat(results).forEach(result => {
+      const wallets = opts.wallets;
+      if (wallets) {
+        for (const copayerId of Object.keys(wallets)) {
+          for (const address of wallets[copayerId].tokenAddresses || []) {
+            qs.push(`${copayerId}:tokenAddress=` + address);
+          }
+
+          if (wallets[copayerId].multisigContractAddress) {
+            qs.push(
+              `${copayerId}:multisigContractAddress=` +
+                wallets[copayerId].multisigContractAddress
+            );
+            qs.push(
+              `${copayerId}:network=` +
+                this.credentials.find(cred => cred.copayerId == copayerId).network
+            );
+          }
+        }
+      }
+
+      this.checkStateOfMultipleCredentials('Failed state: this.credentials at <getStatusAll()>', { ignoreIncomplete: opts.ignoreIncomplete });
+
+      const { body: results } = await this.get<Array<StatusAll>>('/v1/wallets/all/?' + qs.join('&'));
+      if (!results) throw new Error('No results returned from getStatusAll');
+      for (const result of results) {
         if (result.success) {
-          var status = result.status;
-          var walletId = result.walletId;
-          var c = this.credentials.find(cred => cred.walletId == walletId);
+          const status = result.status;
+          const walletId = result.walletId;
+          const c = this.credentials.find(cred => cred.walletId == walletId);
           if (c && status.wallet.status == 'pending') {
             result.wallet.secret = API._buildSecret(
               c.walletId,
@@ -123,25 +134,30 @@ export class BulkClient extends Request {
           }
           if (c) this._processStatus(status, c);
         }
-      });
-      return cb(null, results);
-    });
+      }
+
+      if (cb) { cb(null, results); }
+      return results;
+    } catch (err) {
+      if (cb) cb(err);
+      else throw err;
+    }
   }
 
-  _processStatus(status, c) {
-    var processCustomData = (data, c) => {
+  _processStatus(status: Status, c: Credentials) {
+    const processCustomData = (data, c) => {
       const copayers = data.wallet.copayers;
       if (!copayers) return;
 
       const me = copayers.find(copayer => copayer.id == c.copayerId);
       if (!me || !me.customData) return;
 
-      var customData;
+      let customData;
       try {
         customData = JSON.parse(
           Utils.decryptMessage(me.customData, c.personalEncryptingKey)
         );
-      } catch (e) {}
+      } catch {/** no op */}
       if (!customData) return;
 
       // Add it to result
@@ -157,28 +173,28 @@ export class BulkClient extends Request {
     this._processTxps(status.pendingTxps, c);
   }
 
-  _processWallet(wallet, c) {
-    var encryptingKey = c.sharedEncryptingKey;
+  _processWallet(wallet, c: Credentials) {
+    const encryptingKey = c.sharedEncryptingKey;
 
-    var name = Utils.decryptMessageNoThrow(wallet.name, encryptingKey);
-    if (name != wallet.name) {
+    const walletName = Utils.decryptMessageNoThrow(wallet.name, encryptingKey);
+    if (walletName != wallet.name) {
       wallet.encryptedName = wallet.name;
+      wallet.name = walletName;
     }
-    wallet.name = name;
     for (const copayer of wallet.copayers || []) {
-      var name = Utils.decryptMessageNoThrow(copayer.name, encryptingKey);
-      if (name != copayer.name) {
+      const copayerName = Utils.decryptMessageNoThrow(copayer.name, encryptingKey);
+      if (copayerName != copayer.name) {
         copayer.encryptedName = copayer.name;
+        copayer.name = copayerName;
       }
-      copayer.name = name;
       for (const access of copayer.requestPubKeys || []) {
         if (!access.name) return;
 
-        var name = Utils.decryptMessageNoThrow(access.name, encryptingKey);
-        if (name != access.name) {
+        const accessName = Utils.decryptMessageNoThrow(access.name, encryptingKey);
+        if (accessName != access.name) {
           access.encryptedName = access.name;
+          access.name = accessName;
         }
-        access.name = name;
       }
     }
   }
@@ -223,7 +239,7 @@ export class BulkClient extends Request {
   _processTxNotes(notes, c) {
     if (!notes) return;
 
-    var encryptingKey = c.sharedEncryptingKey;
+    const encryptingKey = c.sharedEncryptingKey;
     for (const note of [].concat(notes)) {
       note.encryptedBody = note.body;
       note.body = Utils.decryptMessageNoThrow(note.body, encryptingKey);
@@ -235,3 +251,14 @@ export class BulkClient extends Request {
     }
   }
 }
+
+
+export interface StatusAll {
+  success: boolean;
+  status: Status;
+  walletId: string;
+  wallet?: {
+    status: string;
+    secret?: string;
+  };
+};

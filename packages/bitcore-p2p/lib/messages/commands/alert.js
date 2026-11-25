@@ -1,11 +1,12 @@
 'use strict';
 
-var Message = require('../message');
-var inherits = require('util').inherits;
-var bitcore = require('@bcpros/bitcore-lib');
-var utils = require('../utils');
-var BufferReader = bitcore.encoding.BufferReader;
-var BufferWriter = bitcore.encoding.BufferWriter;
+const Message = require('../message');
+const inherits = require('util').inherits;
+const bitcore = require('@bcpros/bitcore-lib');
+const utils = require('../utils');
+
+const BufferReader = bitcore.encoding.BufferReader;
+const BufferWriter = bitcore.encoding.BufferWriter;
 
 /**
  * @param {Object=} arg
@@ -21,8 +22,8 @@ function AlertMessage(arg, options) {
   if (!arg) {
     arg = {};
   }
-  this.payload = arg.payload || new Buffer(32);
-  this.signature = arg.signature || new Buffer(32);
+  this.payload = arg.payload || Buffer.alloc(32);
+  this.signature = arg.signature || Buffer.alloc(32);
 }
 inherits(AlertMessage, Message);
 

@@ -1,14 +1,14 @@
-import { Transactions, Validation } from '@bcpros/crypto-wallet-core';
+import { BitcoreLib, Deriver, Transactions, Validation, xrpl } from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { IWallet } from 'src/lib/model';
 import { IAddress } from 'src/lib/model/address';
-import { IChain } from '..';
+import { IChain } from '../../../types/chain';
 import { Common } from '../../common';
 import { Errors } from '../../errors/errordefinitions';
 import logger from '../../logger';
 import { WalletService } from '../../server';
 
-const Defaults = Common.Defaults;
+const { Defaults, Utils } = Common;
 
 export class XrpChain implements IChain {
 
@@ -27,9 +27,9 @@ export class XrpChain implements IChain {
    * @returns {Object} balance - Total amount & locked amount.
    */
   private convertBitcoreBalance(bitcoreBalance, locked, reserve = Defaults.MIN_XRP_BALANCE) {
-    const { unconfirmed, confirmed, balance } = bitcoreBalance;
+    const { confirmed, balance } = bitcoreBalance;
     let activatedLocked = locked;
-    // If XRP address has a min balance of 10 XRP, subtract activation fee for true spendable balance.
+    // If XRP address has a min balance of X XRP, subtract activation fee for true spendable balance.
     if (balance > 0) {
       activatedLocked = locked + reserve;
     }
@@ -38,6 +38,7 @@ export class XrpChain implements IChain {
       totalConfirmedAmount: confirmed,
       lockedAmount: activatedLocked,
       lockedConfirmedAmount: activatedLocked,
+      reserve: balance > 0 ? reserve : 0,
       availableAmount: balance - activatedLocked,
       availableConfirmedAmount: confirmed - activatedLocked,
       byAddress: []
@@ -47,6 +48,10 @@ export class XrpChain implements IChain {
 
   supportsMultisig() {
     return false;
+  }
+
+  supportsThresholdsig() {
+    return true;
   }
 
   getSizeSafetyMargin() {
@@ -70,10 +75,10 @@ export class XrpChain implements IChain {
         server.getPendingTxs(opts, (err, txps) => {
           if (err) return cb(err);
           const lockedSum = txps.reduce((sum, txp) => {
-            return sum + txp.amount + (txp.fee || 0);
-          }, 0) || 0;
-          const convertedBalance = this.convertBitcoreBalance(balance, lockedSum, reserve);
-          server.storage.fetchAddresses(server.walletId, (err, addresses: IAddress[]) => {
+            return sum + BigInt(txp.amount || 0) + BigInt(txp.fee || 0);
+          }, 0n) || 0n;
+          const convertedBalance = this.convertBitcoreBalance(balance, Number(lockedSum), reserve);
+          server.storage.fetchAddressesPage(server.walletId, { limit: 1 }, (err, addresses: IAddress[]) => {
             if (err) return cb(err);
             if (addresses.length > 0) {
               const byAddress = [
@@ -95,14 +100,19 @@ export class XrpChain implements IChain {
   getWalletSendMaxInfo(server, wallet, opts, cb) {
     server.getBalance({}, (err, balance) => {
       if (err) return cb(err);
-      const { totalAmount, availableAmount } = balance;
-      let fee = opts.feePerKb;
-      return cb(null, {
-        utxosBelowFee: 0,
-        amountBelowFee: 0,
-        amount: availableAmount - fee,
-        feePerKb: opts.feePerKb,
-        fee
+
+      server._getFeePerKb(wallet, opts, (err, feePerKb) => {
+        if (err) return cb(err);
+
+        const { availableAmount } = balance;
+        const fee = feePerKb;
+        return cb(null, {
+          utxosBelowFee: 0,
+          amountBelowFee: 0,
+          amount: availableAmount - fee,
+          feePerKb,
+          fee
+        });
       });
     });
   }
@@ -122,25 +132,29 @@ export class XrpChain implements IChain {
 
   getChangeAddress() { }
 
-  checkDust(output, opts) { }
+  checkDust(_output, _opts) { }
 
-  checkScriptOutput(output) { }
+  checkScriptOutput(_output) { }
 
   getFee(server, wallet, opts) {
     return new Promise((resolve, reject) => {
       // This is used for sendmax flow
-      if (_.isNumber(opts.fee)) {
+      if (Utils.isNumber(opts.fee)) {
         return resolve({ feePerKb: opts.fee });
       }
       server._getFeePerKb(wallet, opts, (err, inFeePerKb) => {
         if (err) {
           return reject(err);
         }
-        let feePerKb = inFeePerKb;
+        const feePerKb = inFeePerKb;
         opts.fee = feePerKb;
         return resolve({ feePerKb });
       });
     });
+  }
+
+  isPrePublishRawBound(txp) {
+    return Common.Utils.isPrePublishRawBound(this, txp);
   }
 
   getBitcoreTx(txp, opts = { signed: true }) {
@@ -160,23 +174,23 @@ export class XrpChain implements IChain {
         amount: outputs[outputIdx].amount,
         address: outputs[outputIdx].toAddress,
         tag: outputs[outputIdx].tag
-      }
+      };
       const _tag = recepient?.tag || destinationTag;
       const rawTx = Transactions.create({
         ...txp,
         tag: _tag ? Number(_tag) : undefined,
         chain,
-        nonce: Number(txp.nonce) + Number(index),
+        nonce: (txp.nonce != null ? Number(txp.nonce) : 0) + Number(index),
         recipients: [recepient]
       });
       unsignedTxs.push(rawTx);
     }
-    let tx = {
+    const tx = {
       uncheckedSerialize: () => unsignedTxs,
       txid: () => txp.txid,
       txids: () => txp.txid ? [txp.txid] : [],
       toObject: () => {
-        let ret = _.clone(txp);
+        const ret = _.clone(txp);
         ret.outputs[0].satoshis = ret.outputs[0].amount;
         return ret;
       },
@@ -188,9 +202,9 @@ export class XrpChain implements IChain {
 
     if (opts.signed) {
       const sigs = txp.getCurrentSignatures();
-      sigs.forEach(x => {
+      for (const x of sigs) {
         this.addSignaturesToBitcoreTx(tx, txp.inputs, txp.inputPaths, x.signatures, x.xpub);
-      });
+      }
     }
 
     return tx;
@@ -209,7 +223,7 @@ export class XrpChain implements IChain {
     }
   }
 
-  checkTxUTXOs(server, txp, opts, cb) {
+  checkTxUTXOs(_server, _txp, _opts, cb) {
     return cb();
   }
 
@@ -218,9 +232,9 @@ export class XrpChain implements IChain {
       if (err) return cb(err);
       const { totalAmount, availableAmount } = balance;
       const minXrpBalance = Defaults.MIN_XRP_BALANCE;
-      if (totalAmount - minXrpBalance < txp.getTotalAmount()) {
+      if (totalAmount - minXrpBalance < txp.getTotalAmountBigInt()) {
         return cb(Errors.INSUFFICIENT_FUNDS);
-      } else if (availableAmount < txp.getTotalAmount()) {
+      } else if (availableAmount < txp.getTotalAmountBigInt()) {
         return cb(Errors.LOCKED_FUNDS);
       } else {
         return cb(this.checkTx(txp));
@@ -228,10 +242,10 @@ export class XrpChain implements IChain {
     });
   }
 
-  checkUtxos(opts) { }
+  checkUtxos(_opts) { }
 
   checkValidTxAmount(output): boolean {
-    if (!_.isNumber(output.amount) || _.isNaN(output.amount) || output.amount < 0) {
+    if (!Utils.isNumber(output.amount) || isNaN(output.amount) || output.amount < 0) {
       return false;
     }
     return true;
@@ -263,15 +277,32 @@ export class XrpChain implements IChain {
     }
 
     const chain = 'XRP'; // TODO use lowercase always to avoid confusion
-    const network = tx.network;
+    const network = tx.network || tx.toObject().network;
     const unsignedTxs = tx.uncheckedSerialize();
     const signedTxs = [];
     const txids = [];
     for (let index = 0; index < signatures.length; index++) {
+      const pubKey = new BitcoreLib.HDPublicKey(xpub).deriveChild(inputPaths[index] || 'm/0/0').publicKey.toString();
+      if (Deriver.getAddress(chain, network, pubKey) !== tx.toObject().from) { // sanity check
+        throw new Error('Unknown public key for signature');
+      }
+
+      let signature: string = signatures[index];
+      try {
+        // Backward compatibility.
+        // Old versions of CWC returned just the signature for the XRPTxProvider.sign() method.
+        // Commit 5ff87d7724cabeccf683d1bd7c73eb2efd42f9c5 changed it to return the fully signed
+        //  transaction to be consistent with other chains' responses. Thus, signatures[] may
+        //  be the signed transaction blobs instead of just the signature string.
+        const decoded = xrpl.decode(signatures[index]);
+        if (decoded.TxnSignature) signature = decoded.TxnSignature as string;
+      } catch { /* ignore */ }
+
       const signed = Transactions.applySignature({
         chain,
         tx: unsignedTxs[index],
-        signature: signatures[index]
+        signature,
+        pubKey
       });
       signedTxs.push(signed);
 
@@ -300,10 +331,10 @@ export class XrpChain implements IChain {
     return;
   }
 
-  onCoin(coin) {
+  onCoin(_coin) {
     return null;
   }
-  onTx(tx) {
+  onTx(_tx) {
     // TODO
     // format tx to
     // {address, amount}
@@ -318,5 +349,9 @@ export class XrpChain implements IChain {
       }
       return cb(null, reserve);
     });
+  }
+
+  refreshTxData(_server: WalletService, txp, _opts, cb) {
+    return cb(null, txp);
   }
 }

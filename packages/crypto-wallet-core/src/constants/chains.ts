@@ -1,10 +1,20 @@
+
+export const UTXO_CHAINS = ['btc', 'bch', 'doge', 'ltc', 'xec', 'xpi'];
+export const EVM_CHAINS = ['eth', 'matic', 'arb', 'base', 'op', 'arc'];
+export const SVM_CHAINS = ['sol'];
+export const RIPPLE_CHAINS = ['xrp'];
+export const CHAINS = [...UTXO_CHAINS, ...EVM_CHAINS, ...SVM_CHAINS, ...RIPPLE_CHAINS];
+
+export const MULTISIG_CHAINS = UTXO_CHAINS;
+
 export const EVM_CHAIN_DEFAULT_TESTNET = {
   ETH: 'sepolia',
   MATIC: 'amoy',
   ARB: 'sepolia',
   BASE: 'sepolia',
-  OP: 'sepolia'
-}
+  OP: 'sepolia',
+  ARC: 'testnet'
+};
 
 export const EVM_CHAIN_NETWORK_TO_CHAIN_ID = {
   // Mainnets
@@ -13,6 +23,7 @@ export const EVM_CHAIN_NETWORK_TO_CHAIN_ID = {
   ARB_mainnet: 42161,
   BASE_mainnet: 8453,
   OP_mainnet: 10,
+  ARC_mainnet: 5042,
   // ETH testnets
   ETH_holesky: 17000,
   ETH_sepolia: 11155111,
@@ -32,13 +43,15 @@ export const EVM_CHAIN_NETWORK_TO_CHAIN_ID = {
   // OP testnets
   OP_sepolia: 11155420,
   OP_goerli: 28528,
+  // ARC testnets
+  ARC_testnet: 5042002,
   // Regtests
   ETH_regtest: 1337,
   MATIC_regtest: 13375,
   ARB_regtest: 442161,
   BASE_regtest: 88453,
   OP_regtest: 111554201
-}
+};
 
 const reverseObject = <K extends string, V extends number | string>(obj: Record<K, V>, split = false): Record<V, K> => {
   const reversed = {} as Record<V, K>;

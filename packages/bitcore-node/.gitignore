@@ -14,7 +14,6 @@
 .idea
 .project
 .strong-pm
-coverage
 node_modules
 npm-debug.log
 dist
@@ -28,3 +27,4 @@ config.json
 coverage
 scripts/*.log
 *-audit.json
+

@@ -5,6 +5,16 @@
         "wallets": {
           "allowCreationBeforeCompleteSync": true
         }
+      },
+      "socket": {
+        "bwsKeys": [
+          "036df8264584a6398718e88a5bf4dc816c52e5037303934d555dba0ccaa65fbe3f"
+        ]
+      }
+    },
+    "externalProviders": {
+      "alchemy": {
+        "apiKey": "YOUR_ALCHEMY_API_KEY"
       }
     },
     "chains": {
@@ -25,31 +35,69 @@
           }
         }
       },
-      "ETH": {
-        "testnet": {
+      "BCH": {
+        "regtest": {
           "chainSource": "p2p",
           "trustedPeers": [
             {
-              "host": "parity",
-              "port": 30303
+              "host": "localhost",
+              "port": 8332
             }
           ],
-          "provider": {
-            "host": "parity",
-            "protocol": "ws",
-            "port": 8546
+          "rpc": {
+            "host": "localhost",
+            "port": 8333,
+            "username": "bitcorenodetest",
+            "password": "local321"
           }
         }
       },
-      "XRP": {
-        "testnet": {
-          "chainSource": "rpc",
-          "provider": {
-            "host": "rippled",
-            "protocol": "ws",
-            "port": "6006",
-            "dataHost": "rippled"
+      "XPI": {
+        "regtest": {
+          "chainSource": "p2p",
+          "trustedPeers": [
+            {
+              "host": "127.0.0.1",
+              "port": 10606
+            }
+          ],
+          "rpc": {
+            "host": "127.0.0.1",
+            "port": 10604,
+            "username": "bitcorenodetest",
+            "password": "local321"
           }
+        }
+      },
+      "XEC": {
+        "regtest": {
+          "chainSource": "p2p",
+          "trustedPeers": [
+            {
+              "host": "127.0.0.1",
+              "port": 18444
+            }
+          ],
+          "rpc": {
+            "host": "127.0.0.1",
+            "port": 18443,
+            "username": "bitcorenodetest",
+            "password": "local321"
+          }
+        }
+      }
+    },
+    "aliasMapping": {
+      "chains": {
+        "BTC": "BTC"
+      },
+      "networks": {
+        "BTC": {
+          "testnet3": "testnet",
+          "testnet4": "testnet"
+        },
+        "BASE": {
+          "testnet": "sepolia"
         }
       }
     }

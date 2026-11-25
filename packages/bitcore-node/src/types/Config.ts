@@ -1,4 +1,5 @@
-import { FeeMode } from './namespaces/ChainStateProvider';
+import type { FeeMode } from './namespaces/ChainStateProvider';
+import type { ProviderHealthConfig } from '../providers/chain-state/external/providerHealth';
 
 export interface IChainConfig<T extends INetworkConfig> {
   [network: string]: T;
@@ -23,23 +24,37 @@ export interface IUtxoNetworkConfig extends INetworkConfig {
     port: number | string;
     username: string;
     password: string;
+    protocol?: string;
   };
   defaultFeeMode?: FeeMode;
   syncStartHash?: string; // Start syncing from this block
+  prefetchSize?: number; // Number of blocks to prefetch during single-thread sync. Default: 10. Set to 0 to disable prefetching.
+  threads?: number; // Number of worker threads for initial sync. Defaults to CPU cores - 1. Set to 0 to disable multi-threaded sync.
 }
+
+export type ProviderDataType = 'realtime' | 'historical';
 
 export interface IProvider {
   host: string;
   port?: number | string;
   protocol: 'http' | 'https' | 'ws' | 'wss' | 'ipc';
   options?: object;
-  dataType?: 'realtime' | 'historical' | 'combined';
+  dataType?: ProviderDataType | 'combined';
+  wsPort?: number | string;
+  disabled?: boolean; // Useful when multiple providers are configured
 }
 
 export type IExternalSyncConfig<T> = {
   maxBlocksToSync?: number; // Max number of blocks to look back when starting the sync process
   syncIntervalSecs?: number; // Interval in seconds to check for new blocks
 } & T;
+
+export interface IMultiProviderConfig {
+  name: string;
+  priority: number;
+  requestTimeout?: number;
+  healthConfig?: Partial<ProviderHealthConfig>;
+}
 
 export interface IEVMNetworkConfig extends INetworkConfig {
   client?: 'geth' | 'erigon'; // Note: Erigon support is not actively maintained
@@ -51,6 +66,7 @@ export interface IEVMNetworkConfig extends INetworkConfig {
   mtSyncTipPad?: number; // Default: 100. Multi-threaded sync will sync up to latest block height minus mtSyncTipPad. MT syncing is blind to reorgs. This helps ensure reorgs are accounted for near the tip.
   leanTransactionStorage?: boolean; // Removes data, abiType, internal and calls before saving a transaction to the databases
   needsL1Fee?: boolean; // Does this chain require a layer-1 fee to be added to a transaction (e.g. OP-stack chains)?
+  indexedProviderRouting?: IMultiProviderConfig[]; // Per-network indexed API routing order; provider credentials live under config.externalProviders
 }
 
 export interface IXrpNetworkConfig extends INetworkConfig {
@@ -59,6 +75,13 @@ export interface IXrpNetworkConfig extends INetworkConfig {
   };
   startHeight: number;
   walletOnlySync: boolean;
+}
+
+export interface ISVMNetworkConfig extends INetworkConfig {
+  publicConnection?: boolean; // Allow rpc connection to be open via bitcore-node API endpoint
+  syncStartHeight?: number; // Start syncing from this block height
+  providers?: IProvider[]; // Multiple providers can be configured to load balance for the syncing threads
+  provider?: IProvider;
 }
 
 export interface ConfigType {
@@ -74,16 +97,16 @@ export interface ConfigType {
   numWorkers: number;
 
   chains: {
-    [chain: string]: IChainConfig<IUtxoNetworkConfig | IEVMNetworkConfig | IXrpNetworkConfig>;
+    [chain: string]: IChainConfig<IUtxoNetworkConfig | IEVMNetworkConfig | IXrpNetworkConfig | ISVMNetworkConfig>;
   };
   aliasMapping: {
     chains: {
       [alias: string]: string;
     };
     networks: {
-      [chain: string]: { [alias: string]: string; }
+      [chain: string]: { [alias: string]: string };
     };
-  },
+  };
   services: {
     api: {
       disabled?: boolean;
@@ -117,6 +140,9 @@ export interface ConfigType {
       webhookBaseUrl?: string;
       streamSecret?: string;
       webhookCors?: object; // default: { origin: ['*'] }
-    }
+    };
+    alchemy?: {
+      apiKey: string;
+    };
   };
 }

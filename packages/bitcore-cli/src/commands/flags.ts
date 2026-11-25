@@ -1,0 +1,80 @@
+import { Utils as CWCUtils, xrpl } from '@bcpros/crypto-wallet-core';
+import * as prompt from '@clack/prompts';
+import { Command } from 'commander';
+import { promptXrpFlag } from '../prompts';
+import { Utils } from '../utils';
+import { type ITransactionArgs, createTransaction, command as transactionCommand } from './transaction';
+import type { CommonArgs } from '../../types/cli';
+
+function flagsDisplay() {
+  const flags = Object.keys(xrpl.AccountSetTfFlags).filter(k => isNaN(parseInt(k))); // filter out numeric keys
+  return 'Possible flags are: ' + flags.join(', ');
+}
+
+export function command() {
+  const txCommand = transactionCommand();
+  const flagsCommand = new Command('flags')
+    .description('View and manage XRP wallet flags')
+    .optionsGroup('Flags Options')
+    .option('--flags <flags>', 'Comma-delimited list of account transaction flag(s) to set. If provided, see Transaction Options below for additional options to provide for the setting transaction. ' + flagsDisplay());
+
+  // Inherit the options for transaction creation, omitting those not relevant to XRP flag setting
+  flagsCommand.optionsGroup('Transaction Options');
+  for (const txOpt of txCommand.options) {
+    if (!(
+      // Automatically set for XRP flag setting tx
+      txOpt.flags.startsWith('--to ') ||
+      txOpt.flags.startsWith('--amount ') ||
+      // Not relevant to XRP flag setting tx
+      txOpt.flags.startsWith('--nonce ') ||
+      txOpt.flags.startsWith('--tokenAddress ') ||
+      txOpt.flags.startsWith('--token ')
+    )) {
+      flagsCommand.option(txOpt.flags, txOpt.description, txOpt.parseArg || txOpt.defaultValue);
+    }
+  }
+
+  // Maintain the preAction hook(s) from the transaction command
+  flagsCommand['_lifeCycleHooks'] = txCommand['_lifeCycleHooks'];
+  flagsCommand.hook('preAction', (thisCommand) => {
+    const opts = thisCommand.opts();
+    if (opts.flags) {
+      const flags = opts.flags.split(',').map(f => CWCUtils.normalizeXrpFlag(f.trim()));
+      if (flags.some(f => !f)) {
+        throw new Error('Invalid flag(s) specified. ' + flagsDisplay());
+      }
+      opts.flags = flags.join(',');
+    }
+  });
+  return flagsCommand;
+}
+
+export async function getOrSetFlags(args: CommonArgs<ITransactionArgs>) {
+  const { wallet, opts } = args;
+  
+  if (!wallet.isXrp()) {
+    // This code should only be reachable if using [command], so we should die.
+    Utils.die('Flags management is only available for XRP wallets');
+  }
+
+  const existingFlags = await wallet.getAccountFlags();
+  prompt.note(
+    Object.entries(existingFlags)
+      .map(([key, value]) => `${key}: ${value ? Utils.colorText('ON', 'green') : Utils.colorText('OFF', 'red')}`)
+      .join('\n'),
+    'Current XRP Account Flags'
+  );
+
+  const flags = opts.command ? opts.flags : await promptXrpFlag(existingFlags);
+
+  if (flags) {
+    opts.flags = flags;
+    opts.to = (await wallet.client.getMainAddresses())[0].address;
+    opts.amount = '0';
+    opts.txType = 'AccountSet';
+    prompt.log.info('Creating XRP AccountSet transaction to update flags...');
+    await createTransaction(args);
+  }
+
+  return { action: 'menu' };
+};

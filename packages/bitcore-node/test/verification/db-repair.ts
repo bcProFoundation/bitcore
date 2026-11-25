@@ -4,7 +4,7 @@ import { Transform } from 'stream';
 import { BitcoinBlockStorage } from '../../src/models/block';
 import { CoinStorage } from '../../src/models/coin';
 import { TransactionStorage } from '../../src/models/transaction';
-import { Modules } from '../../src/modules';
+import { loadModules } from '../../src/modules';
 import { Config } from '../../src/services/config';
 import { Storage } from '../../src/services/storage';
 import { Verification } from '../../src/services/verification';
@@ -19,7 +19,7 @@ import { Verification } from '../../src/services/verification';
   const chain = CHAIN || '';
   const network = NETWORK || '';
   await Storage.start();
-  Modules.loadConfigured();
+  loadModules();
 
   const chainConfig = Config.chainConfig({ chain, network });
   const workerClass = Verification.get(chain, network);
@@ -43,7 +43,7 @@ import { Verification } from '../../src/services/verification';
               return;
             }
 
-            let toKeep = dupeTxs[0];
+            const toKeep = dupeTxs[0];
             const wouldBeDeleted = dupeTxs.filter(c => c._id != toKeep._id);
 
             if (dry) {
@@ -123,7 +123,6 @@ import { Verification } from '../../src/services/verification';
           }
           break;
         case 'COIN_HEIGHT_MISMATCH':
-
         case 'CORRUPTED_BLOCK':
         case 'MISSING_BLOCK':
         case 'MISSING_TX':
@@ -132,7 +131,7 @@ import { Verification } from '../../src/services/verification';
         case 'COIN_SHOULD_BE_SPENT':
         case 'NEG_FEE':
           const blockHeight = Number(data.payload.blockNum);
-          let { success } = await worker.validateDataForBlock(blockHeight, tip!.height);
+          const { success } = await worker.validateDataForBlock(blockHeight, tip!.height);
           if (success) {
             console.log('No errors found, repaired previously');
             return;
@@ -143,7 +142,7 @@ import { Verification } from '../../src/services/verification';
           } else {
             console.log('Resyncing Blocks', blockHeight, 'to', blockHeight + 1);
             await worker.resync(blockHeight - 1, blockHeight + 1);
-            let { success, errors } = await worker.validateDataForBlock(blockHeight, tip!.height);
+            const { success, errors } = await worker.validateDataForBlock(blockHeight, tip!.height);
             if (success) {
               console.log('REPAIR SOLVED ISSUE');
             } else {
@@ -201,13 +200,13 @@ import { Verification } from '../../src/services/verification';
           console.log('Inspecting...');
           console.log(dataStr);
           await handleRepair(parsedData);
-        } catch (err) {}
+        } catch (err) { /* ignore error */ }
       }
     }
   }
 
   async function transformFileChunks(chunk, _, cb) {
-    for (let line of getLinesFromChunk(chunk)) {
+    for (const line of getLinesFromChunk(chunk)) {
       await repairLineIfValidJson(line);
     }
     cb();

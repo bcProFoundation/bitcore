@@ -1,4 +1,11 @@
 
-var startGulp = require('@bcpros/bitcore-build');
-Object.assign(exports, startGulp('mnemonic'))
+const startGulp = require('@bcpros/bitcore-build');
+
+Object.assign(
+  exports,
+  startGulp(
+    'mnemonic',
+    { browserRunner: 'webdriverio' }
+  )
+);
 

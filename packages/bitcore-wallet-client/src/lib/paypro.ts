@@ -1,7 +1,7 @@
+import URL from 'url';
 import { BitcoreLib, BitcoreLibCash } from '@bcpros/crypto-wallet-core';
 import { singleton } from 'preconditions';
 import superagent from 'superagent';
-import URL from 'url';
 import dfltTrustedKeys from '../util/JsonPaymentProtocolKeys';
 import { Errors } from './errors';
 
@@ -22,7 +22,8 @@ const MAX_FEE_PER_KB = 500000;
 
 export class PayPro {
   // static request: request;
-  static r = superagent;
+  // loose typing b/c tests substitube lightweight fake request client
+  static r: any = superagent;
   constructor() {}
   // var PayPro = {
   //
@@ -32,10 +33,10 @@ export class PayPro {
   // * Verifies the signature of a given payment request is both valid and from a trusted key
   // */
   static _verify(requestUrl, headers, network, trustedKeys, callback) {
-    let hash = headers.digest.split('=')[1];
-    let signature = headers.signature;
-    let signatureType = headers['x-signature-type'];
-    let identity = headers['x-identity'];
+    const hash = headers.digest.split('=')[1];
+    const signature = headers.signature;
+    const signatureType = headers['x-signature-type'];
+    const identity = headers['x-identity'];
     let host;
 
     if (network == 'testnet') network = 'test';
@@ -52,7 +53,7 @@ export class PayPro {
 
     try {
       host = URL.parse(requestUrl).hostname;
-    } catch (e) {}
+    } catch {/** no op */}
 
     if (!host) {
       return callback(new Error('Invalid requestUrl'));
@@ -86,7 +87,7 @@ export class PayPro {
       );
     }
 
-    let keyData = trustedKeys[identity];
+    const keyData = trustedKeys[identity];
     if (keyData.domains.indexOf(host) === -1) {
       return callback(
         new Error(
@@ -125,14 +126,14 @@ export class PayPro {
       }
 
       return callback(null, keyData.owner);
-    } catch (err) {
+    } catch {
       return callback(new Error('Response signature invalid'));
     }
   }
 
   static runRequest(opts, cb) {
     $.checkArgument(opts.network, 'should pass network');
-    var r = this.r[opts.method.toLowerCase()](opts.url);
+    const r = this.r[opts.method.toLowerCase()](opts.url);
     for (const [k, v] of Object.entries(opts.headers || {})) {
       if (v) r.set(k, v);
     }
@@ -148,7 +149,7 @@ export class PayPro {
     }
     r.end((err, res) => {
       if (err) return cb(err);
-      var body = res.text;
+      const body = res.text;
       if (!res || res.statusCode != 200) {
         // some know codes
         if (res.statusCode == 400) {
@@ -159,7 +160,7 @@ export class PayPro {
           return cb(new Errors.UNCONFIRMED_INPUTS_NOT_ACCEPTED());
         }
 
-        let m = res ? res.statusMessage || res.statusCode : '';
+        const m = res ? res.statusMessage || res.statusCode : '';
         return cb(new Error('Could not fetch invoice: ' + m));
       }
 
@@ -178,8 +179,8 @@ export class PayPro {
       //
 
       // Step 1: Check digest from header
-      let digest = res.headers.digest.toString().split('=')[1];
-      let hash = Bitcore.crypto.Hash.sha256(Buffer.from(body, 'utf8')).toString(
+      const digest = res.headers.digest.toString().split('=')[1];
+      const hash = Bitcore.crypto.Hash.sha256(Buffer.from(body, 'utf8')).toString(
         'hex'
       );
 
@@ -202,7 +203,7 @@ export class PayPro {
           let ret;
           try {
             ret = JSON.parse(body);
-          } catch (e) {
+          } catch {
             return cb(new Error('Could not payment request:' + body));
           }
           ret.verified = 1;
@@ -216,10 +217,10 @@ export class PayPro {
     $.checkArgument(opts && opts.url);
     opts.trustedKeys = opts.trustedKeys || dfltTrustedKeys;
 
-    var coin = opts.coin || 'btc';
-    var bitcore = Bitcore_[coin];
+    const coin = opts.coin || 'btc';
+    const bitcore = Bitcore_[coin];
 
-    var COIN = coin.toUpperCase();
+    const COIN = coin.toUpperCase();
     opts.headers = opts.headers || {
       Accept: JSON_PAYMENT_REQUEST_CONTENT_TYPE,
       'Content-Type': 'application/octet-stream'
@@ -230,7 +231,7 @@ export class PayPro {
     PayPro.runRequest(opts, function (err, data) {
       if (err) return cb(err);
 
-      var ret: any = {};
+      const ret: any = {};
 
       // otherwise, it returns err.
       ret.verified = true;
@@ -276,7 +277,7 @@ export class PayPro {
       ret.paymentId = data.paymentId;
       try {
         ret.expires = new Date(data.expires).toISOString();
-      } catch (e) {
+      } catch {
         return cb(new Error('Bad expiration'));
       }
       return cb(null, ret);
@@ -288,15 +289,15 @@ export class PayPro {
       .checkArgument(opts.url)
       .checkArgument(opts.rawTx);
 
-    var coin = opts.coin || 'btc';
-    var COIN = coin.toUpperCase();
+    const coin = opts.coin || 'btc';
+    const COIN = coin.toUpperCase();
 
     opts.network = opts.network || 'livenet';
     opts.method = 'POST';
     opts.headers = opts.headers || {
       'Content-Type': JSON_PAYMENT_VERIFY_CONTENT_TYPE
     };
-    let size = opts.rawTx.length / 2;
+    const size = opts.rawTx.length / 2;
     opts.args = JSON.stringify({
       currency: COIN,
       unsignedTransaction: opts.rawTxUnsigned,
@@ -307,7 +308,7 @@ export class PayPro {
     opts.noVerify = true;
 
     // verify request
-    PayPro.runRequest(opts, function (err, rawData) {
+    PayPro.runRequest(opts, function (err, _rawData) {
       if (err) {
         console.log(
           'Error at verify-payment:',
@@ -347,12 +348,12 @@ export class PayPro {
           return cb(err);
         }
 
-        var memo;
+        let memo;
         if (rawData) {
           try {
-            var data = JSON.parse(rawData.toString());
+            const data = JSON.parse(rawData.toString());
             memo = data.memo;
-          } catch (e) {
+          } catch {
             console.log('Could not decode paymentACK');
           }
         }

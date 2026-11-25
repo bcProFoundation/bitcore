@@ -1,6 +1,6 @@
-import { Db, MongoClient } from 'mongodb-legacy';
 import 'source-map-support/register';
 import { Transform } from 'stream';
+import { Db, MongoClient } from 'mongodb';
 
 export class Mongo {
   path: string;
@@ -20,7 +20,7 @@ export class Mongo {
     const { path, createIfMissing, errorIfExists } = params;
     if (path) {
       this.path = path;
-      let databasePath = path.split('/');
+      const databasePath = path.split('/');
       if (databasePath[databasePath.length - 1] === '') {
         databasePath.pop();
       }
@@ -38,14 +38,14 @@ export class Mongo {
       return;
     }
     try {
-      this.client = new MongoClient(this.path, {});
+      this.client = new MongoClient(this.path, { useNewUrlParser: true, useUnifiedTopology: true });
       await this.client.connect();
       this.db = this.client.db(this.databaseName);
       this.walletCollection = this.db.collection(this.walletCollectionName);
       this.addressCollection = this.db.collection(this.addressCollectionName);
       await this.walletCollection.createIndex({ name: 1 });
       await this.addressCollection.createIndex({ name: 1 });
-    } catch (error) {}
+    } catch { /* ignore */ }
   }
 
   async close() {
@@ -57,13 +57,15 @@ export class Mongo {
   async testConnection() {
     try {
       const client = new MongoClient(this.path, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
         noDelay: true,
         serverSelectionTimeoutMS: 5000
       });
       await client.connect();
       await client.close();
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   }
@@ -80,7 +82,7 @@ export class Mongo {
     const cursor = this.walletCollection
       .find({ name: { $exists: true } }, { name: 1, chain: 1, network: 1, storageType: 1, tokens: 1 })
       .pipe(stream);
-    stream.on('', async () => await this.close());
+    stream.on('end', async () => await this.close());
     return cursor;
   }
 
@@ -155,7 +157,11 @@ export class Mongo {
         await this.init();
       }
       const { name, key, toStore } = params;
-      await this.addressCollection.insertOne({ name, address: key.address, data: toStore });
+      await this.addressCollection.updateOne(
+        { name, address: key.address },
+        { $set: { name, address: key.address, data: toStore } },
+        { upsert: true }
+      );
       if (!params.keepAlive) {
         await this.close();
       }
@@ -164,7 +170,7 @@ export class Mongo {
     }
   }
 
-  async getAddress(params: { name: string; address: string, keepAlive: boolean; open: boolean}) {
+  async getAddress(params: { name: string; address: string; keepAlive: boolean; open: boolean }) {
     const { name, address, keepAlive, open } = params;
     const data = await this.getKey({ address, name, keepAlive, open });
     if (!data) {

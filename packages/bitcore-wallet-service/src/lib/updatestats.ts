@@ -2,11 +2,11 @@ import * as async from 'async';
 import moment from 'moment';
 import * as mongodb from 'mongodb-legacy';
 const ObjectId = mongodb.ObjectId;
+import { Storage } from './storage';
 
-const storage = require('./storage');
 const LAST_DAY = '2019-12-01';
 
-var objectIdFromDate = function(date) {
+const objectIdFromDate = function(date) {
   return Math.floor(date.getTime() / 1000).toString(16) + '0000000000000000';
 };
 
@@ -19,7 +19,7 @@ export class UpdateStats {
   constructor() {}
 
   run(config, cb) {
-    let dbConfig = config.storageOpts.mongoDb;
+    const dbConfig = config.storageOpts.mongoDb;
 
     let uri = dbConfig.uri;
 
@@ -72,17 +72,17 @@ export class UpdateStats {
           this._updateFiatRates(next);
         }
       ],
-      err => {
+      () => {
         return this.client.close(cb);
       }
     );
   }
 
   async _updateNewWallets(cb) {
-    let lastDay = await this.lastRun('stats_wallets');
-    let od = objectIdFromDate(new Date(lastDay));
+    const lastDay = await this.lastRun('stats_wallets');
+    const od = objectIdFromDate(new Date(lastDay));
     this.db
-      .collection(storage.Storage.collections.WALLETS)
+      .collection(Storage.collections.WALLETS)
       .aggregate([
         {
           $match: {
@@ -144,10 +144,10 @@ export class UpdateStats {
   }
 
   async _updateFiatRates(cb) {
-    let lastDay = await this.lastRun('stats_fiat_rates');
-    let od = objectIdFromDate(new Date(lastDay));
+    const lastDay = await this.lastRun('stats_fiat_rates');
+    const od = objectIdFromDate(new Date(lastDay));
     this.db
-      .collection(storage.Storage.collections.FIAT_RATES2)
+      .collection(Storage.collections.FIAT_RATES2)
       .aggregate([
         {
           $match: {
@@ -214,13 +214,13 @@ export class UpdateStats {
 
   async lastRun(coll) {
     // Grab last run
-    let cursor = await this.db
+    const cursor = await this.db
       .collection(coll)
       .find({}) // , { _id: true }})  // not working on new mongo driver
       .sort({ _id: -1 })
       .limit(1);
 
-    let last = await cursor.next();
+    const last = await cursor.next();
     let lastDay = LAST_DAY;
     if (last && last._id) {
       lastDay = last.day;
@@ -232,10 +232,10 @@ export class UpdateStats {
   }
 
   async _updateTxProposals(cb) {
-    let lastDay = await this.lastRun('stats_txps');
-    let od = objectIdFromDate(new Date(lastDay));
+    const lastDay = await this.lastRun('stats_txps');
+    const od = objectIdFromDate(new Date(lastDay));
     this.db
-      .collection(storage.Storage.collections.TXS)
+      .collection(Storage.collections.TXS)
       .aggregate([
         {
           $match: {

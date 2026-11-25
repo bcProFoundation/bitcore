@@ -1,29 +1,33 @@
-import { Deriver } from '@bcpros/crypto-wallet-core';
+import {
+  BitcoreLib,
+  BitcoreLibCash,
+  BitcoreLibDoge,
+  BitcoreLibLtc,
+  Deriver
+} from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
-import { ChainService } from '../chain/index';
+import { singleton } from 'preconditions';
 import { Common } from '../common';
 import { AddressManager } from './addressmanager';
 
-const $ = require('preconditions').singleton();
-const Constants = Common.Constants,
-  Defaults = Common.Defaults,
-  Utils = Common.Utils;
+const $ = singleton();
+const { Constants, Utils } = Common;
 
 export interface IAddress {
   version: string;
   createdOn: number;
   address: string;
   walletId: string;
-  isChange: boolean;
-  isEscrow: boolean;
+  isChange?: boolean;
+  isEscrow?: boolean;
   path: string;
-  publicKeys: string[];
+  publicKeys: Array<string>;
   coin: string;
   chain: string;
   network: string;
   type: string;
-  hasActivity: boolean;
-  beRegistered: boolean;
+  hasActivity?: boolean;
+  beRegistered?: boolean;
 }
 
 export class Address {
@@ -43,12 +47,12 @@ export class Address {
   beRegistered: boolean;
 
   static Bitcore = {
-    btc: require('@bcpros/bitcore-lib'),
-    bch: require('@bcpros/bitcore-lib-cash'),
+    btc: BitcoreLib,
+    bch: BitcoreLibCash,
     xec: require('@bcpros/bitcore-lib-xec'),
-    doge: require('@bcpros/bitcore-lib-doge'),
+    doge: BitcoreLibDoge,
     xpi: require('@bcpros/bitcore-lib-xpi'),
-    ltc: require('@bcpros/bitcore-lib-ltc')
+    ltc: BitcoreLibLtc
   };
 
   static create(opts) {
@@ -56,7 +60,7 @@ export class Address {
 
     const x = new Address();
 
-    opts.chain = opts.chain || ChainService.getChain(opts.coin); // getChain -> backwards compatibility
+    opts.chain = opts.chain || Utils.getChain(opts.coin); // getChain -> backwards compatibility
     $.checkArgument(Utils.checkValueInCollection(opts.chain, Constants.CHAINS));
 
     x.version = '1.0.0';
@@ -85,7 +89,7 @@ export class Address {
     x.createdOn = obj.createdOn;
     x.address = obj.address;
     x.walletId = obj.walletId;
-    x.coin = obj.chain || ChainService.getChain(obj.coin);
+    x.coin = obj.chain || Utils.getChain(obj.coin);
     x.chain = x.coin;
     x.network = Utils.getNetworkName(x.chain, obj.network) || obj.network;
     x.isChange = obj.isChange;
@@ -98,19 +102,25 @@ export class Address {
     return x;
   }
 
-  static _deriveAddress(scriptType, publicKeyRing, path, m, chain, network, noNativeCashAddr, escrowInputs?, hardwareSourcePublicKey?) {
+  static _deriveAddress(scriptType, publicKeyRing, path, m, chain, network, noNativeCashAddr, escrowInputs?, hardwareSourcePublicKey?, clientDerivedPublicKey?) {
     $.checkArgument(Utils.checkValueInCollection(scriptType, Constants.SCRIPT_TYPES));
-
-    if (hardwareSourcePublicKey) {
-      const bitcoreAddress = Deriver.getAddress(chain.toUpperCase(), network, hardwareSourcePublicKey, scriptType);
+    const externSourcePublicKey = hardwareSourcePublicKey || clientDerivedPublicKey;
+    if (externSourcePublicKey) {
+      let bitcoreAddress;
+      try {
+        bitcoreAddress = Deriver.deriveAddressWithPath(chain.toUpperCase(), network, externSourcePublicKey, path, scriptType);
+      } catch {
+        // some chains (e.g. SOL) cannot derive address along path from pub key.
+        bitcoreAddress = Deriver.getAddress(chain.toUpperCase(), network, externSourcePublicKey, scriptType);
+      }
       return {
         address: bitcoreAddress.toString(),
         path,
-        publicKeys: [hardwareSourcePublicKey]
-      }
+        publicKeys: [externSourcePublicKey]
+      };
     }
 
-    let publicKeys = _.map(publicKeyRing, item => {
+    let publicKeys = (publicKeyRing || []).map(item => {
       const xpub = Address.Bitcore[chain]
         ? new Address.Bitcore[chain].HDPublicKey(item.xPubKey)
         : new Address.Bitcore.btc.HDPublicKey(item.xPubKey);
@@ -131,7 +141,7 @@ export class Address {
         break;
       case Constants.SCRIPT_TYPES.P2SH:
         if (escrowInputs) {
-          var xpub = new Address.Bitcore[chain].HDPublicKey(publicKeyRing[0].xPubKey);
+          const xpub = new Address.Bitcore[chain].HDPublicKey(publicKeyRing[0].xPubKey);
           const inputPublicKeys = escrowInputs.map(input => xpub.deriveChild(input.path).publicKey);
           bitcoreAddress = Address.Bitcore[chain].Address.createEscrow(inputPublicKeys, publicKeys[0], network);
           publicKeys = [publicKeys[0], ...inputPublicKeys];
@@ -144,7 +154,7 @@ export class Address {
         break;
       case Constants.SCRIPT_TYPES.P2PKH:
         $.checkState(
-          _.isArray(publicKeys) && publicKeys.length == 1,
+          Array.isArray(publicKeys) && publicKeys.length == 1,
           'Failed state: publicKeys length < 1 or publicKeys not an array at <_deriveAddress()>'
         );
 
@@ -170,10 +180,10 @@ export class Address {
     }
 
     return {
-      // bws still use legacy addresses for BCH
+      // bws still uses legacy addresses for BCH
       address: addrStr,
       path,
-      publicKeys: _.invokeMap(publicKeys, 'toString')
+      publicKeys: publicKeys.map(pk => pk.toString())
     };
   }
 
@@ -190,18 +200,20 @@ export class Address {
     chain,
     noNativeCashAddr = false,
     escrowInputs?,
-    hardwareSourcePublicKey?
+    hardwareSourcePublicKey?,
+    clientDerivedPublicKey?
   ) {
     const raw = Address._deriveAddress(
       scriptType,
       publicKeyRing,
       path,
       m,
-      chain || ChainService.getChain(coin), // getChain -> backwards compatibility
+      chain || Utils.getChain(coin), // getChain -> backwards compatibility
       network,
       noNativeCashAddr,
       escrowInputs,
       hardwareSourcePublicKey,
+      clientDerivedPublicKey
     );
     return Address.create(
       _.extend(raw, {

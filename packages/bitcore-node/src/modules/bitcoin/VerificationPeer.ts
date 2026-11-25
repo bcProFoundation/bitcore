@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import logger, { timestamp } from '../../logger';
 import { ITransaction } from '../../models/baseTransaction';
 import { BitcoinBlockStorage } from '../../models/block';
@@ -7,6 +6,7 @@ import { TransactionStorage } from '../../models/transaction';
 import { BitcoinP2PWorker } from '../../modules/bitcoin/p2p';
 import { ChainStateProvider } from '../../providers/chain-state';
 import { ErrorType, IVerificationPeer } from '../../services/verification';
+import { uniq } from '../../utils';
 
 export class VerificationPeer extends BitcoinP2PWorker implements IVerificationPeer {
   prevBlockNum = 0;
@@ -114,7 +114,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       const headerCount = Math.min(headers.length, end - currentHeight);
       logger.info(`Re-Syncing ${headerCount} blocks for ${chain} ${network}`);
       let lastLog = Date.now();
-      for (let header of headers) {
+      for (const header of headers) {
         if (currentHeight <= end) {
           const block = await this.getBlock(header.hash);
           await BitcoinBlockStorage.processBlock({ chain, network, block, initialSyncComplete: true });
@@ -252,13 +252,10 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
 
     if (block && this.deepScan && p2pBlock) {
       const txs = p2pBlock.transactions ? p2pBlock.transactions.slice(1) : [];
-      const spends = _.chain(txs)
-        .map(tx => tx.inputs)
-        .flatten()
-        .map(input => input.toObject())
-        .value();
 
-      for (let spend of spends) {
+      const spends = txs.flatMap(tx => tx.inputs.map(input => input.toObject()));
+
+      for (const spend of spends) {
         const found = await CoinStorage.collection.findOne({
           chain,
           network,
@@ -290,7 +287,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }
     }
 
-    for (let tx of mempoolTxs) {
+    for (const tx of mempoolTxs) {
       success = false;
       const error = { model: 'transaction', err: true, type: 'DUPE_TRANSACTION', payload: { tx, blockNum } };
       errors.push(error);
@@ -300,7 +297,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
     }
 
     const seenTxCoins = {} as { [txid: string]: ICoin[] };
-    for (let tx of blockTxs) {
+    for (const tx of blockTxs) {
       if (tx.fee < 0) {
         success = false;
         const error = { model: 'transaction', err: true, type: 'NEG_FEE', payload: { tx, blockNum } };
@@ -321,7 +318,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }
     }
 
-    for (let coin of coinsForTx) {
+    for (const coin of coinsForTx) {
       if (seenTxCoins[coin.mintTxid] && seenTxCoins[coin.mintTxid][coin.mintIndex]) {
         success = false;
         const error = { model: 'coin', err: true, type: 'DUPE_COIN', payload: { coin, blockNum } };
@@ -335,7 +332,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }
     }
 
-    const mintHeights = _.uniq(coinsForTx.map(c => c.mintHeight));
+    const mintHeights = uniq(coinsForTx.map(c => c.mintHeight));
     if (mintHeights.length > 1) {
       success = false;
       const error = { model: 'coin', err: true, type: 'COIN_HEIGHT_MISMATCH', payload: { blockNum } };
@@ -345,7 +342,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }
     }
 
-    for (let txid of Object.keys(seenTxs)) {
+    for (const txid of Object.keys(seenTxs)) {
       const coins = seenTxCoins[txid];
       if (!coins) {
         success = false;
@@ -357,7 +354,7 @@ export class VerificationPeer extends BitcoinP2PWorker implements IVerificationP
       }
     }
 
-    for (let txid of Object.keys(seenTxCoins)) {
+    for (const txid of Object.keys(seenTxCoins)) {
       const tx = seenTxs[txid];
       const coins = seenTxCoins[txid];
       if (!tx) {

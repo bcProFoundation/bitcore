@@ -1,41 +1,40 @@
+import { ArbDeriver } from './arb';
+import { BaseDeriver } from './base';
 import { BchDeriver } from './bch';
 import { BtcDeriver } from './btc';
 import { DogeDeriver } from './doge';
+import { EthDeriver } from './eth';
 import { LtcDeriver } from './ltc';
+import { MaticDeriver } from './matic';
+import { OpDeriver } from './op';
 import { Paths } from './paths';
+import { SolDeriver } from './sol';
 import { XecDeriver } from './xec';
 import { XpiDeriver } from './xpi';
-
-export interface Key {
-  address: string;
-  privKey?: string;
-  pubKey?: string;
-}
-
-export interface IDeriver {
-  deriveAddress(network: string, xPub: string, addressIndex: number, isChange: boolean, addressType?: string): string;
-
-  derivePrivateKey(network: string, xPriv: string, addressIndex: number, isChange: boolean, addressType?: string): Key;
-
-  deriveAddressWithPath(network: string, xpubKey: string, path: string, addressType: string): string;
-
-  derivePrivateKeyWithPath(network, xprivKey: string, path: string, addressType: string): Key;
-
-  getAddress(network: string, pubKey, addressType: string): string;
-}
+import { XrpDeriver } from './xrp';
+import type { IDeriver } from '../types/derivation';
 
 const derivers: { [chain: string]: IDeriver } = {
   BTC: new BtcDeriver(),
   BCH: new BchDeriver(),
+  ETH: new EthDeriver(),
+  XRP: new XrpDeriver(),
   DOGE: new DogeDeriver(),
+  LTC: new LtcDeriver(),
   XEC: new XecDeriver(),
   XPI: new XpiDeriver(),
-  LTC: new LtcDeriver(),
+  MATIC: new MaticDeriver(),
+  ARB: new ArbDeriver(),
+  BASE: new BaseDeriver(),
+  OP: new OpDeriver(),
+  ARC: new EthDeriver(),
+  SOL: new SolDeriver()
 };
 
 export class DeriverProxy {
-  get(chain) {
-    return derivers[chain];
+  private get(chain) {
+    const normalizedChain = chain.toUpperCase();
+    return derivers[normalizedChain];
   }
 
   /**
@@ -111,6 +110,13 @@ export class DeriverProxy {
     return this.get(chain).getAddress(network, pubKey, addressType);
   }
 
+  /**
+   * Caller responsible for cleaning up privKey buffer
+   */
+  getPublicKey(chain, network, privKey: Buffer) {
+    return this.get(chain).getPublicKey(network, privKey);
+  }
+
   pathFor(chain, network, account = 0) {
     const normalizedChain = chain.toUpperCase();
     const accountStr = `${account}'`;
@@ -124,6 +130,14 @@ export class DeriverProxy {
     } else {
       return Paths.BTC.default + accountStr;
     }
+  }
+
+  privateKeyToBuffer(chain, privateKey: Buffer | string): Buffer {
+    return this.get(chain).privateKeyToBuffer(privateKey);
+  }
+
+  bufferToPrivateKey_TEMP(chain: string, network: string, buf: Buffer): string {
+    return this.get(chain).bufferToPrivateKey_TEMP(buf, network);
   }
 }
 

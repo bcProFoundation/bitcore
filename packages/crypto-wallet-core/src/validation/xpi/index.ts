@@ -1,4 +1,4 @@
-import { IValidation } from '..';
+import type { IValidation } from '../../types/validation';
 const BitcoreXpi = require('@bcpros/bitcore-lib-xpi');
 
 export class XpiValidation implements IValidation {

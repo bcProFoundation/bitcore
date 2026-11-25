@@ -1,0 +1,312 @@
+import * as crypto from 'crypto';
+import * as request from 'request';
+import config from '../config';
+import { Utils } from '../lib/common/utils';
+import { ClientError } from '../lib/errors/clienterror';
+import logger from '../lib/logger';
+import { checkRequired } from '../lib/server';
+
+export class RampService {
+  request: any = request;
+
+  private rampGetKeys(req) {
+    if (!config.ramp) throw new Error('Ramp missing credentials');
+
+    let env: 'sandbox' | 'production' | 'sandboxWeb' | 'productionWeb';
+    env = req.body.env === 'production' ? 'production' : 'sandbox';
+    if (req.body.context === 'web') {
+      env += 'Web';
+    }
+    delete req.body.env;
+    delete req.body.context;
+
+    const keys: {
+      API: string;
+      WIDGET_API: string;
+      API_KEY: string;
+      SIGNING_KEY: string;
+    } = {
+      API: config.ramp[env].api,
+      WIDGET_API: config.ramp[env].widgetApi,
+      API_KEY: config.ramp[env].apiKey,
+      SIGNING_KEY: config.ramp[env].signingKey,
+    };
+
+    return keys;
+  }
+
+  rampGetQuote(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.rampGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      if (!checkRequired(req.body, ['cryptoAssetSymbol', 'fiatValue', 'fiatCurrency'])) {
+        return reject(new ClientError("Ramp's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const URL: string = API + `/host-api/v3/onramp/quote/all?hostApiKey=${API_KEY}`;
+
+      this.request.post(
+        URL,
+        {
+          headers,
+          body: req.body,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Ramp request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Ramp quote'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Ramp request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Ramp did not return quote data'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  rampGetSellQuote(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.rampGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      /*
+        * Although fiatValue and cryptoAmount are not both required, you need to pass one of them.
+        * cryptoAmount - should be passed in token wei - e.g. for 1ETH cryptoAmount: 1000000000000000000
+        * cryptoAmount?: string;
+        * fiatValue?: number;
+      */
+      if (!checkRequired(req.body, ['cryptoAssetSymbol', 'fiatCurrency']) || (!checkRequired(req.body, ['fiatValue']) && !checkRequired(req.body, ['cryptoAmount']))) {
+        return reject(new ClientError("Ramp's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const URL: string = API + `/host-api/v3/offramp/quote/all?hostApiKey=${API_KEY}`;
+
+      this.request.post(
+        URL,
+        {
+          headers,
+          body: req.body,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Ramp request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Ramp sell quote'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Ramp request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Ramp did not return sell quote data'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  rampGetSignedPaymentUrl(req): { urlWithSignature: string } {
+    const webRequiredParams = [
+      'selectedCountryCode',
+    ];
+    let appRequiredParams = [
+      'enabledFlows',
+      'defaultFlow',
+      'selectedCountryCode',
+    ];
+    const extraRequiredParams = req.body.flow && req.body.flow === 'sell' ? [] : ['finalUrl', 'userAddress'];
+    appRequiredParams = appRequiredParams.concat(extraRequiredParams);
+
+    const requiredParams = req.body.context === 'web' ? webRequiredParams : appRequiredParams;
+    const keys = this.rampGetKeys(req);
+    const API_KEY = keys.API_KEY;
+    const WIDGET_API = keys.WIDGET_API;
+    const SIGNING_KEY = keys.SIGNING_KEY;
+
+    if (
+      !checkRequired(req.body, requiredParams)
+    ) {
+      throw new ClientError("Ramp's request missing arguments");
+    }
+
+    const qs: string[] = [];
+    qs.push('hostApiKey=' + API_KEY);
+    qs.push('selectedCountryCode=' + encodeURIComponent(req.body.selectedCountryCode));
+    if (req.body.finalUrl) qs.push('finalUrl=' + encodeURIComponent(req.body.finalUrl));
+    if (req.body.userAddress) qs.push('userAddress=' + encodeURIComponent(req.body.userAddress));
+    if (req.body.enabledFlows) qs.push('enabledFlows=' + encodeURIComponent(req.body.enabledFlows));
+    if (req.body.defaultFlow) qs.push('defaultFlow=' + encodeURIComponent(req.body.defaultFlow));
+    if (req.body.hostLogoUrl) qs.push('hostLogoUrl=' + encodeURIComponent(req.body.hostLogoUrl));
+    if (req.body.hostAppName) qs.push('hostAppName=' + encodeURIComponent(req.body.hostAppName));
+    if (req.body.userEmailAddress) qs.push('userEmailAddress=' + encodeURIComponent(req.body.userEmailAddress));
+    if (req.body.useSendCryptoCallback) qs.push('useSendCryptoCallback=' + encodeURIComponent(req.body.useSendCryptoCallback));
+    if (req.body.paymentMethodType) qs.push('paymentMethodType=' + encodeURIComponent(req.body.paymentMethodType));
+    if (req.body.hideExitButton) qs.push('hideExitButton=' + encodeURIComponent(req.body.hideExitButton));
+
+    // Ramp deprecated the legacy per-flow search params in favor of a unified format.
+    // Ref: https://docs.rampnetwork.com/search-params-migration
+    // Older app versions still send the legacy fields, so we translate them into the new
+    // unified params here to keep those requests working going forward.
+    // `flow === 'sell'` => OFFRAMP; otherwise => ONRAMP.
+    // If a newer client already sends the new params, those take precedence.
+    const isOfframp = req.body.flow === 'sell';
+
+    // enabledCryptoAssets <- swapAsset (onramp) / offrampAsset (offramp)
+    const enabledCryptoAssets = req.body.enabledCryptoAssets ?? (isOfframp ? req.body.offrampAsset : req.body.swapAsset);
+    if (enabledCryptoAssets) qs.push('enabledCryptoAssets=' + encodeURIComponent(enabledCryptoAssets));
+
+    // inAsset (incoming, paid by the user) <- fiatCurrency (onramp) / defaultAsset (offramp)
+    const inAsset = req.body.inAsset ?? (isOfframp ? req.body.defaultAsset : req.body.fiatCurrency);
+    if (inAsset) qs.push('inAsset=' + encodeURIComponent(inAsset));
+
+    // outAsset (outgoing, received by the user) <- defaultAsset (onramp) / fiatCurrency (offramp)
+    const outAsset = req.body.outAsset ?? (isOfframp ? req.body.fiatCurrency : req.body.defaultAsset);
+    if (outAsset) qs.push('outAsset=' + encodeURIComponent(outAsset));
+
+    // inAssetValue (units, no decimals) <- fiatValue (onramp) / swapAmount (offramp)
+    const inAssetValue = req.body.inAssetValue ?? (isOfframp ? req.body.swapAmount : req.body.fiatValue);
+    if (inAssetValue) qs.push('inAssetValue=' + encodeURIComponent(inAssetValue));
+
+    // outAssetValue (units, no decimals) <- swapAmount (onramp) / fiatValue (offramp)
+    const outAssetValue = req.body.outAssetValue ?? (isOfframp ? req.body.fiatValue : req.body.swapAmount);
+    if (outAssetValue) qs.push('outAssetValue=' + encodeURIComponent(outAssetValue));
+
+    const queryString = qs.join('&');
+
+    // Add timestamp and sign
+    const timestamp = Math.floor(Date.now());
+    const queryWithTimestamp = `${queryString}&timestamp=${timestamp}`;
+
+    // Create signature using Ed25519
+    const dataToSign = Buffer.from(queryWithTimestamp, 'utf8');
+    let base64Signature: string;
+    try {
+      const privateDer = Buffer.from(SIGNING_KEY, 'base64');
+      const signature = crypto.sign(null, dataToSign, { key: privateDer, format: 'der', type: 'pkcs8' });
+      base64Signature = signature.toString('base64');
+    } catch {
+      throw new ClientError('Invalid Ramp signing key');
+    }
+
+    // Create final URL
+    const URL_SEARCH: string = `?${queryWithTimestamp}&signature=${encodeURIComponent(
+      base64Signature
+    )}`;
+
+    const urlWithSignature = `${WIDGET_API}${URL_SEARCH}`;
+
+    return { urlWithSignature };
+  }
+
+  rampGetAssets(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.rampGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const qs: string[] = [];
+      // "Buy" and "Sell" features use the same properties. Use "flow" to target the correct endpoint
+      qs.push('hostApiKey=' + API_KEY);
+      if (req.body.currencyCode) qs.push('currencyCode=' + encodeURIComponent(req.body.currencyCode));
+      if (req.body.withDisabled) qs.push('withDisabled=' + encodeURIComponent(req.body.withDisabled));
+      if (req.body.withHidden) qs.push('withHidden=' + encodeURIComponent(req.body.withHidden));
+      if (req.body.useIp) {
+        const ip = Utils.getIpFromReq(req);
+        qs.push('userIp=' + encodeURIComponent(ip));
+      }
+
+      const URL = API + `/host-api/v3${req.body.flow && req.body.flow === 'sell' ? '/offramp' : ''}/assets?${qs.join('&')}`;
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Ramp request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Ramp assets'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Ramp request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Ramp did not return assets data'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  rampGetSellTransactionDetails(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.rampGetKeys(req);
+      const API = keys.API;
+
+      if (!checkRequired(req.body, ['id', 'saleViewToken'])) {
+        return reject(new ClientError("Ramp's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const qs: string[] = [];
+      qs.push('secret=' + req.body.saleViewToken);
+
+      const URL = API + `/host-api/v3/offramp/sale/${req.body.id}?${qs.join('&')}`;
+      const safeURL = URL.replace('secret=' + req.body.saleViewToken, 'secret=***');
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Ramp request failed with error (${safeURL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Ramp sell transaction details'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Ramp request failed with status code ${data.statusCode}: ${safeURL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Ramp did not return sell transaction details'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+}

@@ -46,31 +46,37 @@ export class Credentials {
     'isSlpToken',
     'isFromRaipay',
     'isPath899',
-    'hardwareSourcePublicKey' // public key from a hardware device for this copayer
+    'hardwareSourcePublicKey', // public key from a hardware device for this copayer
+    'clientDerivedPublicKey', // for public keys generated client side
+    'tssKeyId', // for TSS wallets
   ];
   version: number;
   account: number;
-  walletPrivKey: any;
-  sharedEncryptingKey: any;
-  walletId: any;
-  walletName: any;
-  m: any;
-  n: any;
-  copayerName: any;
-  xPrivKey: string; // deprecated
-  xPrivKeyEncrypted: string; // deprecated
-  xPubKey: any;
-  requestPrivKey: any;
-  requestPubKey: any;
+  walletPrivKey: string;
+  personalEncryptingKey: string;
+  sharedEncryptingKey: string;
+  walletId: string;
+  walletName: string;
+  m: number;
+  n: number;
+  copayerName: string;
   copayerId: string;
-  publicKeyRing: any;
-  rootPath: any;
-  derivationStrategy: any;
+  xPrivKey: string;
+  xPrivKeyEncrypted: string;
+  xPubKey: string;
+  requestPubKey: string;
+  requestPrivKey: string;
+  publicKeyRing: Array<{
+    requestPubKey: string;
+    xPubKey: string;
+    copayerName?: string;
+  }>;
+  rootPath: string;
+  derivationStrategy: string;
   network: string;
   coin: string;
   chain: string;
-  use145forBCH: any;
-
+  use145forBCH: boolean;
   addressType: string;
   keyId: string;
   token?: {
@@ -78,14 +84,19 @@ export class Credentials {
     symbol: string;
     address: string;
   };
-  multisigEthInfo?: any;
+  multisigEthInfo?: {
+    multisigContractAddress: string;
+    walletName: string;
+    n: string | number;
+    m: string | number;
+  };
   externalSource?: boolean; // deprecated property?
   hardwareSourcePublicKey: string;
-  personalEncryptingKey: string;
+  clientDerivedPublicKey: string;
+  tssKeyId: string; // for TSS wallets
   isSlpToken: boolean;
   isFromRaipay: boolean;
   isPath899: boolean;
-
 
   constructor() {
     this.version = 2;
@@ -93,22 +104,32 @@ export class Credentials {
   }
 
   /**
-   * 
-   * @param opts
-   * @deprecated
-   * @param {string} opts.coin @deprecated Use opts.chain
-   * @param {string} opts.chain
-   * @param {string} opts.network
-   * @param {number} opts.account
-   * @param {string} opts.xPubKey
-   * @param {string} opts.rootPath
-   * @param {string} opts.keyId
-   * @param {string} opts.requestPrivKey
-   * @returns 
+   * Create credentials from a derived key
    */
-
-  static fromDerivedKey(opts) {
-    $.shouldBeString(opts.coin);
+  static fromDerivedKey(opts: {
+    /** @deprecated use `chain` */
+    coin?: string;
+    chain: string;
+    network: string;
+    account: number;
+    xPubKey: string;
+    rootPath: string;
+    keyId: string;
+    requestPrivKey: string;
+    /** Multisig: minimum number of cosigners */
+    m?: number;
+    /** Multisig: total number of cosigners */
+    n?: number;
+    addressType?: string;
+    walletPrivKey?: string;
+    copayerName?: string;
+    use145forBCH?: boolean;
+    nonCompliantDerivation?: boolean;
+    clientDerivedPublicKey?: string;
+    isSlpToken?: boolean;
+    isFromRaipay?: boolean;
+    isPath899?: boolean;
+  }) {
     $.shouldBeString(opts.chain);
     $.shouldBeString(opts.network);
     $.shouldBeNumber(opts.account, 'Invalid account');
@@ -117,16 +138,18 @@ export class Credentials {
     $.shouldBeString(opts.keyId, 'Invalid keyId');
     $.shouldBeString(opts.requestPrivKey, 'Invalid requestPrivKey');
     $.checkArgument(opts.nonCompliantDerivation == null);
-    opts = opts || {};
 
-    let x = new Credentials();
-    x.coin = opts.coin;
+    const x = new Credentials();
     x.chain = opts.chain;
+    x.coin = opts.coin || opts.chain;
     x.network = opts.network;
     x.account = opts.account;
+    x.m = opts.m;
     x.n = opts.n;
     x.xPubKey = opts.xPubKey;
     x.keyId = opts.keyId;
+    x.copayerName = opts.copayerName;
+
     x.isSlpToken = opts.isSlpToken;
     x.isFromRaipay = opts.isFromRaipay;
     x.isPath899 = opts.isPath899;
@@ -140,7 +163,7 @@ export class Credentials {
       x.addressType = opts.addressType;
     }
 
-    // Only  used for info
+    // Only used for info
     x.rootPath = opts.rootPath;
 
     if (opts.walletPrivKey) {
@@ -152,12 +175,10 @@ export class Credentials {
     x.requestPubKey = priv.toPublicKey().toString();
 
     const prefix = 'personalKey';
-    const entropySource = Bitcore.crypto.Hash.sha256(priv.toBuffer()).toString(
-      'hex'
-    );
+    const entropySource = Bitcore.crypto.Hash.sha256(priv.toBuffer()).toString('hex');
     const b = Buffer.from(entropySource, 'hex');
-    const b2 = Bitcore.crypto.Hash.sha256hmac(b, Buffer.from(prefix));
-    x.personalEncryptingKey = b2.slice(0, 16).toString('base64');
+    const b2: Buffer = Bitcore.crypto.Hash.sha256hmac(b, Buffer.from(prefix));
+    x.personalEncryptingKey = Buffer.from(b2.subarray(0, 16)).toString('base64');
     x.copayerId = Utils.xPubToCopayerId(x.chain, x.xPubKey);
     x.publicKeyRing = [
       {
@@ -165,7 +186,7 @@ export class Credentials {
         requestPubKey: x.requestPubKey
       }
     ];
-
+    x.clientDerivedPublicKey = opts.clientDerivedPublicKey;
     return x;
   }
 
@@ -193,24 +214,19 @@ export class Credentials {
   /*
    * creates a Multisig wallet from a ETH wallet
    */
-  getMultisigEthCredentials(multisigEthInfo: {
-    multisigContractAddress: string;
-    walletName: string;
-    n: string;
-    m: string;
-  }) {
+  getMultisigEthCredentials(multisigEthInfo: Credentials['multisigEthInfo']) {
     const ret = Credentials.fromObj(this.toObj());
     ret.walletId = `${ret.walletId}-${multisigEthInfo.multisigContractAddress}`;
     ret.walletName = multisigEthInfo.walletName;
-    ret.n = multisigEthInfo.n;
-    ret.m = multisigEthInfo.m;
+    ret.n = parseInt(multisigEthInfo.n as string);
+    ret.m = parseInt(multisigEthInfo.m as string);
     ret.multisigEthInfo = multisigEthInfo;
     return ret;
   }
 
   getRootPath() {
     // This is for OLD v1.0 credentials only.
-    let legacyRootPath = () => {
+    const legacyRootPath = () => {
       // legacy base path schema
       let purpose;
       switch (this.derivationStrategy) {
@@ -253,12 +269,16 @@ export class Credentials {
         chainPath = '60';
       } else if (chain == 'op') {
         chainPath = '60';
+      } else if (chain == 'arc') {
+        chainPath = '60';
       } else if (chain == 'xrp') {
         chainPath = '144';
       } else if (chain == 'doge') {
         chainPath = '3';
       } else if (chain == 'ltc') {
         chainPath = '2';
+      } else if (chain == 'sol') {
+        chainPath = '501';
       } else {
         throw new Error('unknown chain: ' + chain);
       }
@@ -272,7 +292,7 @@ export class Credentials {
   }
 
   static fromObj(obj) {
-    let x = new Credentials();
+    const x = new Credentials();
 
     if (!obj.version || obj.version < x.version) {
       throw new Error('Obsolete credentials version');
@@ -296,8 +316,8 @@ export class Credentials {
     x.account = x.account || 0;
 
     $.checkState(
-      x.xPrivKey || x.xPubKey || x.xPrivKeyEncrypted || x.hardwareSourcePublicKey,
-      'Failed State: x.xPrivKey | x.xPubkey | x.xPrivKeyEncrypted | x.hardwareSourcePublicKey at fromObj'
+      x.xPrivKey || x.xPubKey || x.xPrivKeyEncrypted || x.hardwareSourcePublicKey || x.clientDerivedPublicKey,
+      'Failed State: x.xPrivKey | x.xPubkey | x.xPrivKeyEncrypted | x.hardwareSourcePublicKey  | x.clientDerivedPublicKey at fromObj'
     );
     return x;
   }
@@ -307,7 +327,7 @@ export class Credentials {
     for (const k of Credentials.FIELDS) {
       x[k] = this[k];
     }
-    return x;
+    return x as any;
   }
 
   addWalletPrivateKey(walletPrivKey) {
@@ -315,7 +335,19 @@ export class Credentials {
     this.sharedEncryptingKey = Utils.privateKeyToAESKey(walletPrivKey);
   }
 
-  addWalletInfo(walletId, walletName, m, n, copayerName, opts) {
+  addWalletInfo(
+    walletId: string,
+    walletName: string,
+    m: number,
+    n: number,
+    copayerName: string,
+    opts?: {
+      useNativeSegwit?: boolean;
+      segwitVersion?: number;
+      tssKeyId?: string;
+      allowOverwrite?: boolean;
+    }
+  ) {
     opts = opts || {};
     this.walletId = walletId;
     this.walletName = walletName;
@@ -325,8 +357,7 @@ export class Credentials {
       switch (Number(opts.segwitVersion)) {
         case 0:
         default:
-          this.addressType =
-            n == 1 ? Constants.SCRIPT_TYPES.P2WPKH : Constants.SCRIPT_TYPES.P2WSH;
+          this.addressType = n == 1 ? Constants.SCRIPT_TYPES.P2WPKH : Constants.SCRIPT_TYPES.P2WSH;
           break;
         case 1:
           // Taproot is segwit v1
@@ -335,16 +366,15 @@ export class Credentials {
       }
     }
 
-    if (this.n != n && !opts.allowOverwrite) {
-      // we always allow multisig n overwrite
+    if (this.n != n && !opts.tssKeyId && !opts.allowOverwrite) {
+      // we always allow overwrite for multisig and tss
       if (this.n == 1 || n == 1) {
-        throw new Error(
-          `Bad nr of copayers in addWalletInfo: this: ${this.n} got: ${n}`
-        );
+        throw new Error(`Bad number of copayers in addWalletInfo: this: ${this.n} got: ${n}`);
       }
     }
 
-    this.n = n;
+    this.n = opts.tssKeyId ? 1 : n; // TSS always has n=1
+    this.tssKeyId = opts.tssKeyId;
 
     if (copayerName) this.copayerName = copayerName;
 
@@ -362,6 +392,10 @@ export class Credentials {
     return !!this.walletId;
   }
 
+  hasTssInfo() {
+    return !!this.tssKeyId;
+  }
+
   addPublicKeyRing(publicKeyRing) {
     this.publicKeyRing = JSON.parse(JSON.stringify(publicKeyRing));
   }
@@ -369,13 +403,12 @@ export class Credentials {
   isComplete() {
     if (!this.m || !this.n) return false;
     if (
-      (this.chain === 'btc' ||
-        this.chain === 'bch' ||
-        this.chain === 'doge' ||
-        this.chain === 'ltc') &&
+      ['btc', 'bch', 'doge', 'ltc'].includes(this.chain) &&
+      !this.tssKeyId && // TSS creds will have publicKeyRing.length > n
       (!this.publicKeyRing || this.publicKeyRing.length != this.n)
     )
       return false;
+    if (this.tssKeyId && (!this.publicKeyRing || this.publicKeyRing.length <= 1)) return false; // need at least 2 participants for TSS
     return true;
   }
 }

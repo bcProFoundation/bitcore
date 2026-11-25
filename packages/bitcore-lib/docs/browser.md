@@ -5,8 +5,8 @@ Bitcore Javascript Library and most official submodules work in the browser, tha
 The easiest and recommended way to use them, is via [Bower](http://bower.io/), a browser package manager, and get the release bundles. For example, when building an app that uses `bitcore-lib` and `bitcore-mnemonic`, you do:
 
 ```sh
-bower install bitcore-lib
-bower install bitcore-mnemonic
+bower install @bcpros/bitcore-lib
+bower install @bcpros/bitcore-mnemonic
 ```
 
 You can also use a `bower.json` file to store the dependencies of your project:
@@ -17,8 +17,8 @@ You can also use a `bower.json` file to store the dependencies of your project:
   "version": "0.0.1",
   "license": "MIT",
   "dependencies": {
-    "bitcore-lib": "^0.13.7",
-    "bitcore-mnemonic": "^1.0.1"
+    "@bcpros/bitcore-lib": "^11.5.1",
+    "@bcpros/bitcore-mnemonic": "^11.5.1"
   }
 }
 ```

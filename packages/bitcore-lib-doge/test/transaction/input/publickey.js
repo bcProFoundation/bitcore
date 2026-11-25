@@ -2,7 +2,7 @@
 
 var should = require('chai').should();
 var bitcore = require('../../..');
-const Address = require('../../../../bitcore-lib-ltc/lib/address');
+const Address = require('@bcpros/bitcore-lib-ltc/lib/address');
 var Transaction = bitcore.Transaction;
 var PrivateKey = bitcore.PrivateKey;
 var Script = bitcore.Script;

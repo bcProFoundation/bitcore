@@ -1,6 +1,6 @@
 'use strict';
 
-var spec = {
+const spec = {
   name: 'Mnemonic',
   message: 'Internal Error on bitcore-mnemonic module {0}',
   errors: [{

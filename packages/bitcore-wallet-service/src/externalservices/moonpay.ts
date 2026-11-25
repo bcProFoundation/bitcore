@@ -1,0 +1,640 @@
+import { BitcoreLib as Bitcore } from '@bcpros/crypto-wallet-core';
+import * as request from 'request';
+import config from '../config';
+import { Utils } from '../lib/common/utils';
+import { ClientError } from '../lib/errors/clienterror';
+import logger from '../lib/logger';
+import { checkRequired } from '../lib/server';
+
+export class MoonpayService {
+  request: any = request;
+
+  private moonpayGetKeys(req) {
+    if (!config.moonpay) throw new Error('Moonpay missing credentials');
+
+    let env: 'sandbox' | 'production' | 'sandboxWeb' | 'productionWeb';
+    env = req.body.env === 'production' ? 'production' : 'sandbox';
+    if (req.body.context === 'web') {
+      env += 'Web';
+    }
+
+    delete req.body.env;
+    delete req.body.context;
+
+    const keys: {
+      API: string;
+      WIDGET_API: string;
+      SELL_WIDGET_API: string;
+      API_KEY: string;
+      SECRET_KEY: string;
+      SECRET_KEY_EMBEDDED: string | undefined;
+    } = {
+      API: config.moonpay[env].api,
+      WIDGET_API: config.moonpay[env].widgetApi,
+      SELL_WIDGET_API: config.moonpay[env].sellWidgetApi,
+      API_KEY: config.moonpay[env].apiKey,
+      SECRET_KEY: config.moonpay[env].secretKey,
+      SECRET_KEY_EMBEDDED: config.moonpay[env].secretKeyEmbedded
+    };
+
+    return keys;
+  }
+
+  moonpayGetCurrencies(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const URL = API + '/v3/currencies/';
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Moonpay currencies'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return currencies'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayGetQuote(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      if (!checkRequired(req.body, ['currencyAbbreviation', 'baseCurrencyAmount', 'baseCurrencyCode'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const qs: string[] = [];
+      qs.push('apiKey=' + API_KEY);
+      qs.push('baseCurrencyAmount=' + req.body.baseCurrencyAmount);
+      qs.push('baseCurrencyCode=' + req.body.baseCurrencyCode);
+
+      if (req.body.extraFeePercentage) qs.push('extraFeePercentage=' + req.body.extraFeePercentage);
+      if (req.body.paymentMethod) qs.push('paymentMethod=' + req.body.paymentMethod);
+      if (req.body.areFeesIncluded) qs.push('areFeesIncluded=' + req.body.areFeesIncluded);
+
+      const URL: string = API + `/v3/currencies/${req.body.currencyAbbreviation}/buy_quote/?${qs.join('&')}`;
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Moonpay buy quote'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return buy quote'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayGetSellQuote(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      if (!checkRequired(req.body, ['currencyAbbreviation', 'quoteCurrencyCode', 'baseCurrencyAmount'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const qs: string[] = [];
+      qs.push('apiKey=' + API_KEY);
+      qs.push('quoteCurrencyCode=' + req.body.quoteCurrencyCode);
+      qs.push('baseCurrencyAmount=' + req.body.baseCurrencyAmount);
+
+      if (req.body.extraFeePercentage) qs.push('extraFeePercentage=' + req.body.extraFeePercentage);
+      if (req.body.payoutMethod) qs.push('payoutMethod=' + req.body.payoutMethod);
+
+      const URL: string = API + `/v3/currencies/${req.body.currencyAbbreviation}/sell_quote?${qs.join('&')}`;
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Moonpay sell quote'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return sell quote'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayGetCurrencyLimits(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      if (!checkRequired(req.body, ['currencyAbbreviation', 'baseCurrencyCode'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const qs: string[] = [];
+      qs.push('apiKey=' + API_KEY);
+      qs.push('baseCurrencyCode=' + encodeURIComponent(req.body.baseCurrencyCode));
+      if (req.body.areFeesIncluded) qs.push('areFeesIncluded=' + encodeURIComponent(req.body.areFeesIncluded));
+      if (req.body.paymentMethod) qs.push('paymentMethod=' + encodeURIComponent(req.body.paymentMethod));
+
+      const URL = API + `/v3/currencies/${req.body.currencyAbbreviation}/limits/?${qs.join('&')}`;
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Moonpay currency limits'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return currency limits'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayGetSignedPaymentUrl(req): { urlWithSignature: string } {
+    // moonpayGetKeys deletes env/context from the body, so read context first
+    const isWebContext = req.body.context === 'web';
+    const keys = this.moonpayGetKeys(req);
+    const SECRET_KEY = keys.SECRET_KEY;
+    const API_KEY = keys.API_KEY;
+    const WIDGET_API = keys.WIDGET_API;
+
+    if (
+      !checkRequired(req.body, [
+        'currencyCode',
+        'walletAddress',
+        'baseCurrencyCode',
+        'baseCurrencyAmount',
+        'externalTransactionId',
+        'redirectURL'
+      ])
+    ) {
+      throw new ClientError("Moonpay's request missing arguments");
+    }
+
+    const qs: string[] = [];
+    qs.push('apiKey=' + API_KEY);
+    qs.push('currencyCode=' + encodeURIComponent(req.body.currencyCode));
+    qs.push('walletAddress=' + encodeURIComponent(req.body.walletAddress));
+    qs.push('baseCurrencyCode=' + encodeURIComponent(req.body.baseCurrencyCode));
+    qs.push('baseCurrencyAmount=' + encodeURIComponent(req.body.baseCurrencyAmount));
+    qs.push('externalTransactionId=' + encodeURIComponent(req.body.externalTransactionId));
+    qs.push('redirectURL=' + encodeURIComponent(req.body.redirectURL));
+    if (req.body.defaultCurrencyCode) qs.push('defaultCurrencyCode=' + encodeURIComponent(req.body.defaultCurrencyCode));
+    if (req.body.walletAddressTag) qs.push('walletAddressTag=' + encodeURIComponent(req.body.walletAddressTag));
+    if (req.body.walletAddresses) qs.push('walletAddresses=' + encodeURIComponent(req.body.walletAddresses));
+    if (req.body.walletAddressTags) qs.push('walletAddressTags=' + encodeURIComponent(req.body.walletAddressTags));
+    if (req.body.lockAmount) qs.push('lockAmount=' + encodeURIComponent(req.body.lockAmount));
+    if (req.body.colorCode) qs.push('colorCode=' + encodeURIComponent(req.body.colorCode));
+    if (req.body.theme) qs.push('theme=' + encodeURIComponent(req.body.theme));
+    if (req.body.themeId) qs.push('themeId=' + encodeURIComponent(req.body.themeId));
+    if (req.body.language) qs.push('language=' + encodeURIComponent(req.body.language));
+    if (req.body.quoteCurrencyAmount) qs.push('quoteCurrencyAmount=' + encodeURIComponent(req.body.quoteCurrencyAmount));
+    if (req.body.email) qs.push('email=' + encodeURIComponent(req.body.email));
+    if (req.body.externalCustomerId) qs.push('externalCustomerId=' + encodeURIComponent(req.body.externalCustomerId));
+    if (req.body.showWalletAddressForm)
+      qs.push('showWalletAddressForm=' + encodeURIComponent(req.body.showWalletAddressForm));
+    if (req.body.paymentMethod) qs.push('paymentMethod=' + encodeURIComponent(req.body.paymentMethod));
+    if (req.body.areFeesIncluded) qs.push('areFeesIncluded=' + encodeURIComponent(req.body.areFeesIncluded));
+    if (req.body.showAllCurrencies) qs.push('showAllCurrencies=' + encodeURIComponent(req.body.showAllCurrencies));
+    if (req.body.showOnlyCurrencies) qs.push('showOnlyCurrencies=' + encodeURIComponent(req.body.showOnlyCurrencies));
+    if (req.body.unsupportedRegionRedirectUrl)
+      qs.push('unsupportedRegionRedirectUrl=' + encodeURIComponent(req.body.unsupportedRegionRedirectUrl));
+    if (req.body.skipUnsupportedRegionScreen)
+      qs.push('skipUnsupportedRegionScreen=' + encodeURIComponent(req.body.skipUnsupportedRegionScreen));
+
+    // Only supported for DeFi Buy integrations
+    if (req.body.contractAddress) qs.push('contractAddress=' + encodeURIComponent(req.body.contractAddress));
+    if (req.body.networkCode) qs.push('networkCode=' + encodeURIComponent(req.body.networkCode));
+
+    // Web requests are proxied through the bitpay backend, so the IP on this
+    // request belongs to that server, not the customer. The proxy captures the
+    // customer's public IP and forwards it as deviceIp. Web credentials are only
+    // held by the proxy, so the forwarded value is trusted for that context only.
+    // If the proxy does not forward an IP, omit allowedIpAddress rather than
+    // signing an IP the customer will never match.
+    let deviceIp = isWebContext ? req.body.deviceIp : Utils.getIpFromReq(req);
+    if (!deviceIp && !isWebContext) {
+      throw new ClientError('Could not determine device IP address');
+    }
+    if (deviceIp) {
+      // Canonicalize before hashing: HMAC is byte-exact and MoonPay hashes the
+      // plain IPv4 it observes, while dual-stack sockets report IPv4 clients as
+      // IPv4-mapped IPv6 (::ffff:1.2.3.4) - strip the prefix so both sides
+      // hash the same string
+      deviceIp = String(deviceIp).trim().replace(/^::ffff:/i, '');
+      const allowedIpAddress: string = Bitcore.crypto.Hash.sha256hmac(
+        Buffer.from(deviceIp),
+        Buffer.from(SECRET_KEY)
+      ).toString('base64');
+      qs.push('allowedIpAddress=' + encodeURIComponent(allowedIpAddress));
+    }
+
+    const URL_SEARCH: string = `?${qs.join('&')}`;
+
+    const URLSignatureHash: string = Bitcore.crypto.Hash.sha256hmac(
+      Buffer.from(URL_SEARCH),
+      Buffer.from(SECRET_KEY)
+    ).toString('base64');
+
+    const urlWithSignature = `${WIDGET_API}${URL_SEARCH}&signature=${encodeURIComponent(URLSignatureHash)}`;
+
+    return { urlWithSignature };
+  }
+
+  moonpayGetSellSignedPaymentUrl(req): { urlWithSignature: string } {
+    const keys = this.moonpayGetKeys(req);
+    const SECRET_KEY = keys.SECRET_KEY;
+    const API_KEY = keys.API_KEY;
+    const SELL_WIDGET_API = keys.SELL_WIDGET_API;
+
+    if (
+      !checkRequired(req.body, [
+        'baseCurrencyCode',
+        'baseCurrencyAmount',
+        'externalTransactionId',
+        'redirectURL',
+      ])
+    ) {
+      throw new ClientError("Moonpay's request missing arguments");
+    }
+
+    const qs: string[] = [];
+    qs.push('apiKey=' + API_KEY);
+    qs.push('baseCurrencyCode=' + encodeURIComponent(req.body.baseCurrencyCode));
+    qs.push('baseCurrencyAmount=' + encodeURIComponent(req.body.baseCurrencyAmount));
+    qs.push('externalTransactionId=' + encodeURIComponent(req.body.externalTransactionId));
+    qs.push('redirectURL=' + encodeURIComponent(req.body.redirectURL));
+
+    if (req.body.defaultBaseCurrencyCode) qs.push('defaultBaseCurrencyCode=' + encodeURIComponent(req.body.defaultBaseCurrencyCode));
+    if (req.body.quoteCurrencyCode) qs.push('quoteCurrencyCode=' + encodeURIComponent(req.body.quoteCurrencyCode));
+    if (req.body.quoteCurrencyAmount) qs.push('quoteCurrencyAmount=' + encodeURIComponent(req.body.quoteCurrencyAmount));
+    if (req.body.paymentMethod) qs.push('paymentMethod=' + encodeURIComponent(req.body.paymentMethod));
+    if (req.body.externalCustomerId) qs.push('externalCustomerId=' + encodeURIComponent(req.body.externalCustomerId));
+    if (req.body.refundWalletAddress) qs.push('refundWalletAddress=' + encodeURIComponent(req.body.refundWalletAddress));
+    if (req.body.refundWalletAddresses) qs.push('refundWalletAddresses=' + encodeURIComponent(req.body.refundWalletAddresses));
+    if (req.body.lockAmount) qs.push('lockAmount=' + encodeURIComponent(req.body.lockAmount));
+    if (req.body.colorCode) qs.push('colorCode=' + encodeURIComponent(req.body.colorCode));
+    if (req.body.theme) qs.push('theme=' + encodeURIComponent(req.body.theme));
+    if (req.body.themeId) qs.push('themeId=' + encodeURIComponent(req.body.themeId));
+    if (req.body.language) qs.push('language=' + encodeURIComponent(req.body.language));
+    if (req.body.email) qs.push('email=' + encodeURIComponent(req.body.email));
+    if (req.body.showAllCurrencies) qs.push('showAllCurrencies=' + encodeURIComponent(req.body.showAllCurrencies));
+    if (req.body.showWalletAddressForm)
+      qs.push('showWalletAddressForm=' + encodeURIComponent(req.body.showWalletAddressForm));
+    if (req.body.unsupportedRegionRedirectUrl) qs.push('unsupportedRegionRedirectUrl=' + encodeURIComponent(req.body.unsupportedRegionRedirectUrl));
+    if (req.body.skipUnsupportedRegionScreen) qs.push('skipUnsupportedRegionScreen=' + encodeURIComponent(req.body.skipUnsupportedRegionScreen));
+
+    const URL_SEARCH: string = `?${qs.join('&')}`;
+
+    const URLSignatureHash: string = Bitcore.crypto.Hash.sha256hmac(
+      Buffer.from(URL_SEARCH),
+      Buffer.from(SECRET_KEY)
+    ).toString('base64');
+
+    const urlWithSignature = `${SELL_WIDGET_API}${URL_SEARCH}&signature=${encodeURIComponent(URLSignatureHash)}`;
+
+    return { urlWithSignature };
+  }
+
+  moonpayGetTransactionDetails(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      if (!checkRequired(req.body, ['transactionId']) && !checkRequired(req.body, ['externalId'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      let URL: string = '';
+
+      const qs: string[] = [];
+      qs.push('apiKey=' + API_KEY);
+      if (req.body.transactionId) {
+        URL = API + `/v1/transactions/${req.body.transactionId}?${qs.join('&')}`;
+      } else if (req.body.externalId) {
+        URL = API + `/v1/transactions/ext/${req.body.externalId}?${qs.join('&')}`;
+      }
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Moonpay transaction details'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return transaction details'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayGetSellTransactionDetails(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      if (!checkRequired(req.body, ['transactionId']) && !checkRequired(req.body, ['externalId'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      let URL: string = '';
+
+      const qs: string[] = [];
+      qs.push('apiKey=' + API_KEY);
+      if (req.body.transactionId) {
+        URL = API + `/v3/sell_transactions/${req.body.transactionId}?${qs.join('&')}`;
+      } else if (req.body.externalId) {
+        URL = API + `/v3/sell_transactions/ext/${req.body.externalId}?${qs.join('&')}`;
+      }
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Moonpay sell transaction details'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return sell transaction details'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayCancelSellTransaction(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const SECRET_KEY = keys.SECRET_KEY;
+
+      if (!checkRequired(req.body, ['transactionId']) && !checkRequired(req.body, ['externalId'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const headers = {
+        Authorization: 'Api-Key ' + SECRET_KEY,
+        Accept: 'application/json'
+      };
+      let URL: string = '';
+
+      if (req.body.transactionId) {
+        URL = API + `/v3/sell_transactions/${req.body.transactionId}`;
+      } else if (req.body.externalId) {
+        URL = API + `/v3/sell_transactions/ext/${req.body.externalId}`;
+      }
+
+      this.request.delete(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to cancel Moonpay sell transaction'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            return resolve(data.body || { success });
+          }
+        }
+      );
+    });
+  }
+
+  moonpayGetAccountDetails(req): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const API_KEY = keys.API_KEY;
+
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      const qs: string[] = [];
+      qs.push('apiKey=' + API_KEY);
+
+      const URL = API + `/v3/accounts/me?${qs.join('&')}`;
+
+      this.request.get(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to get Moonpay account details'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return account details'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayCreateSession(req): Promise<{ sessionToken: string }> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const SECRET_KEY = keys.SECRET_KEY_EMBEDDED;
+
+      if (!checkRequired(req.body, ['externalCustomerId'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const deviceIp = Utils.getIpFromReq(req);
+      if (!deviceIp) {
+        return reject(new ClientError('Could not determine device IP address'));
+      }
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Api-Key': SECRET_KEY,
+      };
+
+      const body: any = {
+        externalCustomerId: req.body.externalCustomerId,
+        deviceIp
+      };
+      if (req.body.email) body.email = req.body.email;
+      if (req.body.phoneNumber) body.phoneNumber = req.body.phoneNumber;
+
+      const URL = API + '/platform/v1/sessions';
+
+      this.request.post(
+        URL,
+        {
+          headers,
+          body,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to create Moonpay session'));
+          } else {
+            if (!data.body) {
+              return reject(new ClientError('Moonpay did not return a session'));
+            }
+            return resolve(data.body);
+          }
+        }
+      );
+    });
+  }
+
+  moonpayRevokeActiveSession(req): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const keys = this.moonpayGetKeys(req);
+      const API = keys.API;
+      const SECRET_KEY = keys.SECRET_KEY_EMBEDDED;
+
+      if (!checkRequired(req.body, ['externalCustomerId'])) {
+        return reject(new ClientError("Moonpay's request missing arguments"));
+      }
+
+      const headers = {
+        Accept: 'application/json',
+        'X-Api-Key': SECRET_KEY
+      };
+
+      const URL = API + '/platform/v1/sessions?externalCustomerId=' + encodeURIComponent(req.body.externalCustomerId);
+
+      this.request.delete(
+        URL,
+        {
+          headers,
+          json: true
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(`Moonpay request failed with error (${URL}): ${err.stack || err}`);
+            return reject(new ClientError('Failed to revoke Moonpay session'));
+          } else {
+            const success = data.statusCode >= 200 && data.statusCode < 300;
+            if (!success) {
+              logger.warn(`Moonpay request failed with status code ${data.statusCode}: ${URL}`);
+            }
+            return resolve(data.body || { success });
+          }
+        }
+      );
+    });
+  }
+}

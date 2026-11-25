@@ -1,11 +1,15 @@
-module.exports = {
+import BitcoreP2P from '@bcpros/bitcore-p2p';
+import BitcoreP2PCash from '@bcpros/bitcore-p2p-cash';
+import { BitcoreLib, BitcoreLibCash } from '@bcpros/crypto-wallet-core';
+
+export default {
   BTC: {
-    lib: require('@bcpros/bitcore-lib'),
-    p2p: require('@bcpros/bitcore-p2p')
+    lib: BitcoreLib,
+    p2p: BitcoreP2P
   },
   BCH: {
-    lib: require('@bcpros/bitcore-lib-cash'),
-    p2p: require('@bcpros/bitcore-p2p-cash')
+    lib: BitcoreLibCash,
+    p2p: BitcoreP2PCash
   },
   XEC: {
     lib: require('@bcpros/bitcore-lib-xec'),

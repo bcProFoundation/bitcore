@@ -1,0 +1,435 @@
+import { ObjectId } from 'mongodb-legacy';
+import * as utils from '../../../src/utils';
+import { redactUrl } from '../../../src/utils/redactUrl';
+import { expect } from 'chai';
+
+describe('Utils', function() {
+  describe('range', function() {
+    it('should return an array of ascending numbers if start < end', function() {
+      const result = utils.range(23, 35);
+      expect(result).to.deep.equal([23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]);
+    });
+
+    it('should return an array of descending numbers if start > end', function() {
+      const result = utils.range(7, 1);
+      expect(result).to.deep.equal([7, 6, 5, 4, 3, 2]);
+    });
+
+    it('should handle negative start', function() {
+      const result = utils.range(-5, 3);
+      expect(result).to.deep.equal([-5, -4, -3, -2, -1, 0, 1, 2]);
+    });
+
+    it('should handle negative end', function() {
+      const result = utils.range(0, -6);
+      expect(result).to.deep.equal([0, -1, -2, -3, -4, -5]);
+    });
+
+    it('should handle negative start and end', function() {
+      const result = utils.range(-5, -10);
+      expect(result).to.deep.equal([-5, -6, -7, -8, -9]);
+    });
+
+    it('should handle negative params with start < end', function() {
+      const result = utils.range(-5, -1);
+      expect(result).to.deep.equal([-5, -4, -3, -2]);
+    });
+
+    it('should handle negative params with start > end', function() {
+      const result = utils.range(-1, -5);
+      expect(result).to.deep.equal([-1, -2, -3, -4]);
+    });
+
+    it('should handle optional end param', function() {
+      const result = utils.range(5);
+      expect(result).to.deep.equal([0, 1, 2, 3, 4]);
+    });
+
+    it('should handle optional end param with negative start', function() {
+      const result = utils.range(-5);
+      expect(result).to.deep.equal([0, -1, -2, -3, -4]);
+    });
+
+    it('should return an empty array if start equals end', function() {
+      const result = utils.range(5, 5);
+      expect(result).to.deep.equal([]);
+    });
+
+    it('should return an empty array if no params given', function() {
+      const result = (utils.range as any)();
+      expect(result).to.deep.equal([]);
+    });
+  });
+  describe('uniqBy', function() {
+    it('should remove the redundant mongo object pairs without messing with order', function() {
+      const objectIds = [
+        new ObjectId('56d6a232ead1dc6e4f565e78'),
+        // redundant pair
+        new ObjectId('65e7573610d3fa8bc4930869'),
+        new ObjectId('65e7573610d3fa8bc4930869'),
+
+        new ObjectId('6f0d45b6dfeafa40f958afbf'),
+
+        // redundant pair
+        new ObjectId('e3b4cff2794d399d10f0a683'),
+        new ObjectId('e3b4cff2794d399d10f0a683'), 
+
+        new ObjectId('d6faff1f3d1ea0cd1ed847a3')
+      ];
+      const result = utils.uniqBy(objectIds, id => id.toHexString());
+      const expectedResult = [
+        new ObjectId('56d6a232ead1dc6e4f565e78'),
+        new ObjectId('65e7573610d3fa8bc4930869'),
+        new ObjectId('6f0d45b6dfeafa40f958afbf'),
+        new ObjectId('e3b4cff2794d399d10f0a683'), 
+        new ObjectId('d6faff1f3d1ea0cd1ed847a3')
+      ];
+      expect(result).deep.equal(expectedResult);
+    });
+
+    it('should remove all but one mongo object if all are redundant', function() {
+      const objectIds = [
+        // all redundant
+        new ObjectId('56d6a232ead1dc6e4f565e78'),
+        new ObjectId('56d6a232ead1dc6e4f565e78'),
+        new ObjectId('56d6a232ead1dc6e4f565e78'),
+        new ObjectId('56d6a232ead1dc6e4f565e78'),
+        new ObjectId('56d6a232ead1dc6e4f565e78')
+      ];
+      const result = utils.uniqBy(objectIds, id => id.toHexString());
+      const expectedResult = [
+        new ObjectId('56d6a232ead1dc6e4f565e78')
+      ];
+      expect(result).deep.equal(expectedResult);
+    });
+
+    it('should remove objects with redundant names and not redundant values', function() {
+      const array = [
+        {
+          name: 'a',
+          value: 10
+        },
+        {
+          name: 'b',
+          value: 3.1
+        },
+        {
+          name: 'a',
+          value: 2.7
+        },
+        {
+          name: 'c',
+          value: 10
+        },
+        {
+          name: 'b',
+          value: 6
+        }
+      ];
+
+      const result = utils.uniqBy(array, item => item.name);
+      const expectedResult = [
+        {
+          name: 'a',
+          value: 10
+        },
+        {
+          name: 'b',
+          value: 3.1
+        },
+        {
+          name: 'c',
+          value: 10
+        },
+      ];
+      expect(result).deep.equal(expectedResult);
+    });
+    it('should handle null, undefined, and NaN', function() {
+      const array = [
+        {
+          name: null,
+          value: 10
+        },
+        {
+          name: undefined,
+          value: 3.1
+        },
+        {
+          name: null,
+          value: 2.7
+        },
+        {
+          name: 'c',
+          value: 10
+        },
+        {
+          name: NaN,
+          value: 10
+        },
+        {
+          name: NaN,
+          value: 101
+        },
+        {
+          name: undefined,
+          value: 6
+        }
+      ];
+
+      const result = utils.uniqBy(array, item => item.name);
+      const expectedResult = [
+        {
+          name: null,
+          value: 10
+        },
+        {
+          name: undefined,
+          value: 3.1
+        },
+        {
+          name: 'c',
+          value: 10
+        },
+        {
+          name: NaN,
+          value: 10
+        },
+      ];
+
+      expect(result).deep.equal(expectedResult);
+    });
+    it('should work using property string', function() {
+      const array = [
+        {
+          name: 'a',
+          value: 10
+        },
+        {
+          name: 'b',
+          value: 3.1
+        },
+        {
+          name: 'a',
+          value: 2.7
+        },
+        {
+          name: 'c',
+          value: 10
+        },
+        {
+          name: 'b',
+          value: 6
+        }
+      ];
+
+      const result = utils.uniqBy(array, 'name');
+      const expectedResult = [
+        {
+          name: 'a',
+          value: 10
+        },
+        {
+          name: 'b',
+          value: 3.1
+        },
+        {
+          name: 'c',
+          value: 10
+        },
+      ];
+      expect(result).deep.equal(expectedResult);
+    });
+  });
+  describe('uniq', function() {
+    it('should remove redundant values in numbers array', function() {
+      const array = [3, 1, 4, 1, 5];
+      const result = utils.uniq(array);
+      const expectedResult = [3, 1, 4, 5];
+      expect(result).deep.equal(expectedResult);
+    });
+
+    it('should handle first and last element redundancy', function() {
+      const array = [1, 2, 3, 1];
+      const result = utils.uniq(array);
+      const expectedResult = [1, 2, 3];
+      expect(result).deep.equal(expectedResult);
+    });
+
+    it('should handle null, undefined, NaN, objects and strings', function() {
+      const array = 
+        [NaN, NaN, new ObjectId('6f0d45b6dfeafa40f958afbf'), undefined, 
+          'bitcoin', null, 'bitcoin', undefined, 'txs', null];
+      const result = utils.uniq(array);
+      const expectedResult = 
+        [NaN, new ObjectId('6f0d45b6dfeafa40f958afbf'), undefined, 'bitcoin', null, 'txs'];
+      expect(result).deep.equal(expectedResult);
+    });
+  });
+
+  describe('merge', function() {
+    it('should merge objects realistic to a config', function() {
+      const config = {
+        maxPoolSize: 50,
+        port: 3000,
+        chains: {},
+        aliasMapping: {
+          chains: {},
+          networks: {}
+        },
+        services: {
+          api: {
+            rateLimiter: {
+              disabled: false,
+              whitelist: ['::ffff:127.0.0.1', '::1']
+            },
+            wallets: {
+              allowCreationBeforeCompleteSync: false,
+              allowUnauthenticatedCalls: false
+            }
+          },
+          storage: {}
+        }
+      };
+      const foundConfig = {
+        chains: {
+          BTC: {
+            mainnet: {},
+            regtest: {
+              chainSource: 'p2p',
+              trustedPeers: [
+                {
+                  host: '127.0.0.1',
+                  port: 20020
+                }
+              ],
+              rpc: {
+                host: '127.0.0.1',
+                port: 20021,
+                username: 'username',
+                password: 'password'
+              }
+            }
+          }
+        }
+      };
+
+      const expectedResult = {
+        maxPoolSize: 50,
+        port: 3000,
+        chains: {
+          BTC: {
+            mainnet: {},
+            regtest: {
+              chainSource: 'p2p',
+              trustedPeers: [
+                {
+                  host: '127.0.0.1',
+                  port: 20020
+                }
+              ],
+              rpc: {
+                host: '127.0.0.1',
+                port: 20021,
+                username: 'username',
+                password: 'password'
+              }
+            }
+          }
+        },
+        aliasMapping: {
+          chains: {},
+          networks: {}
+        },
+        services: {
+          api: {
+            rateLimiter: {
+              disabled: false,
+              whitelist: ['::ffff:127.0.0.1', '::1']
+            },
+            wallets: {
+              allowCreationBeforeCompleteSync: false,
+              allowUnauthenticatedCalls: false
+            }
+          },
+          storage: {}
+        }
+      };
+
+      const result = utils.merge(config, foundConfig);
+      expect(result).to.deep.equal(expectedResult);
+    });
+  });
+
+  describe('redactUrl', function() {
+    it('should redact Alchemy v2 API key from URL', function() {
+      const url = 'https://eth-mainnet.g.alchemy.com/v2/abc123def456';
+      expect(redactUrl(url)).to.not.include('abc123def456');
+      expect(redactUrl(url)).to.include('REDACTED');
+    });
+
+    it('should redact Alchemy v3 API key and preserve version', function() {
+      const url = 'https://eth-mainnet.g.alchemy.com/v3/abc123def456';
+      const redacted = redactUrl(url);
+      expect(redacted).to.not.include('abc123def456');
+      expect(redacted).to.include('/v3/***REDACTED***');
+    });
+
+    it('should redact apikey query parameter', function() {
+      const url = 'https://api.example.com/data?apikey=secretkey123&chain=eth';
+      expect(redactUrl(url)).to.not.include('secretkey123');
+      expect(redactUrl(url)).to.include('chain=eth');
+    });
+
+    it('should redact api_key query parameter', function() {
+      const url = 'https://api.example.com/data?api_key=secretkey123';
+      expect(redactUrl(url)).to.not.include('secretkey123');
+    });
+
+    it('should redact key query parameter', function() {
+      const url = 'https://api.example.com/data?key=secretkey123';
+      expect(redactUrl(url)).to.not.include('secretkey123');
+    });
+
+    it('should return URL unchanged if no keys present', function() {
+      const url = 'https://api.example.com/data?chain=eth';
+      expect(redactUrl(url)).to.eq(url);
+    });
+
+    it('should handle empty string', function() {
+      expect(redactUrl('')).to.eq('');
+    });
+  });
+
+  describe('disposeOnce', function() {
+    it('should run the teardown only once across repeated calls', function() {
+      let count = 0;
+      const dispose = utils.disposeOnce(() => { count++; }, () => { /* noop */ });
+      dispose();
+      dispose();
+      dispose();
+      expect(count).to.eq(1);
+    });
+
+    it('should be a no-op when there is nothing to dispose', function() {
+      let errored = false;
+      const dispose = utils.disposeOnce(undefined, () => { errored = true; });
+      dispose();
+      expect(errored).to.eq(false);
+    });
+
+    it('should route synchronous throws to onError', function() {
+      let caught: any;
+      const dispose = utils.disposeOnce(() => { throw new Error('sync boom'); }, err => caught = err);
+      dispose();
+      expect(caught?.message).to.eq('sync boom');
+    });
+
+    it('should route rejected promises to onError', async function() {
+      let caught: any;
+      const dispose = utils.disposeOnce(async () => { throw new Error('async boom'); }, err => caught = err);
+      dispose();
+      await new Promise(r => setImmediate(r));
+      expect(caught?.message).to.eq('async boom');
+    });
+  });
+});
