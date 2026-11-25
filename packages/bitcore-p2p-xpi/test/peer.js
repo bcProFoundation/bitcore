@@ -193,7 +193,7 @@ describe('Peer', function() {
     peer.socket.emit('data', buffer);
   });
 
-  it('emits an error on unknown messages', function(done) {
+  it('ignores unknown messages and stays connected', function() {
     var peer = new Peer({ host: 'localhost' });
     var socket = new EventEmitter();
     socket.connect = sinon.spy();
@@ -204,15 +204,12 @@ describe('Peer', function() {
     peer.on('error', function(err) {
       error = err;
     });
-    peer.disconnect = function() {
-      error.should.include({
-        message: 'Unsupported message command: unknown'
-      });
-      done();
-    };
+    peer.disconnect = sinon.spy();
     peer.connect();
     var buf = Buffer.from('ece7eff3756e6b6e6f776e0000000000000000005df6e0e2', 'hex');
     peer.socket.emit('data', buf);
+    should.not.exist(error);
+    peer.disconnect.called.should.equal(false);
   });
 
   it('should send version on version if not already sent', function(done) {
