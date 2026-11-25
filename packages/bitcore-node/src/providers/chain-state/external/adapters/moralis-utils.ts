@@ -1,4 +1,4 @@
-import { Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Web3 } from '@bcpros/crypto-wallet-core';
 import { EVMTransactionStorage } from '../../evm/models/transaction';
 import type { IEVMTransactionTransformed } from '../../evm/types';
 

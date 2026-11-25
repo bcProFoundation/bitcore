@@ -4,7 +4,7 @@
 //
 // The old index.js located Browserify/Karma/WebdriverIO and
 // its own shared karma.conf.js by concatenating fixed-depth, cwd-relative
-// strings ('./node_modules/@bitpay-labs/bitcore-build/node_modules/.bin/<tool>',
+// strings ('./node_modules/@bcpros/bitcore-build/node_modules/.bin/<tool>',
 // falling back to './node_modules/.bin/<tool>'), which assumed bitcore-build's
 // own dependencies are nested inside a per-consumer copy of bitcore-build --
 // true only under Lerna's per-package bootstrap, not under npm workspaces'

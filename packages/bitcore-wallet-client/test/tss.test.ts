@@ -2,20 +2,20 @@
 
 import sinon from 'sinon';
 import * as chai from 'chai';
-import BWS from '@bitpay-labs/bitcore-wallet-service';
-import { Defaults as BwsDefaults } from '@bitpay-labs/bitcore-wallet-service/ts_build/src/lib/common/defaults';
+import BWS from '@bcpros/bitcore-wallet-service';
+import { Defaults as BwsDefaults } from '@bcpros/bitcore-wallet-service/ts_build/src/lib/common/defaults';
 import {
   TssKeyGen as BwsTssKeyGen,
   TssSign as BwsTssSign
-} from '@bitpay-labs/bitcore-wallet-service/ts_build/src/lib/tss';
+} from '@bcpros/bitcore-wallet-service/ts_build/src/lib/tss';
 import request from 'supertest';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import util from 'util';
-import { ECIES } from '@bitpay-labs/bitcore-tss';
+import { ECIES } from '@bcpros/bitcore-tss';
 import { Request } from '../src/lib/request';
-import { BitcoreLib, Deriver } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib, Deriver } from '@bcpros/crypto-wallet-core';
 import {
   TssKeyGen,
   TssKey,

@@ -2,8 +2,8 @@
 
 import { EventEmitter } from 'events';
 import querystring from 'querystring';
-import Mnemonic from '@bitpay-labs/bitcore-mnemonic';
-import * as CWC from '@bitpay-labs/crypto-wallet-core';
+import Mnemonic from '@bcpros/bitcore-mnemonic';
+import * as CWC from '@bcpros/crypto-wallet-core';
 import Bip38 from 'bip38';
 import { singleton } from 'preconditions';
 import * as Uuid from 'uuid';

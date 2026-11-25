@@ -26,7 +26,7 @@ Let's say we have a node_module, named `bitcore-node-bch` with the following cod
 
 const registerModule: RegisterModule = (chain, network) => {
   // chain === 'BCH'
-    Libs.register(chain, '@bitpay-labs/bitcore-lib-cash', '@bitpay-labs/bitcore-p2p-cash');
+    Libs.register(chain, '@bcpros/bitcore-lib-cash', '@bcpros/bitcore-p2p-cash');
     P2P.register(chain, network, P2P.get('BTC'));
 }
 module.exports.default = registerModule
@@ -37,8 +37,8 @@ The module has the following dependencies
 // package.json
 
   "dependencies": {
-    "@bitpay-labs/bitcore-lib-cash": "^11.5.1",
-    "@bitpay-labs/bitcore-p2p-cash": "^11.5.1"
+    "@bcpros/bitcore-lib-cash": "^11.5.1",
+    "@bcpros/bitcore-p2p-cash": "^11.5.1"
   }
 
 ```

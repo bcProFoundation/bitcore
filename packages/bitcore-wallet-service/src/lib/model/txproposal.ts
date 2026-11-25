@@ -1,4 +1,4 @@
-import { Utils as CWCUtils } from '@bitpay-labs/crypto-wallet-core';
+import { Utils as CWCUtils } from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { singleton } from 'preconditions';
 import Uuid from 'uuid';

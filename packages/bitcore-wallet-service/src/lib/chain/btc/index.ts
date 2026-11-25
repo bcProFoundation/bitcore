@@ -1,4 +1,4 @@
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import * as async from 'async';
 import _ from 'lodash';
 import { singleton } from 'preconditions';

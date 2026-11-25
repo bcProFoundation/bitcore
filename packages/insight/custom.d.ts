@@ -8,22 +8,22 @@ declare module '*.wav' {
     export default src;
 }
 
-declare module '@bitpay-labs/bitcore-lib' {
+declare module '@bcpros/bitcore-lib' {
     const index: any;
     export default index;
 }
 
-declare module '@bitpay-labs/bitcore-lib-cash' {
+declare module '@bcpros/bitcore-lib-cash' {
     const index: any;
     export default index;
 }
 
-declare module '@bitpay-labs/bitcore-lib-doge' {
+declare module '@bcpros/bitcore-lib-doge' {
     const index: any;
     export default index;
 }
 
-declare module '@bitpay-labs/bitcore-lib-ltc' {
+declare module '@bcpros/bitcore-lib-ltc' {
     const index: any;
     export default index;
 }

@@ -7,7 +7,7 @@ import assert from 'assert';
 import sinon from 'sinon';
 import http from 'http';
 import request from 'request';
-import * as CWC from '@bitpay-labs/crypto-wallet-core';
+import * as CWC from '@bcpros/crypto-wallet-core';
 import { ChainService } from '../../src/lib/chain/index';
 import config from '../../src/config';
 import { WalletService, UPGRADES } from '../../src/lib/server';

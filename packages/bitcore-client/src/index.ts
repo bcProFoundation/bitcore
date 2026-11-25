@@ -1,5 +1,5 @@
 import 'source-map-support/register';
-import * as CryptoWalletCore from '@bitpay-labs/crypto-wallet-core';
+import * as CryptoWalletCore from '@bcpros/crypto-wallet-core';
 import { Client } from './client';
 import { Encryption } from './encryption';
 import { Storage } from './storage';

@@ -1,7 +1,7 @@
-import * as BitcoreLib from '@bitpay-labs/bitcore-lib';
-import * as BitcoreLibCash from '@bitpay-labs/bitcore-lib-cash';
-import * as BitcoreLibDoge from '@bitpay-labs/bitcore-lib-doge';
-import * as BitcoreLibLtc from '@bitpay-labs/bitcore-lib-ltc';
+import * as BitcoreLib from '@bcpros/bitcore-lib';
+import * as BitcoreLibCash from '@bcpros/bitcore-lib-cash';
+import * as BitcoreLibDoge from '@bcpros/bitcore-lib-doge';
+import * as BitcoreLibLtc from '@bcpros/bitcore-lib-ltc';
 import * as SolKit from '@solana/kit';
 import * as ComputeBudget from '@solana-program/compute-budget';
 import * as Memo from '@solana-program/memo';

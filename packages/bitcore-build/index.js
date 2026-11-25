@@ -39,7 +39,7 @@ function resolvePackageDir(packageName, fromDir) {
 // node_modules, so this finds the tool whether it is nested under
 // bitcore-build (Lerna's per-package bootstrap) or hoisted to a shared root
 // (npm workspaces), instead of the previous fixed-depth
-// './node_modules/@bitpay-labs/bitcore-build/node_modules/.bin/<tool>' /
+// './node_modules/@bcpros/bitcore-build/node_modules/.bin/<tool>' /
 // './node_modules/.bin/<tool>' guesses, which only matched the former layout
 // and silently broke under the latter.
 function resolveBin(packageName, binName) {
@@ -103,7 +103,7 @@ function startGulp(name, opts) {
     if (name === 'tss') {
       browserifyCommand = browserifyPath + ' --require ./index.js:' + fullname + opts.externals.map(e => ' --external ' + e).join('') + opts.transforms.map(t => ' -t ' + t).join('') + ' -o ' + fullname + '.js';
     } else if (name !== 'lib') {
-      browserifyCommand = browserifyPath + ' --require ./index.js:' + fullname + ' --external @bitpay-labs/bitcore-lib -o ' + fullname + '.js';
+      browserifyCommand = browserifyPath + ' --require ./index.js:' + fullname + ' --external @bcpros/bitcore-lib -o ' + fullname + '.js';
     } else {
       browserifyCommand = browserifyPath + ' --require ./index.js:bitcore-lib -o bitcore-lib.js';
     }

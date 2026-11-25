@@ -1,6 +1,6 @@
 'use strict';
 
-import { ethers } from '@bitpay-labs/crypto-wallet-core';
+import { ethers } from '@bcpros/crypto-wallet-core';
 import { expect } from 'chai';
 import { PayProV2 } from '../src/lib/payproV2';
 import * as TestData from './data/testdata';

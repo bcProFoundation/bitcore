@@ -9,7 +9,7 @@ import * as SolComputeBudget from '@solana-program/compute-budget';
 import * as SolLookUpTable from '@solana-program/address-lookup-table';
 import * as SolToken from '@solana-program/token';
 import { pipe } from '@solana/functional';
-import { SolKit as LibSolKit } from '@bitpay-labs/crypto-wallet-core';
+import { SolKit as LibSolKit } from '@bcpros/crypto-wallet-core';
 import { SolRpc } from '../lib/sol/SolRpc.js';
 import { SOL_ERROR_MESSAGES } from '../lib/sol/error_messages.js';
 import { parseInstructions, instructionKeys } from '../lib/sol/transaction-parser.js';

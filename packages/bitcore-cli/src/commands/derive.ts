@@ -1,5 +1,5 @@
 import os from 'os';
-import { Deriver } from '@bitpay-labs/crypto-wallet-core';
+import { Deriver } from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import { Command } from 'commander';
 import { UserCancelled } from '../errors';

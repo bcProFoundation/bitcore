@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import url from 'url';
-import { Encryption, Errors, TssSign } from '@bitpay-labs/bitcore-wallet-client';
-import { type Types as CWCTypes, Transactions } from '@bitpay-labs/crypto-wallet-core';
+import { Encryption, Errors, TssSign } from '@bcpros/bitcore-wallet-client';
+import { type Types as CWCTypes, Transactions } from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import {
   type TssKeyType,

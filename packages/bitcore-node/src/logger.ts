@@ -1,4 +1,4 @@
-import { createLogger, formatTimestamp, timestamp } from '@bitpay-labs/bitcore-logging';
+import { createLogger, formatTimestamp, timestamp } from '@bcpros/bitcore-logging';
 import parseArgv from './utils/parseArgv';
 
 const args = parseArgv([], [{ arg: 'DEBUG', type: 'bool' }]);

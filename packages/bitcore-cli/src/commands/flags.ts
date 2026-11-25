@@ -1,4 +1,4 @@
-import { Utils as CWCUtils, xrpl } from '@bitpay-labs/crypto-wallet-core';
+import { Utils as CWCUtils, xrpl } from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import { Command } from 'commander';
 import { promptXrpFlag } from '../prompts';

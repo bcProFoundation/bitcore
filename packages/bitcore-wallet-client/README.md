@@ -1,6 +1,6 @@
 # bitcore-wallet-client
 
-[![NPM Package](https://img.shields.io/npm/v/@bitpay-labs/bitcore-wallet-client.svg?style=flat-square)](https://www.npmjs.org/package/@bitpay-labs/bitcore-wallet-client)
+[![NPM Package](https://img.shields.io/npm/v/@bcpros/bitcore-wallet-client.svg?style=flat-square)](https://www.npmjs.org/package/@bcpros/bitcore-wallet-client)
 [![Build Status](https://img.shields.io/travis/bitpay/bitcore-wallet-client.svg?branch=master&style=flat-square)](https://travis-ci.org/bitpay/bitcore-wallet-client)
 [![Coverage Status](https://coveralls.io/repos/bitpay/bitcore-wallet-client/badge.svg)](https://coveralls.io/r/bitpay/bitcore-wallet-client)
 
@@ -14,7 +14,7 @@ See [Bitcore-CLI] (https://github.com/bitpay/bitcore/tree/master/packages/bitcor
 
 ## Get Started
 
-You can start using bitcore-wallet-client via [NPM](https://www.npmjs.com/package/@bitpay-labs/bitcore-wallet-client): by running `npm install @bitpay-labs/bitcore-wallet-client` from your console.
+You can start using bitcore-wallet-client via [NPM](https://www.npmjs.com/package/@bcpros/bitcore-wallet-client): by running `npm install @bcpros/bitcore-wallet-client` from your console.
 
 ## Example
 
@@ -25,7 +25,7 @@ Then create two files `irene.js` and `tomas.js` with the content below:
 ### **irene.js**
 
 ``` javascript
-var Client = require('@bitpay-labs/bitcore-wallet-client');
+var Client = require('@bcpros/bitcore-wallet-client');
 
 
 var fs = require('fs');
@@ -51,7 +51,7 @@ client.createWallet("My Wallet", "Irene", 2, 2, {network: 'testnet'}, function(e
 
 ``` javascript
 
-var Client = require('@bitpay-labs/bitcore-wallet-client');
+var Client = require('@bcpros/bitcore-wallet-client');
 
 
 var fs = require('fs');
@@ -104,7 +104,7 @@ client.joinWallet(secret, "Tomas", {}, function(err, wallet) {
 Install `bitcore-wallet-client` before start:
 
 ```sh
-npm i @bitpay-labs/bitcore-wallet-client
+npm i @bcpros/bitcore-wallet-client
 ```
 
 Create a new wallet with the first script:

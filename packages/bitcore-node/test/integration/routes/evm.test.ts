@@ -2,7 +2,7 @@ import 'source-map-support/register';
 import sinon from 'sinon';
 import { expect } from 'chai';
 import supertest from 'supertest';
-import { Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Web3 } from '@bcpros/crypto-wallet-core';
 import app from '../../../src/routes';
 import { EthRoutes } from '../../../src/modules/ethereum/api/eth-routes';
 import { ETH } from '../../../src/modules/ethereum/api/csp';

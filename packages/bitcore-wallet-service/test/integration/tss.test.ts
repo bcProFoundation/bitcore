@@ -1,8 +1,8 @@
 import util from 'util';
 import sinon from 'sinon';
 import 'chai/register-should';
-import { utils as tssUtils } from '@bitpay-labs/bitcore-tss';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { utils as tssUtils } from '@bcpros/bitcore-tss';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import request from 'supertest';
 import * as twoOfThree from './data/tss/2of3';
 import BWS from '../../src/index';

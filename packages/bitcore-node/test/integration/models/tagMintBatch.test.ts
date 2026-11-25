@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { ObjectID } from 'mongodb';
 import sinon from 'sinon';
 import { Readable } from 'stream';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { CoinStorage } from '../../../src/models/coin';
 import { MintOp, TaggedBitcoinTx, TransactionStorage } from '../../../src/models/transaction';
 import { WalletAddressStorage } from '../../../src/models/walletAddress';

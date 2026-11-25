@@ -4,7 +4,7 @@ import {
   BitcoreLibCash,
   BitcoreLibDoge,
   BitcoreLibLtc
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import * as async from 'async';
 import { singleton } from 'preconditions';
 import * as request from 'request-promise-native';

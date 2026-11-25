@@ -5,7 +5,7 @@ const Net = require('net');
 const Socks5Client = require('socks5-client');
 const sinon = require('sinon');
 const fs = require('fs');
-const bitcore = require('@bitpay-labs/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 const P2P = require('../');
 const EventEmitter = require('events').EventEmitter;
 

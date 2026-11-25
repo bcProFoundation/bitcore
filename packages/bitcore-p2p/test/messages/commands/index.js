@@ -4,7 +4,7 @@ const should = require('chai').should();
 const expect = require('chai').expect;
 const P2P = require('../../../');
 const sinon = require('sinon');
-const bitcore = require('@bitpay-labs/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 
 const Messages = P2P.Messages;
 

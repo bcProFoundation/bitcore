@@ -10,7 +10,7 @@ conflicting dependency versions in nested `node_modules` directories; these
 are still managed by the root lockfile.
 
 Workspaces govern development inside this checkout. Published packages
-remain independently installable with `npm install @bitpay-labs/bitcore-node`
+remain independently installable with `npm install @bcpros/bitcore-node`
 (or any other published package); release commands still build and package
 each module's distributable files.
 
@@ -92,7 +92,7 @@ Some suites need services or browser support beyond `npm ci`:
   MongoDB. Tests default to a local instance on port `27017`; set `DB_HOST`
   and `DB_PORT` to use a different host or port.
 - For local `bitcore-node` unit tests, run
-  `npm run test:unit --workspace=@bitpay-labs/bitcore-node`. Its full suite
+  `npm run test:unit --workspace=@bcpros/bitcore-node`. Its full suite
   also needs the Docker chain services described below. `crypto-rpc` tests
   use their own Docker Compose stack.
 - The `bitcore-lib`, `bitcore-lib-cash`, `bitcore-lib-doge`, `bitcore-lib-ltc`,
@@ -120,11 +120,11 @@ for usage, or see [`ci.sh`](ci.sh) directly.
 Add or update a package's own dependency with `--workspace`, from the root:
 
 ```sh
-npm install <dependency> --workspace=@bitpay-labs/<package-directory-name>
+npm install <dependency> --workspace=@bcpros/<package-directory-name>
 ```
 
 Internal cross-package dependencies (e.g. `bitcore-node` depending on
-`@bitpay-labs/crypto-wallet-core`) are declared as ordinary semver ranges in
+`@bcpros/crypto-wallet-core`) are declared as ordinary semver ranges in
 each package's `package.json`, the same as any published dependency — not
 `workspace:*` or `file:` references — and are linked locally by npm because
 the range matches the local version.

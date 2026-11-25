@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import 'source-map-support/register';
 import os from 'os';
 import path from 'path';
-import Mnemonic from '@bitpay-labs/bitcore-mnemonic';
+import Mnemonic from '@bcpros/bitcore-mnemonic';
 import {
   BitcoreLib,
   BitcoreLibCash,
@@ -16,7 +16,7 @@ import {
   Web3,
   ethers,
   xrpl
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import * as Bcrypt from 'bcrypt';
 import { Client } from './client';
 import { Encryption } from './encryption';

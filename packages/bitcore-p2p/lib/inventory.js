@@ -1,6 +1,6 @@
 'use strict';
 
-const bitcore = require('@bitpay-labs/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 
 const $ = bitcore.util.preconditions;
 const BufferUtil = bitcore.util.buffer;

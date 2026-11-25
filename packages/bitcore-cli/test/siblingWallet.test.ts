@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import sinon from 'sinon';
-import { Key, TssKey } from '@bitpay-labs/bitcore-wallet-client';
+import { Key, TssKey } from '@bcpros/bitcore-wallet-client';
 import * as prompt from '@clack/prompts';
 import config from './data/test-config';
 import * as helpers from './helpers';

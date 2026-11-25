@@ -3,7 +3,7 @@
 const chai = require('chai');
 const Buffers = require('buffers');
 const P2P = require('../../');
-const bitcore = require('@bitpay-labs/bitcore-lib-doge');
+const bitcore = require('@bcpros/bitcore-lib-doge');
 const Data = require('../data/messages'); // todo merge with commandData
 const commandData = require('../data/messages.json');
 

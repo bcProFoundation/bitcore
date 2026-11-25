@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { createRequire } from 'module';
-import { ethers } from '@bitpay-labs/crypto-wallet-core';
+import { ethers } from '@bcpros/crypto-wallet-core';
 import { CryptoRpc } from '../index.js';
 
 const require = createRequire(import.meta.url);

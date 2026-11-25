@@ -1,5 +1,5 @@
 {
-  "name": "@bitpay-labs/bitcore-logging",
+  "name": "@bcpros/bitcore-logging",
   "description": "Centralized logging for Bitcore services",
   "author": "BitPay Inc",
   "version": "11.11.7",

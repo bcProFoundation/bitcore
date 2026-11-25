@@ -1,9 +1,9 @@
-import { Utils } from '@bitpay-labs/crypto-wallet-core';
+import { Utils } from '@bcpros/crypto-wallet-core';
 import logger from '../../../../../logger';
 import { EVMTransactionStorage } from '../../models/transaction';
 import { GethBlock, IAbiDecodedData, IEVMBlock, IEVMTransactionInProcess } from '../../types';
 import { Callback, IJsonRpcRequest, IJsonRpcResponse, IRpc } from './index';
-import type { Web3 } from '@bitpay-labs/crypto-wallet-core';
+import type { Web3 } from '@bcpros/crypto-wallet-core';
 
 interface IGethTxTraceResponse {
   result: IGethTxTrace;

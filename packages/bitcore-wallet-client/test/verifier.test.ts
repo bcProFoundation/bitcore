@@ -3,7 +3,7 @@
 import chai from 'chai';
 import 'chai/register-should';
 import sinon from 'sinon';
-import { BitcoreLib, Constants, ethers, SolKit, xrpl } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib, Constants, ethers, SolKit, xrpl } from '@bcpros/crypto-wallet-core';
 import { Utils } from '../src/lib/common';
 import { PayProV2 } from '../src/lib/payproV2';
 import { Verifier } from '../src/lib/verifier';

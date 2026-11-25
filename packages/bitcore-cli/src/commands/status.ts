@@ -1,5 +1,5 @@
 import os from 'os';
-import { Status } from '@bitpay-labs/bitcore-wallet-client';
+import { Status } from '@bcpros/bitcore-wallet-client';
 import * as prompt from '@clack/prompts';
 import { Command } from 'commander';
 import { Utils } from '../utils';

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
-import { Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Web3 } from '@bcpros/crypto-wallet-core';
 import { Config } from '../../../src/services/config';
 import { BaseP2PWorker, P2P } from '../../../src/services/p2p';
 import { EVMP2pWorker } from '../../../src/providers/chain-state/evm/p2p/p2p';

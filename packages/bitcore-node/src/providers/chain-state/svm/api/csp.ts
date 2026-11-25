@@ -1,6 +1,6 @@
-import { CryptoRpc } from '@bitpay-labs/crypto-rpc';
-import { SOL_ERROR_MESSAGES } from '@bitpay-labs/crypto-rpc/lib/sol/error_messages';
-import { instructionKeys } from '@bitpay-labs/crypto-rpc/lib/sol/transaction-parser';
+import { CryptoRpc } from '@bcpros/crypto-rpc';
+import { SOL_ERROR_MESSAGES } from '@bcpros/crypto-rpc/lib/sol/error_messages';
+import { instructionKeys } from '@bcpros/crypto-rpc/lib/sol/transaction-parser';
 import { fetchDigitalAsset, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { PublicKey as UmiPublicKey } from '@metaplex-foundation/umi-public-keys';
@@ -33,7 +33,7 @@ import { normalizeChainNetwork, range } from '../../../../utils';
 import { TransformWithEventPipe } from '../../../../utils/streamWithEventPipe';
 import { ExternalApiStream } from '../../external/streams/apiStream';
 import { InternalStateProvider } from '../../internal/internal';
-import type { SolRpc } from '@bitpay-labs/crypto-rpc/lib/sol/SolRpc';
+import type { SolRpc } from '@bcpros/crypto-rpc/lib/sol/SolRpc';
 
 export interface GetSolWeb3Response { rpc: SolRpc; connection: any; umi: any; dataType: string; lastPingTime?: number };
 

@@ -8,7 +8,7 @@ import { VerificationPeer } from '../bitcoin/VerificationPeer';
 import { LitecoinP2PWorker } from './p2p';
 
 const registerModule: RegisterModule = ({ chain, network }) => {
-  Libs.register(chain, '@bitpay-labs/bitcore-lib-ltc', '@bitpay-labs/bitcore-p2p');
+  Libs.register(chain, '@bcpros/bitcore-lib-ltc', '@bcpros/bitcore-p2p');
   P2P.register(chain, network, LitecoinP2PWorker);
   ChainStateProvider.registerService(chain, network, new LTCStateProvider());
   Verification.register(chain, network, VerificationPeer);

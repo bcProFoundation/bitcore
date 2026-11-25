@@ -1,4 +1,4 @@
-import { type Network } from '@bitpay-labs/bitcore-wallet-client';
+import { type Network } from '@bcpros/bitcore-wallet-client';
 import * as prompt from '@clack/prompts';
 import { getAddressType, getPassword } from '../../prompts';
 import { Utils } from '../../utils';

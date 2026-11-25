@@ -1,4 +1,4 @@
-import { Constants, Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Constants, Web3 } from '@bcpros/crypto-wallet-core';
 import axios from 'axios';
 import config from '../../../../config';
 import logger from '../../../../logger';

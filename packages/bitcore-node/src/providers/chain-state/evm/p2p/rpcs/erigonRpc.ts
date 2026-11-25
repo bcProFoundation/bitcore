@@ -5,7 +5,7 @@
  *  open a PR.
  */
 
-import { Utils } from '@bitpay-labs/crypto-wallet-core';
+import { Utils } from '@bcpros/crypto-wallet-core';
 import AbiDecoder from 'abi-decoder';
 import { LoggifyClass } from '../../../../../decorators/Loggify';
 import { ERC20Abi } from '../../abi/erc20';
@@ -13,7 +13,7 @@ import { ERC721Abi } from '../../abi/erc721';
 import { EVMTransactionStorage } from '../../models/transaction';
 import { ErigonBlock, IAbiDecodedData, IEVMBlock, IEVMTransactionInProcess } from '../../types';
 import { Callback, IJsonRpcRequest, IJsonRpcResponse, IRpc } from './index';
-import type { Web3 } from '@bitpay-labs/crypto-wallet-core';
+import type { Web3 } from '@bcpros/crypto-wallet-core';
 
 AbiDecoder.addABI(ERC20Abi);
 AbiDecoder.addABI(ERC721Abi);

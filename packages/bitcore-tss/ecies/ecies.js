@@ -2,7 +2,7 @@
 
 // eslint-disable-next-line no-redeclare
 const crypto = require('crypto');
-const bitcore = require('@bitpay-labs/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 
 const PublicKey = bitcore.PublicKey;
 const PrivateKey = bitcore.PrivateKey;

@@ -5,7 +5,7 @@ import {
   BitcoreLibDoge as BitcoreDoge,
   BitcoreLibLtc as BitcoreLtc,
   Validation
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import * as async from 'async';
 import EmailValidator from 'email-validator';
 import * as _ from 'lodash';

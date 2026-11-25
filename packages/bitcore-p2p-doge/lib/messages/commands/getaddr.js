@@ -2,7 +2,7 @@
 
 const Message = require('../message');
 const inherits = require('util').inherits;
-const bitcore = require('@bitpay-labs/bitcore-lib-doge');
+const bitcore = require('@bcpros/bitcore-lib-doge');
 
 const BufferUtil = bitcore.util.buffer;
 

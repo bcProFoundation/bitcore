@@ -1,5 +1,5 @@
 import util from 'util';
-import { Constants, ethers } from '@bitpay-labs/crypto-wallet-core';
+import { Constants, ethers } from '@bcpros/crypto-wallet-core';
 import { ClientError } from '../../errors/clienterror';
 import { Errors } from '../../errors/errordefinitions';
 import { EthChain } from '../eth';

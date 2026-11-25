@@ -70,7 +70,7 @@ function writeHelperCopy(helperDir) {
   fs.mkdirSync(helperDir, { recursive: true });
   fs.writeFileSync(
     path.join(helperDir, 'package.json'),
-    JSON.stringify({ name: '@bitpay-labs/bitcore-build', version: '0.0.0-fixture', main: 'index.js' }, null, 2)
+    JSON.stringify({ name: '@bcpros/bitcore-build', version: '0.0.0-fixture', main: 'index.js' }, null, 2)
   );
   fs.copyFileSync(REAL_HELPER_SOURCE, path.join(helperDir, 'index.js'));
   fs.copyFileSync(REAL_KARMA_CONF_SOURCE, path.join(helperDir, 'karma.conf.js'));

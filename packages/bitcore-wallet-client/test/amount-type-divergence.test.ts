@@ -1,5 +1,5 @@
 import * as chai from 'chai';
-import { Transactions, ethers } from '@bitpay-labs/crypto-wallet-core';
+import { Transactions, ethers } from '@bcpros/crypto-wallet-core';
 
 chai.should();
 

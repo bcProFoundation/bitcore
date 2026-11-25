@@ -1,6 +1,6 @@
 import os from 'os';
-import { type Network } from '@bitpay-labs/bitcore-wallet-client';
-import { Constants } from '@bitpay-labs/crypto-wallet-core';
+import { type Network } from '@bcpros/bitcore-wallet-client';
+import { Constants } from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import { getAddressType, getCopayerName, getPassword } from '../../prompts';
 import { Utils } from '../../utils';

@@ -1,4 +1,4 @@
-import BitcoreLibDoge from '@bitpay-labs/bitcore-lib-doge';
+import BitcoreLibDoge from '@bcpros/bitcore-lib-doge';
 import { BTCTxProvider, EveryUtxoType } from '../btc';
 
 export class DOGETxProvider extends BTCTxProvider {

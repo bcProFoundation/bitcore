@@ -1,4 +1,4 @@
-import { createLogger, formatTimestamp, timestamp } from '@bitpay-labs/bitcore-logging';
+import { createLogger, formatTimestamp, timestamp } from '@bcpros/bitcore-logging';
 
 type BwsLogger = ReturnType<typeof createLogger>;
 

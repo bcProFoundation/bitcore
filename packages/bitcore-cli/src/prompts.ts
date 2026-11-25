@@ -1,6 +1,6 @@
 import os from 'os';
-import { Network } from '@bitpay-labs/bitcore-wallet-client';
-import { BitcoreLib, BitcoreLibLtc, Constants as CWCConst, xrpl } from '@bitpay-labs/crypto-wallet-core';
+import { Network } from '@bcpros/bitcore-wallet-client';
+import { BitcoreLib, BitcoreLibLtc, Constants as CWCConst, xrpl } from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import { Constants } from './constants';
 import { UserCancelled } from './errors';

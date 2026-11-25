@@ -1,6 +1,6 @@
-import * as BitcoreClient from '@bitpay-labs/bitcore-client';
+import * as BitcoreClient from '@bcpros/bitcore-client';
 import { expect } from 'chai';
-import { Web3, Transactions } from '@bitpay-labs/crypto-wallet-core';
+import { Web3, Transactions } from '@bcpros/crypto-wallet-core';
 import sinon from 'sinon';
 import config from '../../../src/config';
 import { CacheStorage } from '../../../src/models/cache';

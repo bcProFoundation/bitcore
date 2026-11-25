@@ -1,7 +1,7 @@
 import { ObjectId } from 'bson';
 import { expect } from 'chai';
 import { Request, Response } from 'express-serve-static-core';
-import { SOL_ERROR_MESSAGES } from '@bitpay-labs/crypto-rpc/lib/sol/error_messages';
+import { SOL_ERROR_MESSAGES } from '@bcpros/crypto-rpc/lib/sol/error_messages';
 import * as sinon from 'sinon';
 import { Writable } from 'stream';
 import { MongoBound } from '../../../src/models/base';

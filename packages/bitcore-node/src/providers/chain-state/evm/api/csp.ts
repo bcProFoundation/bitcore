@@ -1,6 +1,6 @@
 import { Readable } from 'stream';
-import { CryptoRpc } from '@bitpay-labs/crypto-rpc';
-import { Utils, Web3, type Web3Types } from '@bitpay-labs/crypto-wallet-core';
+import { CryptoRpc } from '@bcpros/crypto-rpc';
+import { Utils, Web3, type Web3Types } from '@bcpros/crypto-wallet-core';
 import {
   historical,
   internal,
@@ -52,7 +52,7 @@ import type {
   UpdateWalletParams,
   WalletBalanceType
 } from '../../../../types/namespaces/ChainStateProvider';
-import type { EthRpc } from '@bitpay-labs/crypto-rpc/lib/eth/EthRpc';
+import type { EthRpc } from '@bcpros/crypto-rpc/lib/eth/EthRpc';
 import type { ObjectID } from 'mongodb';
 
 export interface GetWeb3Response { rpc: EthRpc; web3: Web3; dataType: string; lastPingTime?: number };

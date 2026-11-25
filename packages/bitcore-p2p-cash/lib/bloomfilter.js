@@ -1,6 +1,6 @@
 'use strict';
 
-const bitcore = require('@bitpay-labs/bitcore-lib-cash');
+const bitcore = require('@bcpros/bitcore-lib-cash');
 const BloomFilter = require('bloom-filter');
 
 const BufferReader = bitcore.encoding.BufferReader;

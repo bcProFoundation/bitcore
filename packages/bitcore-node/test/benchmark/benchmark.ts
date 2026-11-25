@@ -1,4 +1,4 @@
-import { BitcoreLib as bitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib as bitcoreLib } from '@bcpros/crypto-wallet-core';
 import config from '../../src/config';
 import { Storage } from '../../src/services/storage';
 import { BitcoinBlockStorage } from '../../src/models/block';

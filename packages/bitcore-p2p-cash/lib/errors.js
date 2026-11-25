@@ -5,4 +5,4 @@ const spec = {
   message: 'Internal Error on bitcore-p2p Module {0}'
 };
 
-module.exports = require('@bitpay-labs/bitcore-lib-cash').errors.extend(spec);
+module.exports = require('@bcpros/bitcore-lib-cash').errors.extend(spec);

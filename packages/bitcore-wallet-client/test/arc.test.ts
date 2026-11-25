@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import * as CWC from '@bitpay-labs/crypto-wallet-core';
+import * as CWC from '@bcpros/crypto-wallet-core';
 import Client from '../src';
 import { Utils } from '../src/lib/common';
 

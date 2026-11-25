@@ -1,7 +1,7 @@
 'use strict';
 
 const chai = require('chai');
-const bitcore = require('@bitpay-labs/bitcore-lib-cash');
+const bitcore = require('@bcpros/bitcore-lib-cash');
 const P2P = require('../');
 const MessagesData = require('./data/messages');
 const dns = require('dns');

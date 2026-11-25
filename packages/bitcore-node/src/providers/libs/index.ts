@@ -2,8 +2,8 @@
 class LibProvider {
   libs = {
     BTC: {
-      lib: require('@bitpay-labs/crypto-wallet-core').BitcoreLib,
-      p2p: require('@bitpay-labs/bitcore-p2p')
+      lib: require('@bcpros/crypto-wallet-core').BitcoreLib,
+      p2p: require('@bcpros/bitcore-p2p')
     }
   };
 

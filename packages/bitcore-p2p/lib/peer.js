@@ -4,7 +4,7 @@ const Buffers = require('./buffers');
 const EventEmitter = require('events').EventEmitter;
 const Net = require('net');
 const Socks5Client = require('socks5-client');
-const bitcore = require('@bitpay-labs/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 const Messages = require('./messages');
 const util = require('util');
 

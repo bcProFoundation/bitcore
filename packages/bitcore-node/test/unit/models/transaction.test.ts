@@ -2,7 +2,7 @@ import { ObjectId } from 'bson';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { Readable } from 'stream';
-import { Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Web3 } from '@bcpros/crypto-wallet-core';
 import { CoinStorage } from '../../../src/models/coin';
 import { MintOp, SpendOp, TaggedBitcoinTx, TransactionStorage, TxOp } from '../../../src/models/transaction';
 import { ChainStateProvider } from '../../../src/providers/chain-state';
@@ -21,7 +21,7 @@ import { TransactionFixture } from '../../fixtures/transaction.fixture';
 import { mockStorage } from '../../helpers';
 import { unitAfterHelper, unitBeforeHelper } from '../../helpers/unit';
 import * as EvmTxData from '../../data/ETH/gethTxs';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 
 describe('Transaction Model', function() {
   const { Transaction } = BitcoreLib;

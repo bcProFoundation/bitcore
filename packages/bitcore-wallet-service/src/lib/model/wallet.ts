@@ -3,7 +3,7 @@ import {
   BitcoreLibCash,
   BitcoreLibDoge,
   BitcoreLibLtc,
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import { singleton } from 'preconditions';
 import Uuid from 'uuid';
 import config from '../../config';

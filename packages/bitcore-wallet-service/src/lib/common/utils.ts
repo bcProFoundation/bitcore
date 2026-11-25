@@ -5,7 +5,7 @@ import {
   BitcoreLibLtc,
   Constants as CWConstants,
   Transactions
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { singleton } from 'preconditions';
 import secp256k1 from 'secp256k1';

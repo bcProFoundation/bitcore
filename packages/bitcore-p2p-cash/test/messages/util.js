@@ -4,7 +4,7 @@
 
 const should = require('chai').should();
 const utils = require('../../lib/messages/utils');
-const bitcore = require('@bitpay-labs/bitcore-lib-cash');
+const bitcore = require('@bcpros/bitcore-lib-cash');
 
 const BufferReader = bitcore.encoding.BufferReader;
 

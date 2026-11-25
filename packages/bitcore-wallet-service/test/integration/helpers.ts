@@ -16,7 +16,7 @@ import {
   BitcoreLibDoge,
   BitcoreLibLtc,
   Transactions
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import util from 'util';
 import { ChainService } from '../../src/lib/chain/index';
 import { Common } from '../../src/lib/common';

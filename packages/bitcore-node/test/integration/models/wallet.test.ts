@@ -1,4 +1,4 @@
-import { Wallet, type IWalletExt } from '@bitpay-labs/bitcore-client';
+import { Wallet, type IWalletExt } from '@bcpros/bitcore-client';
 import { expect } from 'chai';
 import config from '../../../src/config';
 import { WalletStorage } from '../../../src/models/wallet';

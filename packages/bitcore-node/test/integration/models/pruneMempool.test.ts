@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { CoinStorage } from '../../../src/models/coin';
 import { SpendOp, TransactionStorage } from '../../../src/models/transaction';
 import { SpentHeightIndicators } from '../../../src/types/Coin';

@@ -15,4 +15,4 @@ const spec = {
   }]
 };
 
-module.exports = require('@bitpay-labs/bitcore-lib').errors.extend(spec);
+module.exports = require('@bcpros/bitcore-lib').errors.extend(spec);

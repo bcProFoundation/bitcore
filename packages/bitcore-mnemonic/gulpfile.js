@@ -1,5 +1,5 @@
 
-const startGulp = require('@bitpay-labs/bitcore-build');
+const startGulp = require('@bcpros/bitcore-build');
 
 Object.assign(
   exports,

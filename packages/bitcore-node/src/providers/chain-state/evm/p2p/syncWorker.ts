@@ -1,5 +1,5 @@
 import * as worker from 'worker_threads';
-import { CryptoRpc } from '@bitpay-labs/crypto-rpc';
+import { CryptoRpc } from '@bcpros/crypto-rpc';
 import logger from '../../../../logger';
 import { Config } from '../../../../services/config';
 import { Storage } from '../../../../services/storage';
@@ -8,7 +8,7 @@ import { EVMBlockStorage } from '../models/block';
 import { EVMTransactionStorage } from '../models/transaction';
 import { type IRpc, Rpcs } from './rpcs';
 import type { IEVMBlock, IEVMTransactionInProcess } from '../types';
-import type { Web3, Web3Types } from '@bitpay-labs/crypto-wallet-core';
+import type { Web3, Web3Types } from '@bcpros/crypto-wallet-core';
 
 export class SyncWorker {
   private chain: string = worker.workerData.chain;

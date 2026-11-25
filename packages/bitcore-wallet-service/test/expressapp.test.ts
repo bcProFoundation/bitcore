@@ -11,7 +11,7 @@ import { Common } from '../src/lib/common';
 import { WalletService } from '../src/lib/server';
 import { ExpressApp } from '../src/lib/expressapp';
 import { ClientError } from '../src/lib/errors/clienterror';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import * as TestData from './testdata';
 import { Stats } from '../src/lib/stats';
 

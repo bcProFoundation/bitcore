@@ -9,13 +9,13 @@ Peer-to-peer is implemented as a separate module.
 To add to your project, run:
 
 ```sh
-npm install @bitpay-labs/bitcore-p2p-doge
+npm install @bcpros/bitcore-p2p-doge
 ```
 
 ## Quick Start
 
 ```javascript
-var Peer = require('@bitpay-labs/bitcore-p2p-doge').Peer;
+var Peer = require('@bcpros/bitcore-p2p-doge').Peer;
 var peer = new Peer({host: '5.9.85.34'});
 
 // handle events

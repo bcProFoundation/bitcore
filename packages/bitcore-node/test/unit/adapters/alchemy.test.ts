@@ -6,7 +6,7 @@ import { AlchemyAdapter, AlchemyAssetTransferStream } from '../../../src/provide
 import { EVMTransactionStorage } from '../../../src/providers/chain-state/evm/models/transaction';
 import { EthDater } from '../../../src/utils/ethDater';
 import config from '../../../src/config';
-import { Constants } from '@bitpay-labs/crypto-wallet-core';
+import { Constants } from '@bcpros/crypto-wallet-core';
 
 // --- Mock data ---
 // Use lowercase addresses so real Web3.utils.toChecksumAddress always accepts them

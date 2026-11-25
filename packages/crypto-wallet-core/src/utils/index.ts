@@ -1,4 +1,4 @@
-import BitcoreLib from '@bitpay-labs/bitcore-lib';
+import BitcoreLib from '@bcpros/bitcore-lib';
 import * as xrpl from 'xrpl';
 import { Constants } from '../constants';
 

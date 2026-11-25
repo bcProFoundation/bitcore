@@ -1,4 +1,4 @@
-import { type Status } from '@bitpay-labs/bitcore-wallet-client';
+import { type Status } from '@bcpros/bitcore-wallet-client';
 import type { IWallet } from './wallet';
 
 export interface ICliGlobalOptions {

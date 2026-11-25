@@ -1,4 +1,4 @@
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { MessageBroker } from '../src/lib/messagebroker';

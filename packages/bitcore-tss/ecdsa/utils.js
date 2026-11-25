@@ -1,4 +1,4 @@
-const bitcoreLib = require('@bitpay-labs/bitcore-lib');
+const bitcoreLib = require('@bcpros/bitcore-lib');
 const ECIES = require('../ecies/ecies');
 
 function detachSignData(data, privateKey) {

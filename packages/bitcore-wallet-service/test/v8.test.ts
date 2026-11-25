@@ -4,7 +4,7 @@ import * as chai from 'chai';
 import 'chai/register-should';
 import sinon from 'sinon';
 import { V8 } from '../src/lib/blockchainexplorers/v8';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { Readable } from 'stream';
 import { Common } from '../src/lib/common';
 // Same import style as v8.ts's own `request` field, so `typeof request` here

@@ -1,5 +1,5 @@
 import * as chai from 'chai';
-import { BitcoreLibCash } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLibCash } from '@bcpros/crypto-wallet-core';
 import { Utils } from '../src/lib/common';
 import { Key } from '../src/lib/key';
 

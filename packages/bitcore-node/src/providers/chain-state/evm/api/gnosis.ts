@@ -1,4 +1,4 @@
-import { Utils, Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Utils, Web3 } from '@bcpros/crypto-wallet-core';
 import { ChainStateProvider } from '../../';
 import logger from '../../../../logger';
 import { Config } from '../../../../services/config';
@@ -15,7 +15,7 @@ import { EVMBlockStorage } from '../models/block';
 import { EVMTransactionStorage } from '../models/transaction';
 // import { EventLog } from '../types';
 import { BaseEVMStateProvider } from './csp';
-import type { Web3Types } from '@bitpay-labs/crypto-wallet-core';
+import type { Web3Types } from '@bcpros/crypto-wallet-core';
 
 type MULTISIGInstantiation = Web3Types.EventLog;/* <{
   [key: string]: string;

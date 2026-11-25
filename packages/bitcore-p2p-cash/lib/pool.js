@@ -2,7 +2,7 @@
 
 const dns = require('dns');
 const EventEmitter = require('events').EventEmitter;
-const bitcore = require('@bitpay-labs/bitcore-lib-cash');
+const bitcore = require('@bcpros/bitcore-lib-cash');
 const Peer = require('./peer');
 const util = require('util');
 const net = require('net');

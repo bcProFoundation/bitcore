@@ -1,4 +1,4 @@
-import BWC from '@bitpay-labs/bitcore-wallet-client';
+import BWC from '@bcpros/bitcore-wallet-client';
 import * as prompt from '@clack/prompts';
 import { UserCancelled } from '../../errors';
 import { getCopayerName, getPassword } from '../../prompts';

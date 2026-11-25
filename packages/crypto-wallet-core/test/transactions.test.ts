@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { ethers } from 'ethers';
-import bitcoreLib from '@bitpay-labs/bitcore-lib';
-import bitcoreLibCash from '@bitpay-labs/bitcore-lib-cash';
-import bitcoreLibDoge from '@bitpay-labs/bitcore-lib-doge';
-import bitcoreLibLtc from '@bitpay-labs/bitcore-lib-ltc';
+import bitcoreLib from '@bcpros/bitcore-lib';
+import bitcoreLibCash from '@bcpros/bitcore-lib-cash';
+import bitcoreLibDoge from '@bcpros/bitcore-lib-doge';
+import bitcoreLibLtc from '@bcpros/bitcore-lib-ltc';
 import { Constants, Transactions } from '../src';
 
 describe('Transaction', function () {

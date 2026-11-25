@@ -1,7 +1,7 @@
 // const { describe, it } = require('node:test');
 const assert = require('assert');
-const CWC = require('@bitpay-labs/crypto-wallet-core');
-const bitcoreLib = require('@bitpay-labs/bitcore-lib');
+const CWC = require('@bcpros/crypto-wallet-core');
+const bitcoreLib = require('@bcpros/bitcore-lib');
 const { KeyGen } = require('../ecdsa/keygen');
 const { Sign } = require('../ecdsa/sign');
 const { vectors } = require('./data/vectors.ecdsa');

@@ -1,5 +1,5 @@
 {
-  "name": "@bitpay-labs/bitcore-lib-doge",
+  "name": "@bcpros/bitcore-lib-doge",
   "version": "11.11.7",
   "description": "A pure and powerful JavaScript Dogecoin library.",
   "author": "BitPay <dev@bitpay.com>",
@@ -44,8 +44,8 @@
     "scryptsy": "2.1.0"
   },
   "devDependencies": {
-    "@bitpay-labs/bitcore-build": "^11.11.2",
-    "@bitpay-labs/bitcore-lib-ltc": "^11.11.2",
+    "@bcpros/bitcore-build": "^11.11.2",
+    "@bcpros/bitcore-lib-ltc": "^11.11.2",
     "brfs": "^2.0.1",
     "chai": "^4.2.0",
     "gulp": "^4.0.0",

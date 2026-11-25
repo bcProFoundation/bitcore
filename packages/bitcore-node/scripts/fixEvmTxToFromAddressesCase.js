@@ -2,7 +2,7 @@
 
 import readline from 'readline';
 import util from 'util';
-import * as CWC from '@bitpay-labs/crypto-wallet-core';
+import * as CWC from '@bcpros/crypto-wallet-core';
 import { BitcoinBlockStorage } from '../build/src/models/block.js';
 import { TransactionStorage } from '../build/src/models/transaction.js';
 import { Storage } from '../build/src/services/storage.js';

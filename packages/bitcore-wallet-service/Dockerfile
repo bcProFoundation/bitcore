@@ -10,7 +10,7 @@ WORKDIR /bitcore
 
 # Add source: the whole monorepo root, not just this package. Root is what
 # links each backend package's scoped local dependency (this package's own
-# @bitpay-labs/crypto-wallet-core, @bitpay-labs/bitcore-logging, ...) to its
+# @bcpros/crypto-wallet-core, @bcpros/bitcore-logging, ...) to its
 # workspace source instead of a registry copy; installing/compiling from
 # only this package's own directory would defeat that.
 COPY . .

@@ -7,14 +7,14 @@
 Install with:
 
 ```sh
-npm install @bitpay-labs/bitcore-build
+npm install @bcpros/bitcore-build
 ```
 
 And use and require in your gulp file:
 
 ```javascript
 var gulp = require('gulp');
-var bitcoreTasks = require('@bitpay-labs/bitcore-build');
+var bitcoreTasks = require('@bcpros/bitcore-build');
 
 bitcoreTasks('submodule');
 gulp.task('default', ['lint', 'test', 'browser', 'coverage']);
@@ -26,7 +26,7 @@ gulp.task('default', ['lint', 'test', 'browser', 'coverage']);
 - If the module is node-only, avoid adding the browser tasks with:
 
 ```javascript
-var bitcoreTasks = require('@bitpay-labs/bitcore-build');
+var bitcoreTasks = require('@bcpros/bitcore-build');
 bitcoreTasks('submodule', {skipBrowsers: true});
 ```
 

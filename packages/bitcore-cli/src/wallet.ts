@@ -12,7 +12,7 @@ import {
   type Network,
   TssKey,
   Txp
-} from '@bitpay-labs/bitcore-wallet-client';
+} from '@bcpros/bitcore-wallet-client';
 import {
   BitcoreLib,
   type Types as CWCTypes,
@@ -21,7 +21,7 @@ import {
   Transactions,
   Web3,
   type xrpl
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import { Constants } from './constants';
 import { ERC20Abi } from './erc20Abi';

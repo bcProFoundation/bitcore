@@ -1,5 +1,5 @@
 {
-  "name": "@bitpay-labs/bitcore-client",
+  "name": "@bcpros/bitcore-client",
   "description": "Wallet client for Bitcore-Node",
   "version": "11.11.7",
   "author": "Justin Langston <nitsujlangston@gmail.com>",
@@ -34,8 +34,8 @@
     "fix": "npm run fix:errors"
   },
   "dependencies": {
-    "@bitpay-labs/bitcore-mnemonic": "^11.11.2",
-    "@bitpay-labs/crypto-wallet-core": "^11.11.5",
+    "@bcpros/bitcore-mnemonic": "^11.11.2",
+    "@bcpros/crypto-wallet-core": "^11.11.5",
     "async": "2.6.4",
     "bcrypt": "5.1.0",
     "commander": "11.1.0",

@@ -8,7 +8,7 @@ import { VerificationPeer } from '../bitcoin/VerificationPeer';
 import { DogecoinP2PWorker } from './p2p';
 
 const registerModule: RegisterModule = ({ chain, network }) => {
-  Libs.register(chain, '@bitpay-labs/bitcore-lib-doge', '@bitpay-labs/bitcore-p2p-doge');
+  Libs.register(chain, '@bcpros/bitcore-lib-doge', '@bcpros/bitcore-p2p-doge');
   P2P.register(chain, network, DogecoinP2PWorker);
   ChainStateProvider.registerService(chain, network, new DOGEStateProvider());
   Verification.register(chain, network, VerificationPeer);

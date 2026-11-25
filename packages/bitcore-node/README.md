@@ -30,7 +30,7 @@ npm ci
 ```
 
 (Installing this package on its own as a dependency — `npm install
-@bitpay-labs/bitcore-node` — still works normally for ordinary consumers; it
+@bcpros/bitcore-node` — still works normally for ordinary consumers; it
 just doesn't give you this repo's own source to develop against.)
 
 ## Setup Guide

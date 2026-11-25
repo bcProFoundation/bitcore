@@ -4,8 +4,8 @@ Bitcore-lib-ltc and most official submodules work in the browser, thanks to [bro
 The easiest and recommended way to use them, is via [Bower](http://bower.io/), a browser package manager, and get the release bundles. For example, when building an app that uses `bitcore-lib-ltc` and `bitcore-mnemonic`, you do:
 
 ```sh
-bower install @bitpay-labs/bitcore-lib-ltc
-bower install @bitpay-labs/bitcore-mnemonic
+bower install @bcpros/bitcore-lib-ltc
+bower install @bcpros/bitcore-mnemonic
 ```
 
 You can also use a `bower.json` file to store the dependencies of your project:
@@ -16,8 +16,8 @@ You can also use a `bower.json` file to store the dependencies of your project:
   "version": "0.0.1",
   "license": "MIT",
   "dependencies": {
-    "@bitpay-labs/bitcore-lib-ltc": "^11.5.1",
-    "@bitpay-labs/bitcore-mnemonic": "^11.5.1"
+    "@bcpros/bitcore-lib-ltc": "^11.5.1",
+    "@bcpros/bitcore-mnemonic": "^11.5.1"
   }
 }
 ```
@@ -39,8 +39,8 @@ After this, you can include the bundled release versions in your HTML file:
 <body>
 
   <script type="text/javascript">
-    var litecore = require('@bitpay-labs/bitcore-lib-ltc');
-    var Mnemonic = require('@bitpay-labs/bitcore-mnemonic');
+    var litecore = require('@bcpros/bitcore-lib-ltc');
+    var Mnemonic = require('@bcpros/bitcore-mnemonic');
     // etc...
   </script>
 

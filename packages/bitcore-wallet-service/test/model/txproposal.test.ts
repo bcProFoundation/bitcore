@@ -2,7 +2,7 @@
 
 import * as chai from 'chai';
 import 'chai/register-should';
-import { Utils as CWCUtils } from '@bitpay-labs/crypto-wallet-core';
+import { Utils as CWCUtils } from '@bcpros/crypto-wallet-core';
 import { TxProposal } from '../../src/lib/model/txproposal';
 
 const should = chai.should();

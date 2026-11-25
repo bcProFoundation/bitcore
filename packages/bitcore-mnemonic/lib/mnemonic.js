@@ -1,6 +1,6 @@
 'use strict';
 
-const bitcore = require('@bitpay-labs/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 const unorm = require('unorm');
 const errors = require('./errors');
 const pbkdf2 = require('./pbkdf2');

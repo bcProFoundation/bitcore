@@ -3,7 +3,7 @@
 const should = require('chai').should();
 const unorm = require('unorm');
 const Mnemonic = require('..');
-const errors = require('@bitpay-labs/bitcore-lib').errors;
+const errors = require('@bcpros/bitcore-lib').errors;
 const bip39_vectors = require('./data/bip39-vectors.json');
 
 describe('Mnemonic', function() {

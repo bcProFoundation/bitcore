@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import * as os from 'os';
 import { Worker as Thread, threadId } from 'worker_threads';
-import { CryptoRpc } from '@bitpay-labs/crypto-rpc';
+import { CryptoRpc } from '@bcpros/crypto-rpc';
 import { ChainStateProvider } from '../../';
 import logger, { timestamp } from '../../../../logger';
 import { StateStorage } from '../../../../models/state';
@@ -9,7 +9,7 @@ import { Config } from '../../../../services/config';
 import { IEVMNetworkConfig } from '../../../../types/Config';
 import { wait } from '../../../../utils';
 import { EVMBlockStorage } from '../models/block';
-import type { EthRpc } from '@bitpay-labs/crypto-rpc/lib/eth/EthRpc';
+import type { EthRpc } from '@bcpros/crypto-rpc/lib/eth/EthRpc';
 
 export class MultiThreadSync extends EventEmitter {
   private chain: string;

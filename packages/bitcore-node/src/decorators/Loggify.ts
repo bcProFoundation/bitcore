@@ -5,7 +5,7 @@ import {
   PerformanceTracker,
   SavePerformance,
   initLoggify
-} from '@bitpay-labs/bitcore-logging';
+} from '@bcpros/bitcore-logging';
 import logger from '../logger';
 import parseArgv from '../utils/parseArgv';
 

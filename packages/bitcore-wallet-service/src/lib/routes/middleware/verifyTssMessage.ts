@@ -1,4 +1,4 @@
-import { utils as tssUtils } from '@bitpay-labs/bitcore-tss';
+import { utils as tssUtils } from '@bcpros/bitcore-tss';
 import { ClientError } from '../../errors/clienterror';
 import { Errors } from '../../errors/errordefinitions';
 import { error } from '../helpers';

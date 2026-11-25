@@ -1,5 +1,5 @@
 import util from 'util';
-import { Constants as CWCConstants, Transactions, Utils, Validation, Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Constants as CWCConstants, Transactions, Utils, Validation, Web3 } from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { IWallet } from 'src/lib/model';
 import { IAddress } from 'src/lib/model/address';

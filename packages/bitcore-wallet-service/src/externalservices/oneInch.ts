@@ -1,6 +1,6 @@
 import {
   Constants as ConstantsCWC,
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import * as request from 'request';
 import config from '../config';
 import { Defaults } from '../lib/common/defaults';

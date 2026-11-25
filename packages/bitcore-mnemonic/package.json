@@ -1,5 +1,5 @@
 {
-  "name": "@bitpay-labs/bitcore-mnemonic",
+  "name": "@bcpros/bitcore-mnemonic",
   "version": "11.11.7",
   "description": "BIP39 Mnemonics implemented for Bitcore.",
   "author": "BitPay <dev@bitpay.com>",
@@ -34,14 +34,14 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@bitpay-labs/bitcore-build": "^11.11.2",
+    "@bcpros/bitcore-build": "^11.11.2",
     "assert": "^1.4.1",
     "brfs": "^2.0.1",
     "chai": "^4.2.0",
     "gulp": "^4.0.0"
   },
   "dependencies": {
-    "@bitpay-labs/bitcore-lib": "^11.11.2",
+    "@bcpros/bitcore-lib": "^11.11.2",
     "unorm": "^1.4.1"
   },
   "gitHead": "012cc0216a9bc6b195035855bd17149bad41acd1",

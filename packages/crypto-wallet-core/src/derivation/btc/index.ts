@@ -1,4 +1,4 @@
-import BitcoreLib from '@bitpay-labs/bitcore-lib';
+import BitcoreLib from '@bcpros/bitcore-lib';
 import type { IDeriver } from '../../types/derivation';
 
 export abstract class AbstractBitcoreLibDeriver implements IDeriver {

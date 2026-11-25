@@ -1,7 +1,7 @@
 'use strict';
 
 const should = require('chai').should();
-const bitcore = require('@bitpay-labs/bitcore-lib');
+const bitcore = require('@bcpros/bitcore-lib');
 const P2P = require('../');
 
 const Inventory = P2P.Inventory;

@@ -1,6 +1,6 @@
 # Bitcore Lib Cash
 
-[![NPM Package](https://img.shields.io/npm/v/@bitpay-labs/bitcore-lib-cash.svg?style=flat-square)](https://www.npmjs.org/package/@bitpay-labs/bitcore-lib-cash)
+[![NPM Package](https://img.shields.io/npm/v/@bcpros/bitcore-lib-cash.svg?style=flat-square)](https://www.npmjs.org/package/@bcpros/bitcore-lib-cash)
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/bitpay/bitcore/tree/master.svg?style=shield&task=bitcore-lib-cash)](https://dl.circleci.com/status-badge/redirect/gh/bitpay/bitcore/tree/master)
 [![Coverage Status](https://coveralls.io/repos/github/bitpay/bitcore-lib-cash/badge.svg?branch=master&path=packages/bitcore-lib-cash)](https://coveralls.io/github/bitpay/bitcore-lib-cash)
 
@@ -17,7 +17,7 @@ Bitcoin cash uses a different `sighash` for transaction signatures. The implemen
 ## Get Started
 
 ```sh
-npm install @bitpay-labs/bitcore-lib-cash
+npm install @bcpros/bitcore-lib-cash
 ```
 
 
@@ -25,7 +25,7 @@ Or manually add Bitcore Cash to your app's `package.json`:
 
 ```json
 "dependencies": {
-    "@bitpay-labs/bitcore-lib-cash": "^11.5.1",
+    "@bcpros/bitcore-lib-cash": "^11.5.1",
 }
 ```
 

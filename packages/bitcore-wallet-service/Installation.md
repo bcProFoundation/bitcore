@@ -12,8 +12,8 @@ See the configuration section to configure a different host/port.
 Use the following steps to Install BWS from the npmjs repository and run it with defaults.
 
 ```sh
-npm install @bitpay-labs/bitcore-wallet-service
-cd node_modules/@bitpay-labs/bitcore-wallet-service
+npm install @bcpros/bitcore-wallet-service
+cd node_modules/@bcpros/bitcore-wallet-service
 ```
 
 To change configuration before running, see the Configuration section.

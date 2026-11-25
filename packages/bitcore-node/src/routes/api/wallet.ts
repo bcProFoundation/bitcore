@@ -1,4 +1,4 @@
-import { Validation } from '@bitpay-labs/crypto-wallet-core';
+import { Validation } from '@bcpros/crypto-wallet-core';
 import { Request, Response, Router } from 'express';
 import config from '../../config';
 import logger from '../../logger';

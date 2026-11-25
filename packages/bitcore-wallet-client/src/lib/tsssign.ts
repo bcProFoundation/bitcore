@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
-import { ECDSA } from '@bitpay-labs/bitcore-tss';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { ECDSA } from '@bcpros/bitcore-tss';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { Constants } from './common';
 import { Credentials } from './credentials';
 import { Request, RequestResponse } from './request';

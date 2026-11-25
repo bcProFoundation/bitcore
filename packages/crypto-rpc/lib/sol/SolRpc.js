@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import { SolKit, SolanaProgram } from '@bitpay-labs/crypto-wallet-core';
+import { SolKit, SolanaProgram } from '@bcpros/crypto-wallet-core';
 import { pipe } from '@solana/functional';
 import bs58 from 'bs58';
 import { SOL_ERROR_MESSAGES } from './error_messages.js';

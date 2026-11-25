@@ -3,14 +3,14 @@
 import chai from 'chai';
 import sinon from 'sinon';
 import { createRequire } from 'module';
-import { Transactions } from '@bitpay-labs/crypto-wallet-core';
-import { TxProposal } from '@bitpay-labs/bitcore-wallet-service/ts_build/src/lib/model/txproposal';
-import { Storage } from '@bitpay-labs/bitcore-wallet-service/ts_build/src/lib/storage';
+import { Transactions } from '@bcpros/crypto-wallet-core';
+import { TxProposal } from '@bcpros/bitcore-wallet-service/ts_build/src/lib/model/txproposal';
+import { Storage } from '@bcpros/bitcore-wallet-service/ts_build/src/lib/storage';
 import { Key } from '../src/lib/key';
 import { Utils } from '../src/lib/common';
 import { Verifier } from '../src/lib/verifier';
 
-const { WalletService } = createRequire(__filename)('@bitpay-labs/bitcore-wallet-service/ts_build/src/lib/server');
+const { WalletService } = createRequire(__filename)('@bcpros/bitcore-wallet-service/ts_build/src/lib/server');
 
 const should = chai.should();
 

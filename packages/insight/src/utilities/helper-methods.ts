@@ -1,7 +1,7 @@
-import BitcoreLib from '@bitpay-labs/bitcore-lib';
-import BitcoreLibCash from '@bitpay-labs/bitcore-lib-cash';
-import BitcoreLibDoge from '@bitpay-labs/bitcore-lib-doge';
-import BitcoreLibLtc from '@bitpay-labs/bitcore-lib-ltc';
+import BitcoreLib from '@bcpros/bitcore-lib';
+import BitcoreLibCash from '@bcpros/bitcore-lib-cash';
+import BitcoreLibDoge from '@bcpros/bitcore-lib-doge';
+import BitcoreLibLtc from '@bcpros/bitcore-lib-ltc';
 import {
   API_ROOT,
   API_ROOT_ETH,

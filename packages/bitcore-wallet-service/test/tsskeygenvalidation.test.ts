@@ -1,4 +1,4 @@
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { expect } from 'chai';
 import express from 'express';
 import { get, set } from 'lodash';

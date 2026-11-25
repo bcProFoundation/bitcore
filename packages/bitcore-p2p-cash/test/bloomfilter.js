@@ -2,7 +2,7 @@
 
 const chai = require('chai');
 const assert = require('assert');
-const bitcore = require('@bitpay-labs/bitcore-lib-cash');
+const bitcore = require('@bcpros/bitcore-lib-cash');
 const Data = require('./data/messages');
 const P2P = require('../');
 

@@ -1,5 +1,5 @@
 {
-  "name": "@bitpay-labs/bitcore-build",
+  "name": "@bcpros/bitcore-build",
   "version": "11.11.7",
   "description": "A helper for common tasks to build bitcore modules'",
   "main": "index.js",

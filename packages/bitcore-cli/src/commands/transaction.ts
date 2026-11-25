@@ -1,6 +1,6 @@
 import os from 'os';
-import { Utils as BWCUtils, type Txp } from '@bitpay-labs/bitcore-wallet-client'; 
-import { Validation } from '@bitpay-labs/crypto-wallet-core';
+import { Utils as BWCUtils, type Txp } from '@bcpros/bitcore-wallet-client'; 
+import { Validation } from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import { Command } from 'commander';
 import { UserCancelled } from '../errors';

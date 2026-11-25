@@ -1,4 +1,4 @@
-import { Constants, Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Constants, Web3 } from '@bcpros/crypto-wallet-core';
 import type { Effect } from '../types';
 
 const web3 = new Web3();

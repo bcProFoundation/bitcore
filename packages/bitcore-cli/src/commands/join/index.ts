@@ -1,4 +1,4 @@
-import { Constants } from '@bitpay-labs/crypto-wallet-core';
+import { Constants } from '@bcpros/crypto-wallet-core';
 import * as prompt from '@clack/prompts';
 import { getChain } from '../../prompts';
 import { Utils } from '../../utils';

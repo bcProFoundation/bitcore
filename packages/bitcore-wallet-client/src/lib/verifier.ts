@@ -7,7 +7,7 @@ import {
   Validation as CWCValidation,
   Transactions,
   Web3
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import { singleton } from 'preconditions';
 import { Constants, Utils } from './common';
 import { Credentials } from './credentials';

@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { Web3 } from '@bitpay-labs/crypto-wallet-core';
+import { Web3 } from '@bcpros/crypto-wallet-core';
 import * as request from 'request';
 import config from '../config';
 import { Utils } from '../lib/common/utils';

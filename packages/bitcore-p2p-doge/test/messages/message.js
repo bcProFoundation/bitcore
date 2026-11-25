@@ -2,7 +2,7 @@
 
 const should = require('chai').should();
 const P2P = require('../../');
-const Networks = require('@bitpay-labs/bitcore-lib-doge').Networks;
+const Networks = require('@bcpros/bitcore-lib-doge').Networks;
 
 const Message = P2P.Messages.Message;
 

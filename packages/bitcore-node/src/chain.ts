@@ -1,6 +1,6 @@
-import BitcoreP2P from '@bitpay-labs/bitcore-p2p';
-import BitcoreP2PCash from '@bitpay-labs/bitcore-p2p-cash';
-import { BitcoreLib, BitcoreLibCash } from '@bitpay-labs/crypto-wallet-core';
+import BitcoreP2P from '@bcpros/bitcore-p2p';
+import BitcoreP2PCash from '@bcpros/bitcore-p2p-cash';
+import { BitcoreLib, BitcoreLibCash } from '@bcpros/crypto-wallet-core';
 
 export default {
   BTC: {

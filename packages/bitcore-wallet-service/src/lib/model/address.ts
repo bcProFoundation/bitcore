@@ -4,7 +4,7 @@ import {
   BitcoreLibDoge,
   BitcoreLibLtc,
   Deriver
-} from '@bitpay-labs/crypto-wallet-core';
+} from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
 import { singleton } from 'preconditions';
 import { Common } from '../common';

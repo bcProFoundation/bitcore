@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { BitcoreLib } from '@bitpay-labs/crypto-wallet-core';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import { Constants } from './common/constants';
 import { Utils } from './common/utils';
 import { Errors } from './errors/errordefinitions';

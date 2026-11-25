@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
-import type { Web3Types } from '@bitpay-labs/crypto-wallet-core';
+import type { Web3Types } from '@bcpros/crypto-wallet-core';
 import { BaseEVMStateProvider } from '../../../../src/providers/chain-state/evm/api/csp';
 
 describe('BaseEVMStateProvider ERC20 transfer block ranges', function() {

@@ -1,7 +1,7 @@
 'use strict';
 
 const inherits = require('util').inherits;
-const bitcore = require('@bitpay-labs/bitcore-lib-doge');
+const bitcore = require('@bcpros/bitcore-lib-doge');
 const BloomFilter = require('../../bloomfilter');
 const Message = require('../message');
 
