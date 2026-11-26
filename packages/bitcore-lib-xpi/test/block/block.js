@@ -348,4 +348,37 @@ describe('Block', function () {
     });
 
   });
-})
+
+  describe('metadata fields', function () {
+    // Testnet blocks with metadata after the header (merged mining proof,
+    // parent headers). Blocks without metadata keep a single 0x00 there.
+    var metadataBlocks = require('../data/blocks-metadata-napoleontest');
+
+    Object.keys(metadataBlocks).forEach(function (label) {
+      var vector = metadataBlocks[label];
+
+      it('parses and re-serializes a block with ' + label + ' metadata', function () {
+        var b = Block.fromString(vector.hex);
+        b.id.should.equal(vector.hash);
+        b.metadata.should.equal(b.metadataFields.length);
+        b.metadataFields.length.should.be.above(0);
+        b.transactions.map(function (tx) { return tx.id; }).should.deep.equal(vector.txids);
+        b.validMerkleRoot().should.equal(true);
+        b.toString().should.equal(vector.hex);
+      });
+
+      it('round-trips a block with ' + label + ' metadata through toObject/fromObject', function () {
+        var b = Block.fromString(vector.hex);
+        Block.fromObject(b.toObject()).toString().should.equal(vector.hex);
+      });
+    });
+
+    it('keeps serializing blocks without metadata as before', function () {
+      var b = Block.fromString(blockhex);
+      b.metadata.should.equal(0);
+      b.metadataFields.length.should.equal(0);
+      should.not.exist(b.toObject().metadataFields);
+      b.toString().should.equal(blockhex);
+    });
+  });
+});

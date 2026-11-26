@@ -61,12 +61,33 @@ Block._fromObject = function _fromObject(data) {
       transactions.push(Transaction().fromObject(tx));
     }
   });
+  var metadataFields = Block._metadataFieldsFromObject(data.metadataFields);
   var info = {
     header: BlockHeader.fromObject(data.header),
-    metadata: data.metadata || 0x00,
+    metadata: metadataFields.length || data.metadata || 0x00,
+    metadataFields: metadataFields,
     transactions: transactions
   };
   return info;
+};
+
+/**
+ * Metadata fields carried after the header (each one is a uint32 field id
+ * and a length-prefixed byte string). Blocks without metadata have none.
+ * @param {Array} - Fields as {id, data} with data a Buffer or a hex string
+ * @returns {Array} - Fields as {id, data} with data a Buffer
+ * @private
+ */
+Block._metadataFieldsFromObject = function _metadataFieldsFromObject(fields) {
+  if (!fields) {
+    return [];
+  }
+  return fields.map(function(field) {
+    return {
+      id: field.id,
+      data: BufferUtil.isBuffer(field.data) ? field.data : Buffer.from(field.data, 'hex')
+    };
+  });
 };
 
 /**
@@ -87,7 +108,15 @@ Block._fromBufferReader = function _fromBufferReader(br) {
   var info = {};
   $.checkState(!br.finished(), 'No block data received');
   info.header = BlockHeader.fromBufferReader(br);
-  info.metadata = br.readUInt8();
+  var numFields = br.readVarintNum();
+  info.metadataFields = [];
+  for (var j = 0; j < numFields; j++) {
+    info.metadataFields.push({
+      id: br.readUInt32LE(),
+      data: br.readVarLengthBuffer()
+    });
+  }
+  info.metadata = numFields;
   var transactions = br.readVarintNum();
   info.transactions = [];
   for (var i = 0; i < transactions; i++) {
@@ -145,11 +174,17 @@ Block.prototype.toObject = Block.prototype.toJSON = function toObject() {
   this.transactions.forEach(function(tx) {
     transactions.push(tx.toObject());
   });
-  return {
+  var obj = {
     header: this.header.toObject(),
     metadata: this.metadata,
     transactions: transactions
   };
+  if (this.metadataFields && this.metadataFields.length) {
+    obj.metadataFields = this.metadataFields.map(function(field) {
+      return { id: field.id, data: field.data.toString('hex') };
+    });
+  }
+  return obj;
 };
 
 /**
@@ -175,7 +210,13 @@ Block.prototype.toBufferWriter = function toBufferWriter(bw) {
     bw = new BufferWriter();
   }
   bw.write(this.header.toBuffer());
-  bw.writeUInt8(this.metadata);
+  var fields = this.metadataFields || [];
+  bw.writeVarintNum(fields.length);
+  for (var j = 0; j < fields.length; j++) {
+    bw.writeUInt32LE(fields[j].id);
+    bw.writeVarintNum(fields[j].data.length);
+    bw.write(fields[j].data);
+  }
   bw.writeVarintNum(this.transactions.length);
   for (var i = 0; i < this.transactions.length; i++) {
     this.transactions[i].toBufferWriter(bw);

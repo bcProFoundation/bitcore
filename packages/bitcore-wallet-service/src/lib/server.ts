@@ -2938,7 +2938,7 @@ export class WalletService implements IWalletService {
     }
     try {
       scriptPayload = ChainService.convertAddressToScriptPayload(coin, address);
-      chronikClient = coin === 'xec' ? ChainService.getChronikClient(coin) : ChainService.getChronikClient(coin);
+      chronikClient = coin === 'xec' ? ChainService.getChronikClient(coin) : ChainService.getLegacyChronikClient(coin);
     } catch {
       return Promise.reject('err funtion _getUxtosByChronik in aws');
     }
@@ -4214,7 +4214,7 @@ export class WalletService implements IWalletService {
     } else {
       const coin = opts.coin;
       const chronikClient =
-        coin === 'xec' ? ChainService.getChronikClient(coin) : ChainService.getChronikClient(coin);
+        coin === 'xec' ? ChainService.getChronikClient(coin) : ChainService.getLegacyChronikClient(coin);
       this._broadcastRawTxByChronik(chronikClient, opts.rawTx, !!opts.skipSlpCheck, async (err, txid) => {
         if (err || !txid) {
           logger.warn(`Broadcast failed: ${err}`);

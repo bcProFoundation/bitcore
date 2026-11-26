@@ -288,7 +288,7 @@ const Config = (): any => {
       minTokenConversion: 0.02
     },
     chronik: {
-      xpiUrl: 'https://chronik01.abcpay.cash/xpi,https://chronik.be.cash/xpi',
+      xpiUrl: process.env.CHRONIK_XPI_URL || 'https://chronik.givelotus.org/xpi',
       xecUrl: 'https://chronik.pay2stay.com/xec,https://chronik.lixi.app/xec'
     },
     emailMerchant: {
