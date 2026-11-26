@@ -1,11 +1,13 @@
 import _ from 'lodash';
+import preconditions from 'preconditions';
 import { Common } from '../common';
 import logger from '../logger';
+import { TxProposalAction } from './txproposalaction';
 
-const $ = require('preconditions').singleton();
+const $ = preconditions.singleton();
+
 const Constants = Common.Constants;
 const Defaults = Common.Defaults;
-import { TxProposalAction } from './txproposalaction';
 
 function throwUnsupportedError() {
   const msg = 'Unsupported operation on this transaction proposal';
@@ -13,7 +15,7 @@ function throwUnsupportedError() {
   throw new Error(msg);
 }
 
-export interface ITxProposal {
+export interface ITxProposalLegacy {
   version: string;
   type: string;
   createdOn: number;
@@ -33,7 +35,7 @@ export interface ITxProposal {
   walletN: number;
   status: string;
   txid: string;
-  broadcastedOn: string;
+  broadcastedOn: number;
   inputPaths: string;
   actions: any[];
   outputOrder: number;
@@ -47,8 +49,9 @@ export interface ITxProposal {
   addressType: string;
   derivationStrategy: string;
   customData: any;
-}
-export class TxProposalLegacy {
+};
+
+export class TxProposalLegacy implements ITxProposalLegacy {
   version: string;
   type: string;
   createdOn: number;
@@ -209,7 +212,7 @@ export class TxProposalLegacy {
   }
 
   isPending() {
-    return !_.includes(['broadcasted', 'rejected'], this.status);
+    return !['broadcasted', 'rejected'].includes(this.status);
   }
 
   isAccepted() {

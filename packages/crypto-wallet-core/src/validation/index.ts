@@ -4,19 +4,15 @@ import { DogeValidation } from './doge';
 import { LtcValidation } from './ltc';
 import { XecValidation } from './xec';
 import { XpiValidation } from './xpi';
-
-export interface IValidation {
-  validateAddress(network: string, address: string): boolean;
-  validateUri(addressUri: string): boolean;
-}
+import type { IValidation } from '../types/validation';
 
 const validation: { [chain: string]: IValidation } = {
   BTC: new BtcValidation(),
   BCH: new BchValidation(),
   DOGE: new DogeValidation(),
+  LTC: new LtcValidation(),
   XEC: new XecValidation(),
   XPI: new XpiValidation(),
-  LTC: new LtcValidation()
 };
 
 export class ValidationProxy {
@@ -26,11 +22,14 @@ export class ValidationProxy {
   }
 
   validateAddress(chain, network, address) {
-    return this.get(chain).validateAddress(network, address);
+    // chains this fork does not serve have no validator: treat their addresses as invalid
+    const validator = this.get(chain);
+    return validator ? validator.validateAddress(network, address) : false;
   }
 
   validateUri(chain, addressUri) {
-    return this.get(chain).validateUri(addressUri);
+    const validator = this.get(chain);
+    return validator ? validator.validateUri(addressUri) : false;
   }
 }
 

@@ -1,25 +1,31 @@
-import { GetBlockBeforeTimeParams, StreamTransactionParams, WalletBalanceType } from '../../../types/namespaces/ChainStateProvider';
-import { StreamBlocksParams } from '../../../types/namespaces/ChainStateProvider';
 
-import { Validation } from '@bcpros/crypto-wallet-core';
-import { ObjectId } from 'mongodb-legacy';
 import { Readable, Transform } from 'stream';
+import { Validation } from '@bcpros/crypto-wallet-core';
+import { LRUCache } from 'lru-cache';
 import { LoggifyClass } from '../../../decorators/Loggify';
-import { MongoBound } from '../../../models/base';
-import { BitcoinBlockStorage, IBtcBlock } from '../../../models/block';
+import logger from '../../../logger';
+import { BitcoinBlockStorage, type IBtcBlock } from '../../../models/block';
 import { CacheStorage } from '../../../models/cache';
-import { CoinStorage, ICoin } from '../../../models/coin';
+import { CoinStorage, type ICoin } from '../../../models/coin';
 import { StateStorage } from '../../../models/state';
-import { ITransaction, TransactionStorage } from '../../../models/transaction';
-import { IWallet, WalletStorage } from '../../../models/wallet';
-import { IWalletAddress, WalletAddressStorage } from '../../../models/walletAddress';
+import { type ITransaction, TransactionStorage } from '../../../models/transaction';
+import { type IWallet, WalletStorage } from '../../../models/wallet';
+import { type IWalletAddress, WalletAddressStorage } from '../../../models/walletAddress';
 import { RPC } from '../../../rpc';
 import { Config } from '../../../services/config';
+import { Event } from '../../../services/event';
 import { Storage } from '../../../services/storage';
-import { IBlock } from '../../../types/Block';
-import { CoinJSON, SpentHeightIndicators } from '../../../types/Coin';
-import { IUtxoNetworkConfig } from '../../../types/Config';
-import {
+import { type CoinJSON, SpentHeightIndicators } from '../../../types/Coin';
+import { disposeOnce, normalizeChainNetwork } from '../../../utils';
+import { StringifyJsonStream } from '../../../utils/jsonStream';
+import { ListTransactionsStream } from './transforms';
+import type { MongoBound } from '../../../models/base';
+import type { IBlock } from '../../../types/Block';
+import type { IUtxoNetworkConfig } from '../../../types/Config';
+import type { TransactionJSON } from '../../../types/Transaction';
+import type { StreamBlocksParams } from '../../../types/namespaces/ChainStateProvider';
+import type { GetBlockBeforeTimeParams, StreamTransactionParams, WalletBalanceType } from '../../../types/namespaces/ChainStateProvider';
+import type {
   BroadcastTransactionParams,
   CreateWalletParams,
   DailyTransactionsParams,
@@ -39,16 +45,17 @@ import {
   UpdateWalletParams,
   WalletCheckParams
 } from '../../../types/namespaces/ChainStateProvider';
-import { TransactionJSON } from '../../../types/Transaction';
-import { StringifyJsonStream } from '../../../utils/jsonStream';
-import { ListTransactionsStream } from './transforms';
+import type { ObjectId } from 'mongodb-legacy';
 
 @LoggifyClass
 export class InternalStateProvider implements IChainStateService {
   chain: string;
-  constructor(chain: string, private WalletStreamTransform = ListTransactionsStream) {
+  blockAtTimeCache: { [key: string]: LRUCache<string, IBlock> };
+
+  constructor(chain: string, private WalletStreamTransform: new (wallet: IWallet) => Transform = ListTransactionsStream) {
     this.chain = chain;
     this.chain = this.chain.toUpperCase();
+    this.blockAtTimeCache = {};
   }
 
   getRPC(chain: string, network: string) {
@@ -56,8 +63,8 @@ export class InternalStateProvider implements IChainStateService {
     if (!RPC_PEER) {
       throw new Error(`RPC not configured for ${chain} ${network}`);
     }
-    const { username, password, host, port } = RPC_PEER;
-    return new RPC(username, password, host, port);
+    const { username, password, host, port, protocol } = RPC_PEER;
+    return new RPC(username, password, host, port, protocol);
   }
 
   private getAddressQuery(params: StreamAddressUtxosParams) {
@@ -75,18 +82,11 @@ export class InternalStateProvider implements IChainStateService {
     return query;
   }
 
-  streamAddressUtxos(params: StreamAddressUtxosParams) {
-    const { req, res, args } = params;
-    const { limit, since } = args;
-    const query = this.getAddressQuery(params);
-    Storage.apiStreamingFind(CoinStorage, query, { limit, since, paging: '_id' }, req!, res!);
-  }
-
   async streamAddressTransactions(params: StreamAddressUtxosParams) {
-    const { req, res, args } = params;
+    const { args } = params;
     const { limit, since } = args;
     const query = this.getAddressQuery(params);
-    Storage.apiStreamingFind(CoinStorage, query, { limit, since, paging: '_id' }, req!, res!);
+    return Storage.apiStreamingFind(CoinStorage, query, { limit, since, paging: '_id' });
   }
 
   async getBalanceForAddress(params: GetBalanceForAddressParams): Promise<WalletBalanceType> {
@@ -98,14 +98,13 @@ export class InternalStateProvider implements IChainStateService {
       spentHeight: { $lt: SpentHeightIndicators.minimum },
       mintHeight: { $gt: SpentHeightIndicators.conflicting }
     };
-    let balance = await CoinStorage.getBalance({ query });
+    const balance = await CoinStorage.getBalance({ query });
     return balance;
   }
 
-  streamBlocks(params: StreamBlocksParams) {
-    const { req, res } = params;
+  async streamBlocks(params: StreamBlocksParams) {
     const { query, options } = this.getBlocksQuery(params);
-    Storage.apiStreamingFind(BitcoinBlockStorage, query, options, req, res);
+    return Storage.apiStreamingFind(BitcoinBlockStorage, query, options);
   }
 
   async getBlocks(params: GetBlockParams): Promise<Array<IBlock>> {
@@ -115,12 +114,12 @@ export class InternalStateProvider implements IChainStateService {
     if (sort) {
       cursor = cursor.sort(sort);
     }
-    let blocks = await cursor.toArray();
+    const blocks = await cursor.toArray();
     const tip = await this.getLocalTip(params);
     const tipHeight = tip ? tip.height : 0;
     const blockTransform = (b: IBtcBlock) => {
       let confirmations = 0;
-      if (b.height && b.height >= 0) {
+      if (b.height > -1) {
         confirmations = tipHeight - b.height + 1;
       }
       const convertedBlock = BitcoinBlockStorage._apiTransform(b, { object: true }) as IBtcBlock;
@@ -131,13 +130,13 @@ export class InternalStateProvider implements IChainStateService {
 
   protected getBlocksQuery(params: GetBlockParams | StreamBlocksParams) {
     const { chain, network, sinceBlock, blockId, args = {} } = params;
-    let { startDate, endDate, date, since, direction, paging } = args;
-    let { limit = 10, sort = { height: -1 } } = args;
-    let options = { limit, sort, since, direction, paging };
+    const { startDate, endDate, date, since, direction, paging } = args;
+    const { limit = 10, sort = { height: -1 } } = args;
+    const options = { limit, sort, since, direction, paging };
     if (!chain || !network) {
       throw new Error('Missing required param');
     }
-    let query: any = {
+    const query: any = {
       chain,
       network: network.toLowerCase(),
       processed: true
@@ -146,7 +145,7 @@ export class InternalStateProvider implements IChainStateService {
       if (blockId.length >= 64) {
         query.hash = blockId;
       } else {
-        let height = parseInt(blockId, 10);
+        const height = parseInt(blockId, 10);
         if (Number.isNaN(height) || height.toString(10) !== blockId) {
           throw new Error('invalid block id provided');
         }
@@ -154,7 +153,7 @@ export class InternalStateProvider implements IChainStateService {
       }
     }
     if (sinceBlock) {
-      let height = Number(sinceBlock);
+      const height = Number(sinceBlock);
       if (Number.isNaN(height) || height.toString(10) !== sinceBlock) {
         throw new Error('invalid block id provided');
       }
@@ -167,8 +166,8 @@ export class InternalStateProvider implements IChainStateService {
       query.time = Object.assign({}, query.time, { $lt: new Date(endDate) });
     }
     if (date) {
-      let firstDate = new Date(date);
-      let nextDate = new Date(date);
+      const firstDate = new Date(date);
+      const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
       query.time = { $gt: firstDate, $lt: nextDate };
     }
@@ -176,15 +175,23 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   async getBlock(params: GetBlockParams) {
-    let blocks = await this.getBlocks(params);
+    const blocks = await this.getBlocks(params);
     return blocks[0];
   }
 
   async getBlockBeforeTime(params: GetBlockBeforeTimeParams): Promise<IBlock | null> {
     const { chain, network, time } = params;
     const date = new Date(time || Date.now());
-    const [blockRaw] = await BitcoinBlockStorage.collection
-      .find({
+    const chainNetwork = normalizeChainNetwork(chain, network);
+    if (!this.blockAtTimeCache[chainNetwork]) {
+      this.blockAtTimeCache[chainNetwork] = new LRUCache<string, IBlock>({ max: 1000 });
+    }
+    const cachedBlock = this.blockAtTimeCache[chainNetwork].get(date.toISOString());
+    if (cachedBlock !== undefined) {
+      return cachedBlock;
+    }
+    const [block] = await BitcoinBlockStorage.collection
+      .find<IBlock>({
         chain,
         network,
         timeNormalized: { $lte: date }
@@ -192,34 +199,17 @@ export class InternalStateProvider implements IChainStateService {
       .limit(1)
       .sort({ timeNormalized: -1 })
       .toArray();
-    if (!blockRaw) {
-      return null;
-    }
-    return {
-      chain: blockRaw.chain,
-      confirmations: blockRaw.confirmations,
-      network: blockRaw.network,
-      height: blockRaw.height,
-      hash: blockRaw.hash,
-      time: blockRaw.time,
-      timeNormalized: blockRaw.timeNormalized,
-      previousBlockHash: blockRaw.previousBlockHash,
-      nextBlockHash: blockRaw.nextBlockHash,
-      transactions: blockRaw.transactions,
-      transactionCount: blockRaw.transactionCount,
-      size: blockRaw.size,
-      reward: blockRaw.reward,
-      processed: blockRaw.processed
-    } as IBlock;
+    this.blockAtTimeCache[chainNetwork].set(date.toISOString(), block || null);
+    return block || null;
   }
 
   async streamTransactions(params: StreamTransactionsParams) {
-    const { chain, network, req, res, args } = params;
-    let { blockHash, blockHeight } = args;
+    const { chain, network, args } = params;
+    const { blockHash, blockHeight } = args;
     if (!chain || !network) {
       throw new Error('Missing chain or network');
     }
-    let query: any = {
+    const query: any = {
       chain,
       network: network.toLowerCase()
     };
@@ -231,7 +221,7 @@ export class InternalStateProvider implements IChainStateService {
     }
     const tip = await this.getLocalTip(params);
     const tipHeight = tip ? tip.height : 0;
-    return Storage.apiStreamingFind(TransactionStorage, query, args, req, res, t => {
+    return Storage.apiStreamingFind(TransactionStorage, query, args, t => {
       let confirmations = 0;
       if (t.blockHeight !== undefined && t.blockHeight >= 0) {
         confirmations = tipHeight - t.blockHeight + 1;
@@ -242,18 +232,19 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   async getTransaction(params: StreamTransactionParams) {
-    let { chain, network, txId } = params;
+    let { network } = params;
+    const { chain, txId } = params;
     if (typeof txId !== 'string' || !chain || !network) {
       throw new Error('Missing required param');
     }
     network = network.toLowerCase();
-    let query = { chain, network, txid: txId };
+    const query = { chain, network, txid: txId };
     const tip = await this.getLocalTip(params);
     const tipHeight = tip ? tip.height : 0;
     const found = await TransactionStorage.collection.findOne(query);
     if (found) {
       let confirmations = 0;
-      if (found.blockHeight && found.blockHeight >= 0) {
+      if (found.blockHeight != null && found.blockHeight >= 0) {
         confirmations = tipHeight - found.blockHeight + 1;
       }
       const convertedTx = TransactionStorage._apiTransform(found, { object: true }) as TransactionJSON;
@@ -264,7 +255,7 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   async getAuthhead(params: StreamTransactionParams) {
-    let { chain, network, txId } = params;
+    const { chain, network, txId } = params;
     if (typeof txId !== 'string') {
       throw new Error('Missing required param');
     }
@@ -327,15 +318,15 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   streamWalletAddresses(params: StreamWalletAddressesParams) {
-    let { walletId, req, res } = params;
-    let query = { wallet: walletId };
-    Storage.apiStreamingFind(WalletAddressStorage, query, {}, req, res);
+    const { chain, network, walletId } = params;
+    const query = { chain, network, wallet: walletId };
+    return Storage.apiStreamingFind(WalletAddressStorage, query, {});
   }
 
   async walletCheck(params: WalletCheckParams) {
-    let { chain, network, wallet } = params;
+    const { chain, network, wallet } = params;
     return new Promise(resolve => {
-      const addressStream = WalletAddressStorage.collection.find({ chain, network, wallet }).project({ address: 1 });
+      const addressStream = WalletAddressStorage.collection.find({ chain, network, wallet }).project({ address: 1 }).stream();
       let sum = 0;
       let lastAddress;
       addressStream.on('data', (walletAddress: IWalletAddress) => {
@@ -401,12 +392,12 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   async updateWallet(params: UpdateWalletParams) {
-    const { wallet, addresses } = params;
-    await WalletAddressStorage.updateCoins({ wallet, addresses });
+    const { wallet, addresses, reprocess = false } = params;
+    await WalletAddressStorage.updateCoins({ wallet, addresses, opts: { reprocess } });
   }
 
   async streamWalletTransactions(params: StreamWalletTransactionsParams) {
-    const { chain, network, wallet, res, args } = params;
+    const { chain, network, wallet, args } = params;
     const query: any = {
       chain,
       network,
@@ -423,7 +414,7 @@ export class InternalStateProvider implements IChainStateService {
         if (args.includeMempool) {
           query.$or.push({ blockHeight: SpentHeightIndicators.pending });
         }
-        let blockRangeQuery = {} as any;
+        const blockRangeQuery = {} as any;
         if (args.startBlock) {
           blockRangeQuery.$gte = Number(args.startBlock);
         }
@@ -448,12 +439,33 @@ export class InternalStateProvider implements IChainStateService {
       }
     }
 
-    const transactionStream = TransactionStorage.collection
+    const transactionCursor = TransactionStorage.collection
       .find(query)
       .sort({ blockTimeNormalized: 1 })
       .addCursorFlag('noCursorTimeout', true);
-    const listTransactionsStream = new this.WalletStreamTransform(wallet);
-    Readable.from(transactionStream).pipe(listTransactionsStream).pipe(res);
+    // mongodb-legacy (4.x driver) cursors stream through .stream(); anything already readable is used as is
+    const transactionStream: any = typeof (transactionCursor as any).stream === 'function' ? transactionCursor.stream() : transactionCursor;
+    const listTransactionsStream: any = new this.WalletStreamTransform(wallet);
+    listTransactionsStream.jsonl = true;
+    // close() resolves a promise; disposeOnce keeps it observed and single-shot
+    const closeCursor = disposeOnce(
+      async () => { await transactionCursor.close(); },
+      err => logger.warn(`Failed to close ${this.chain} wallet transaction cursor: %o`, err)
+    );
+    listTransactionsStream.on('close', closeCursor);
+    listTransactionsStream.on('end', closeCursor);
+    listTransactionsStream.on('error', closeCursor);
+    // pipe() does not forward source errors; surface cursor failures on the returned
+    // stream so the caller settles instead of hanging
+    transactionStream.on('error', err => {
+      closeCursor();
+      if (!listTransactionsStream.destroyed) {
+        listTransactionsStream.destroy(err);
+      }
+    });
+    // start flowing only after the full lifecycle contract is installed
+    transactionStream.pipe(listTransactionsStream);
+    return listTransactionsStream;
   }
 
   async getWalletBalance(params: GetWalletBalanceParams): Promise<WalletBalanceType> {
@@ -471,7 +483,7 @@ export class InternalStateProvider implements IChainStateService {
 
   async getWalletBalanceAtTime(params: GetWalletBalanceAtTimeParams): Promise<WalletBalanceType> {
     const { chain, network, time } = params;
-    let query = { wallets: params.wallet._id, 'wallets.0': { $exists: true } };
+    const query = { wallets: params.wallet._id, 'wallets.0': { $exists: true } };
     if (params.wallet.chain === 'BTC' && ['testnet3', 'testnet4'].includes(params.wallet.network)) {
       query['network'] = params.wallet.network;
     }
@@ -479,8 +491,8 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   async streamWalletUtxos(params: StreamWalletUtxosParams) {
-    const { wallet, limit, args = {}, req, res } = params;
-    let query: any = {
+    const { wallet, limit, args = {} } = params;
+    const query: any = {
       wallets: wallet._id,
       'wallets.0': { $exists: true },
       mintHeight: { $gt: SpentHeightIndicators.conflicting }
@@ -506,18 +518,19 @@ export class InternalStateProvider implements IChainStateService {
       return CoinStorage._apiTransform(c) as string;
     };
 
-    Storage.apiStreamingFind(CoinStorage, query, { limit }, req, res, utxoTransform);
+    return Storage.apiStreamingFind(CoinStorage, query, { limit }, utxoTransform);
   }
 
   async getFee(params: GetEstimateSmartFeeParams) {
     const { chain, network, target, mode } = params;
     const cacheKey = `getFee-${chain}-${network}-${target}${mode ? '-' + mode.toLowerCase() : ''}`;
-    return CacheStorage.getGlobalOrRefresh(
+    return CacheStorage.getGlobalAndRefresh(
       cacheKey,
       async () => {
         return this.getRPC(chain, network).getEstimateSmartFee(Number(target), mode);
       },
-      5 * CacheStorage.Times.Minute
+      5 * CacheStorage.Times.Minute,
+      Event.lastBlockTime(chain, network)
     );
   }
 
@@ -533,12 +546,15 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   async getCoinsForTx({ chain, network, txid }: { chain: string; network: string; txid: string }) {
-    const tx = await TransactionStorage.collection.countDocuments({ txid });
-    if (tx === 0) {
+    const tx = await TransactionStorage.collection.findOne({ txid });
+    if (!tx) {
       throw new Error(`No such transaction ${txid}`);
     }
 
-    let inputs = await CoinStorage.collection
+    const tip = await this.getLocalTip({ chain, network });
+    const confirmations = (tip && tx.blockHeight! > -1) ? tip.height - tx.blockHeight! + 1 : 0;
+
+    const inputs = await CoinStorage.collection
       .find({
         chain,
         network,
@@ -557,8 +573,8 @@ export class InternalStateProvider implements IChainStateService {
       .toArray();
 
     return {
-      inputs: inputs.map(input => CoinStorage._apiTransform(input, { object: true })),
-      outputs: outputs.map(output => CoinStorage._apiTransform(output, { object: true }))
+      inputs: inputs.map(input => CoinStorage._apiTransform(input, { object: true, confirmations })),
+      outputs: outputs.map(output => CoinStorage._apiTransform(output, { object: true, confirmations }))
     };
   }
 
@@ -576,10 +592,7 @@ export class InternalStateProvider implements IChainStateService {
     const start = startDate && isValidDate(startDate) ? new Date(startDate) : oneMonth;
     const end = endDate && isValidDate(endDate) ? formatDate(new Date(endDate)) : todayTruncatedUTC;
     const results = await BitcoinBlockStorage.collection
-      .aggregate<{
-        date: string;
-        transactionCount: number;
-      }>([
+      .aggregate<{ date: string; transactionCount: number }>([
         {
           $match: {
             chain,
@@ -697,10 +710,49 @@ export class InternalStateProvider implements IChainStateService {
   }
 
   async getWalletAddresses(walletId: ObjectId) {
-    let query = { chain: this.chain, wallet: walletId };
+    const query = { chain: this.chain, wallet: walletId };
     return WalletAddressStorage.collection
       .find(query)
       .addCursorFlag('noCursorTimeout', true)
       .toArray();
+  }
+
+  async getBlockFee(params: {
+    chain: string;
+    network: string;
+    blockId: string;
+  }) {
+    const { chain, network, blockId } = params;
+    const transactions = blockId.length >= 64 
+      ? await TransactionStorage.collection.find({ chain, network, blockHash: blockId }).toArray()
+      : await TransactionStorage.collection.find({ chain, network, blockHeight: parseInt(blockId, 10) }).toArray();
+    if (transactions.length <= 1)
+      return { feeTotal: 0, mean: 0, median: 0, mode: 0 };
+
+    let feeRateSum = 0;
+    let feeTotal = 0;
+    const feeRates: number[] = [];
+    const freq = {};
+    let mode = 0, maxCount = 0;
+    for (const tx of transactions) {
+      if (tx.coinbase) continue; // skip coinbase transaction
+      const rate = tx.fee && tx.size ? tx.fee / tx.size : 0; // does not add fee rate 0 or divide by zero
+      feeRates.push(rate);
+      feeRateSum += rate;
+      feeTotal += tx.fee || 0;
+      
+      freq[rate] = (freq[rate] || 0) + 1;
+      if (freq[rate] > maxCount) {
+        mode = rate;
+        maxCount = freq[rate];
+      }
+    }
+    const mean = feeRateSum / feeRates.length;
+    feeRates.sort((a, b) => a - b);
+    const median = feeRates.length % 2 === 1
+      ? feeRates[Math.floor(feeRates.length / 2)]
+      : (feeRates[feeRates.length / 2 - 1] + feeRates[feeRates.length / 2]) / 2;
+
+    return { feeTotal, mean, median, mode };
   }
 }

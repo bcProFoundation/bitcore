@@ -18,8 +18,8 @@ export class CurrencyRateService {
     opts = opts || {};
 
     this.request = opts.request || axios;
-    this.apiKey = opts.apiKey || opts.currencyRateServiceOpts.apiKey;
-    this.apiUrl = opts.apiUrl || opts.currencyRateServiceOpts.apiUrl;
+    this.apiKey = opts.apiKey || opts.currencyRateServiceOpts?.apiKey;
+    this.apiUrl = opts.apiUrl || opts.currencyRateServiceOpts?.apiUrl;
 
     async.parallel(
       [

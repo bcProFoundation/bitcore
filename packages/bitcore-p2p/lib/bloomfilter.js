@@ -1,9 +1,9 @@
 'use strict';
 
-var bitcore = require('@bcpros/bitcore-lib');
-var BloomFilter = require('bloom-filter');
-var BufferReader = bitcore.encoding.BufferReader;
-var BufferWriter = bitcore.encoding.BufferWriter;
+const bitcore = require('@bcpros/bitcore-lib');
+const BloomFilter = require('bloom-filter');
+const BufferReader = bitcore.encoding.BufferReader;
+const BufferWriter = bitcore.encoding.BufferWriter;
 
 /**
  * A constructor for Bloom Filters

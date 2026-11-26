@@ -4,15 +4,24 @@
   "description": "A multi-currency support library for address derivation, private key creation, and transaction creation",
   "main": "./ts_build/src/index.js",
   "types": "./ts_build/src/index.d.ts",
+  "files": [
+    "ts_build"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bitpay/bitcore/tree/master/packages/crypto-wallet-core"
+  },
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf ts_build && tsc --version",
     "compile": "pnpm run clean && pnpm run build",
-    "precommit": "pnpm run fix",
-    "lint": "tslint -c ../../tslint.json 'src/**/*.ts'",
-    "fix": "tslint --fix -c ../../tslint.json 'src/**/*.ts'",
-    "test": "pnpm run compile && mocha -r tsx test/*.ts",
-    "pub": "pnpm run compile && npm publish"
+    "lint": "eslint .",
+    "fix:errors": "eslint --fix --quiet .",
+    "fix:all": "eslint --fix .",
+    "fix": "pnpm run fix:errors",
+    "test": "pnpm run compile && mcr mocha ts_build/test",
+    "pub": "pnpm run compile && npm publish",
+    "precommit": "pnpm run fix"
   },
   "keywords": [
     "multi-currency",
@@ -38,9 +47,8 @@
     "@types/node": "22.13.1",
     "chai": "5.1.2",
     "mocha": "11.1.0",
-    "tslint": "5.14.0",
     "tsx": "4.19.2",
     "typescript": "5.7.3"
   },
-  "gitHead": "169e28b0b13c25c386faccf38a2fdc4e1275a5db"
+  "gitHead": "e091d99915d099863ad3e78dbe867aa7780191e4"
 }

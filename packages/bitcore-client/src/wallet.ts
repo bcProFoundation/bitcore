@@ -4,7 +4,7 @@ import 'source-map-support/register';
 import { Client } from './client';
 import { Encryption } from './encryption';
 import { Storage } from './storage';
-const Mnemonic = require('bitcore-mnemonic');
+const Mnemonic = require('@bcpros/bitcore-mnemonic');
 const { ParseApiStream } = require('./stream-util');
 
 const { PrivateKey, HDPrivateKey } = BitcoreLib;

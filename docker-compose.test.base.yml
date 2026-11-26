@@ -1,5 +1,3 @@
-version: "3"
-
 services:
 
   db:
@@ -24,9 +22,8 @@ services:
       -fallbackfee=0.00001
 
   erigon:
-    image: thorax/erigon:v2022.10.01
+    image: chainstack/erigon:2.60.8
     command:
-      /usr/local/bin/erigon
       --chain=dev
       --datadir=/home/erigon/data
       --private.api.addr=0.0.0.0:9090
@@ -37,25 +34,28 @@ services:
       --ws
 
   geth:
-    image: 0labs/geth:v1.11.5
+    image: ethereum/client-go:v1.16.7
     volumes:
       - ./.docker/geth-keystore:/keystore
+      - geth-data:/geth-data
     command:
-      geth
       --dev
-      --datadir=/home/kjoseph/nodes/dev/geth
-      --keystore=/keystore
+      --datadir /geth-data
+      --keystore /keystore
+      --txlookuplimit=0
+      --snapshot=false
+      --cache=1024
       --http
-      --http.api=web3,eth,debug,personal,net
-      --http.corsdomain='*'
-      --http.vhosts='*'
-      --http.addr=0.0.0.0
-      --http.port=8545
+      --http.api web3,eth,debug,net,txpool
+      --http.corsdomain '*'
+      --http.vhosts '*'
+      --http.addr 0.0.0.0
+      --http.port 8545
       --ws
-      --ws.origins='*'
-      --ws.api=web3,eth,debug,personal,net
-      --ws.addr=0.0.0.0
-      --ws.port=8546
+      --ws.origins '*'
+      --ws.api web3,eth,debug,net,txpool
+      --ws.addr 0.0.0.0
+      --ws.port 8546
 
   rippled:
     build:
@@ -69,3 +69,6 @@ networks:
       driver: default
       config:
         - subnet: 172.28.0.0/16
+
+volumes:
+  geth-data:

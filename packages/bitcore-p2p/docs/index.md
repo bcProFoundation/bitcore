@@ -9,7 +9,7 @@ Peer-to-peer is implemented as a separate module.
 For node projects:
 
 ```sh
-npm install bitcore-p2p --save
+npm install @bcpros/bitcore-p2p --save
 ```
 
 ## Quick Start

@@ -1,6 +1,68 @@
 # Javascript Node CircleCI 2.0 configuration file
 # Check https://circleci.com/docs/2.0/language-javascript/ for more details
-version: 2
+version: 2.1
+
+executors:
+  main:
+    machine:
+      image: default # https://discuss.circleci.com/t/linux-image-deprecations-and-eol-for-2024/50177
+      docker_layer_caching: true
+    resource_class: large
+    working_directory: ~/bitcore
+    environment:
+      - DB_NAME: bitcore-test
+      - DB_PORT: 7357
+      - BITCORE_CONFIG_PATH: ~/bitcore/bitcore-test.config.json
+
+commands:
+  start_docker_images:
+    description: Pull docker images for mongo and blockchain nodes
+    steps:
+      - run:
+          name: Build & start blockchain containers
+          command: |
+            docker buildx prune -f
+            docker compose -f docker-compose.test.base.yml -f docker-compose.test.ci.yml up --detach
+  use_node:
+    description: Pin the executor machine to the exact Node/npm pair recorded in root package.json (engines.node / packageManager)
+    steps:
+      - run:
+          name: Use Node 24.22.3 / npm 11.19.1
+          command: |
+            nvm install 24.22.3
+            nvm alias default 24.22.3
+            nvm use default
+            npm install -g npm@11.19.1
+  npm_cache_restore:
+    description: Restore npm's download cache (not an installed node_modules tree -- npm workspaces hoisting makes a restored tree stale as soon as any manifest changes, so `npm ci` always runs regardless of hit/miss; this cache only avoids re-downloading tarballs already fetched by prior runs)
+    steps:
+      - restore_cache:
+          keys:
+            - npm-dl-cache-v1-{{ arch }}-node24.22.3-npm11.19.1-{{ checksum "package-lock.json" }}-{{ checksum ".npmrc" }}
+            - npm-dl-cache-v1-{{ arch }}-node24.22.3-npm11.19.1-
+  npm_cache_save:
+    steps:
+      - save_cache:
+          key: npm-dl-cache-v1-{{ arch }}-node24.22.3-npm11.19.1-{{ checksum "package-lock.json" }}-{{ checksum ".npmrc" }}
+          paths:
+            - ~/.npm
+  run_test:
+    description: Execute the test suite for a package
+    parameters:
+      package:
+        type: string
+    steps:
+      - attach_workspace:
+          at: ~/bitcore
+      - use_node
+      - start_docker_images
+      - run:
+          name: Run << parameters.package >> tests
+          command: |
+            nvm use default
+            npm run compile
+            npm run test:<< parameters.package >>
+
 jobs:
   build:
     machine:
@@ -9,7 +71,167 @@ jobs:
     working_directory: ~/bitcore
     steps:
       - checkout
-
+      - use_node
       - run:
-          name: Build service
-          command: npm run test:ci
+          name: Print versions
+          command: |
+            nvm use default
+            set -x && node -v && npm -v && google-chrome --version && docker version && python3 --version
+      - npm_cache_restore
+      - run:
+          name: npm ci
+          command: |
+            nvm use default
+            npm ci --include=optional --foreground-scripts
+      - run:
+          name: Verify shared build tools
+          command: |
+            nvm use default
+            npm run test:bitcore-build
+      - npm_cache_save
+      - persist_to_workspace:
+          root: ~/bitcore
+          paths:
+            - .
+  bitcore-node:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-node
+  bitcore-wallet-service:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-wallet-service
+  bitcore-wallet-client:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-wallet-client
+  crypto-wallet-core:
+    executor: main
+    steps:
+      - run_test:
+          package: crypto-wallet-core
+  bitcore-cli:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-cli
+  bitcore-lib:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-lib
+  bitcore-lib-cash:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-lib-cash
+  bitcore-lib-doge:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-lib-doge
+  bitcore-lib-ltc:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-lib-ltc
+  bitcore-logging:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-logging
+  bitcore-mnemonic:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-mnemonic
+  bitcore-p2p:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-p2p
+  bitcore-p2p-cash:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-p2p-cash
+  bitcore-p2p-doge:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-p2p-doge
+  bitcore-client:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-client
+  bitcore-tss:
+    executor: main
+    steps:
+      - run_test:
+          package: bitcore-tss
+  crypto-rpc:
+    executor: main
+    steps:
+      - run_test:
+          package: crypto-rpc
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - bitcore-node:
+          requires:
+            - build
+      - bitcore-wallet-service:
+          requires:
+            - build
+      - bitcore-wallet-client:
+          requires:
+            - build
+      - crypto-wallet-core:
+          requires:
+            - build
+      - bitcore-lib:
+          requires:
+            - build
+      - bitcore-lib-cash:
+          requires:
+            - build
+      - bitcore-lib-doge:
+          requires:
+            - build
+      - bitcore-lib-ltc:
+          requires:
+            - build
+      - bitcore-logging:
+          requires:
+            - build
+      - bitcore-mnemonic:
+          requires:
+            - build
+      - bitcore-p2p:
+          requires:
+            - build
+      - bitcore-p2p-cash:
+          requires:
+            - build
+      - bitcore-p2p-doge:
+          requires:
+            - build
+      - bitcore-client:
+          requires:
+            - build
+      - bitcore-tss:
+          requires:
+            - build
+      - bitcore-cli:
+          requires:
+            - build
+      - crypto-rpc:
+          requires:
+            - build

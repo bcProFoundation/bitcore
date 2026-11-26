@@ -1,0 +1,167 @@
+import { singleton } from 'preconditions';
+import { Common } from '../common';
+
+const $ = singleton();
+
+const { Defaults } = Common;
+
+
+export interface ITssSigMessageObject {
+  broadcastMessages: Array<{
+    from: number;
+    payload: {
+      message: string;
+      signature: string;
+    };
+  }>;
+  p2pMessages: Array<{
+    to: number;
+    from: number;
+    payload: {
+      encryptedMessage: string;
+      signature: string;
+    };
+  }>;
+  partyId: number;
+  publicKey: string;
+  round: number;
+  signature?: {
+    r: string;
+    s: string;
+    v: number;
+    pubKey: string;
+  };
+};
+
+export interface ITssSigGenModel {
+  /**
+   * The ID of the TSS signature generation session.
+   */
+  id: string;
+  /**
+   * The version of the BWC/BWS TSS signature generation scheme.
+   * This should be incremented any time there are breaking changes to the way
+   *  BWC & BWS communicate.
+   */
+  schemeVersion: number;
+  /**
+   * The number of required participants in the TSS signature generation process.
+   */
+  m: number;
+  /**
+   * The list of public keys of the participants in the TSS signature generation process.
+   * The pub keys are in partyId order.
+   */
+  participants: Array<{
+    partyId: number;
+    copayerId: string;
+  }>;
+  /**
+   * An array of the rounds in round order. Each round is an array of messages
+   */
+  rounds: Array<Array<{
+    fromPartyId: number;
+    messages: ITssSigMessageObject;
+  }>>;
+  /**
+   * Timestamp the session was created
+   */
+  createdOn: number;
+  /**
+   * Session expires after this many milliseconds.
+   */
+  timeLimit?: number;
+  /**
+   * The signature generated as the result of the TSS signature generation process.
+   * The signature can be generated along a derivation path, which produces a pubKey that's
+   *  dfferent from the key gen sharedPublicKey.
+   */
+  signature?: {
+    r: string;
+    s: string;
+    v: number;
+    pubKey: string;
+  };
+  /**
+   * The mongo doc version
+   */
+  __v: number;
+};
+
+export class TssSigGenModel implements ITssSigGenModel {
+  id: string;
+  m: number;
+  participants: Array<{
+    partyId: number;
+    copayerId: string;
+  }>;
+  rounds: Array<Array<{
+    fromPartyId: number;
+    messages: ITssSigMessageObject;
+  }>>;
+  signature?: ITssSigMessageObject['signature'];
+  schemeVersion: number;
+  createdOn: number;
+  timeLimit?: number;
+  __v: number;
+
+
+  static create(params: { id: string; message: ITssSigMessageObject; m: number; copayerId: string; version: number; timeLimit?: number }): TssSigGenModel {
+    const { id, message, m, copayerId, version } = params;
+    const { partyId } = message;
+    const timeLimit = parseFloat(params.timeLimit?.toString());
+    $.checkArgument(!timeLimit || (Number.isFinite(timeLimit) && timeLimit > 0), 'Time limit must be a positive number');
+
+    const MAX_TIME_LIMIT = 7 * 24 * 60; // 7 days in minutes
+    const ONE_MINUTE = 60 * 1000;
+
+    const x = new TssSigGenModel();
+    x.id = id;
+    x.schemeVersion = version || Defaults.TSS_SIGGEN_SCHEME_VERSION;
+    x.createdOn = Date.now();
+    x.timeLimit = (timeLimit === 0
+      ? MAX_TIME_LIMIT
+      : Math.min(timeLimit || Defaults.TSS_SIGGEN_TIME_LIMIT, MAX_TIME_LIMIT)) * ONE_MINUTE;
+    x.m = m;
+    x.participants = [{
+      partyId,
+      copayerId
+    }];
+    x.rounds = [[{
+      fromPartyId: partyId,
+      messages: message
+    }]];
+    x.__v = 0;
+    return x;
+  }
+
+  static fromObj(obj: ITssSigGenModel): TssSigGenModel {
+    const x = new TssSigGenModel();
+    x.id = obj.id;
+    x.schemeVersion = obj.schemeVersion;
+    x.createdOn = obj.createdOn;
+    x.timeLimit = obj.timeLimit;
+    x.m = obj.m;
+    x.participants = obj.participants;
+    x.rounds = obj.rounds;
+    x.signature = obj.signature;
+    x.__v = obj.__v;
+    return x;
+  }
+
+  getCurrentRound(): number {
+    const mostRecentRound = this.rounds.length - 1;
+    if (this.rounds[mostRecentRound].length === this.m) {
+      // If the most recent round is done, return the next round
+      return mostRecentRound + 1;
+    }
+    return mostRecentRound;
+  }
+
+  isExpired(): boolean {
+    if (!this.timeLimit) {
+      return false;
+    }
+    return Date.now() > this.createdOn + this.timeLimit;
+  }
+}

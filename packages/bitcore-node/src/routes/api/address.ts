@@ -2,54 +2,39 @@ import express, { Request } from 'express';
 import logger from '../../logger';
 import { ChainStateProvider } from '../../providers/chain-state';
 import { StreamAddressUtxosParams } from '../../types/namespaces/ChainStateProvider';
+import { logStreamFailure, respondWithError, streamJsonArray } from '../apiUtils';
 
 const router = express.Router({ mergeParams: true });
 
 async function streamCoins(req: Request, res) {
   try {
-    let { chain, network, address } = req.params;
-    let { unspent, limit = 10, since } = req.query;
-    let payload = {
+    const { chain, network, address } = req.params;
+    const { unspent, limit = 10, since } = req.query;
+    const payload = {
       chain,
       network,
       address,
-      req,
-      res,
       args: { ...req.query, unspent, limit, since }
     } as StreamAddressUtxosParams;
-    await ChainStateProvider.streamAddressTransactions(payload);
+    const stream = await ChainStateProvider.streamAddressTransactions(payload);
+    const result = await streamJsonArray(stream, req, res);
+    if (!result.success) {
+      logStreamFailure(result, 'streamAddressTransactions');
+    }
   } catch (err: any) {
     logger.error('Error streaming coins: %o', err.stack || err.message || err);
-    return res.status(500).send(err.message || err);
+    respondWithError(res, err);
   }
 }
 
-router.get('/:address', function (req: Request, res) {
-  try {
-    let { chain, network, address } = req.params;
-    let { unspent, limit = 10, since } = req.query;
-    let payload = {
-      chain,
-      network,
-      address,
-      req,
-      res,
-      args: { unspent, limit, since }
-    } as StreamAddressUtxosParams;
-    return ChainStateProvider.streamAddressUtxos(payload);
-  } catch (err: any) {
-    logger.error('Error getting address: %o', err.stack || err.message || err);
-    return res.status(500).send(err.message || err);
-  }
-});
-
+router.get('/:address', streamCoins);
 router.get('/:address/txs', streamCoins);
 router.get('/:address/coins', streamCoins);
 
 router.get('/:address/balance', async function (req: Request, res) {
-  let { address, chain, network } = req.params;
+  const { address, chain, network } = req.params;
   try {
-    let result = await ChainStateProvider.getBalanceForAddress({
+    const result = await ChainStateProvider.getBalanceForAddress({
       chain,
       network,
       address,
@@ -58,11 +43,11 @@ router.get('/:address/balance', async function (req: Request, res) {
     return res.send(result || { confirmed: 0, unconfirmed: 0, balance: 0 });
   } catch (err: any) {
     logger.error('Error getting address balance: %o', err.stack || err.message || err);
-    return res.status(500).send(err.message || err);
+    return respondWithError(res, err);
   }
 });
 
-module.exports = {
+export const addressRoute = {
   router,
   path: '/address'
 };

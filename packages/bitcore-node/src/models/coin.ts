@@ -32,8 +32,8 @@ export class CoinModel extends BaseModel<ICoin> {
   }
 
   allowedPaging = [
-    { key: 'mintHeight' as 'mintHeight', type: 'number' as 'number' },
-    { key: 'spentHeight' as 'spentHeight', type: 'number' as 'number' }
+    { key: 'mintHeight' as const, type: 'number' as const },
+    { key: 'spentHeight' as const, type: 'number' as const }
   ];
 
   onConnect() {
@@ -66,7 +66,7 @@ export class CoinModel extends BaseModel<ICoin> {
   }
 
   async getBalance(params: { query: any }, options: AggregateOptions = {}) {
-    let { query } = params;
+    const { query } = params;
     const result = await this.collection
       .aggregate<{ _id: string; balance: number }>(
         [
@@ -105,14 +105,13 @@ export class CoinModel extends BaseModel<ICoin> {
   }
 
   async getBalanceAtTime(params: { query: any; time: string; chain: string; network: string }) {
-    let { query, time, chain, network } = params;
+    const { query, time, chain, network } = params;
     const [block] = await BitcoinBlockStorage.collection
       .find({
-        $query: {
-          chain,
-          network,
-          timeNormalized: { $lte: new Date(time) }
-        }
+        // no $query wrapper: the 4.x+ driver (mongodb-legacy) sends a plain filter
+        chain,
+        network,
+        timeNormalized: { $lte: new Date(time) }
       })
       .limit(1)
       .sort({ timeNormalized: -1 })
@@ -131,7 +130,8 @@ export class CoinModel extends BaseModel<ICoin> {
 
   resolveAuthhead(mintTxid: string, chain?: string, network?: string) {
     return this.collection
-      .aggregate<{
+      .aggregate<
+      {
         chain: string;
         network: string;
         authbase: string;
@@ -188,7 +188,7 @@ export class CoinModel extends BaseModel<ICoin> {
       .toArray();
   }
 
-  _apiTransform(coin: Partial<MongoBound<ICoin>>, options?: { object: boolean; confirmations?: number; }): any {
+  _apiTransform(coin: Partial<MongoBound<ICoin>>, options?: { object: boolean; confirmations?: number }): any {
     // try to parse coin.address if its 'false' and script exists
     if (coin.address == 'false' && coin.script != undefined && coin.script.toString() != '') {
       try {
@@ -203,7 +203,7 @@ export class CoinModel extends BaseModel<ICoin> {
           // update coin record in db - do it asynchronously as we don't need to wait for result
           CoinStorage.collection.updateOne({ _id: coin._id }, { $set: { address: coin.address } });
         }
-      } catch (e) {
+      } catch {
         logger.debug(
           `Could not parse address on "${coin.chain}:${coin.network}" for coin ${coin.mintTxid}[${coin.mintIndex}]`
         );
@@ -232,4 +232,4 @@ export class CoinModel extends BaseModel<ICoin> {
     return JSON.stringify(transform);
   }
 }
-export let CoinStorage = new CoinModel();
+export const CoinStorage = new CoinModel();

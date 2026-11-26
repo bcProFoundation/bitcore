@@ -3,7 +3,7 @@ import BN from 'bignumber.js';
 import { BigNumber } from 'bignumber.js';
 import { ChronikClient, TokenInfo as ChronikTokenInfo } from 'chronik-client';
 import _ from 'lodash';
-import { IChain } from '..';
+import { IChain } from '../../../types/chain';
 import config from '../../../config'
 import { BtcChain } from '../btc';
 import { Utils } from '../../common/utils';

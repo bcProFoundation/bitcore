@@ -1,5 +1,5 @@
 export interface CoinJSON {
-  _id: string;
+  _id?: string;
   network: string;
   chain: string;
   mintTxid: string;

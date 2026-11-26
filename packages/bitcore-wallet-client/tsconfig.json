@@ -18,23 +18,14 @@
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "target": "es2015",
-    "typeRoots": [
-      "./node_modules/@types",
-      "../../node_modules/@types"
-    ],
-    "types": [
-      "node"
-    ],
+    "resolveJsonModule": true,
+    "target": "ES2020",
+    "types": ["node", "mocha"],
     "baseUrl": ".",
     "paths": {
       "*": [
         "*",
         "./src/*"
-      ],
-      "@types/node": [
-        "./node_modules/@types/node",
-        "../../node_modules/@types/node"
       ]
     },
     "outDir": "ts_build",
@@ -44,7 +35,7 @@
     "./scripts/**/*.ts",
     "./src/**/*.ts",
     "./tests/**/*.ts",
-    "./test/*.ts"
+    "./test/**/*.ts"
   ],
   "exclude": [
     "node_modules"

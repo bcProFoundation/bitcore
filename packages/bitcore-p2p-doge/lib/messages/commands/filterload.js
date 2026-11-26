@@ -1,12 +1,12 @@
 'use strict';
 
-var Message = require('../message');
-var inherits = require('util').inherits;
-var bitcore = require('@bcpros/bitcore-lib-doge');
-var BufferUtil = bitcore.util.buffer;
-var BloomFilter = require('../../bloomfilter');
-var $ = bitcore.util.preconditions;
-var _ = bitcore.deps._;
+const inherits = require('util').inherits;
+const bitcore = require('@bcpros/bitcore-lib-doge');
+const BloomFilter = require('../../bloomfilter');
+const Message = require('../message');
+
+const BufferUtil = bitcore.util.buffer;
+const $ = bitcore.util.preconditions;
 
 /**
  * Request peer to send inv messages based on a bloom filter
@@ -19,7 +19,7 @@ function FilterloadMessage(arg, options) {
   Message.call(this, options);
   this.command = 'filterload';
   $.checkArgument(
-    _.isUndefined(arg) || arg instanceof BloomFilter,
+    arg == null || arg instanceof BloomFilter,
     'An instance of BloomFilter or undefined is expected'
   );
   this.filter = arg;
@@ -31,7 +31,7 @@ FilterloadMessage.prototype.setPayload = function(payload) {
 };
 
 FilterloadMessage.prototype.getPayload = function() {
-  if(this.filter) {
+  if (this.filter) {
     return this.filter.toBuffer();
   } else {
     return BufferUtil.EMPTY_BUFFER;

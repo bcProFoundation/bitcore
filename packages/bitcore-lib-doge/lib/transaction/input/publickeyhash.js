@@ -1,20 +1,16 @@
 'use strict';
 
 var inherits = require('inherits');
-
-var $ = require('../../util/preconditions');
-var BufferUtil = require('../../util/buffer');
-
 var Hash = require('../../crypto/hash');
-var Input = require('./input');
+var Signature = require('../../crypto/signature');
+var BufferWriter = require('../../encoding/bufferwriter');
+var Script = require('../../script');
+var BufferUtil = require('../../util/buffer');
+var $ = require('../../util/preconditions');
 var Output = require('../output');
 var Sighash = require('../sighash');
-var SighashWitness = require('../sighashwitness');
-var BufferWriter = require('../../encoding/bufferwriter');
-var BufferUtil = require('../../util/buffer');
-var Script = require('../../script');
-var Signature = require('../../crypto/signature');
 var TransactionSignature = require('../signature');
+var Input = require('./input');
 
 /**
  * Represents a special kind of input of PayToPublicKeyHash kind.
@@ -27,9 +23,9 @@ inherits(PublicKeyHashInput, Input);
 
 PublicKeyHashInput.prototype.getRedeemScript = function(publicKey) {
   if (!this.redeemScript) {
-    var redeemScript = Script.buildWitnessV0Out(publicKey);
+    const redeemScript = Script.buildWitnessV0Out(publicKey);
     if (Script.buildScriptHashOut(redeemScript).equals(this.output.script)) {
-      var scriptSig = new Script();
+      const scriptSig = new Script();
       scriptSig.add(redeemScript.toBuffer());
       this.setScript(scriptSig);
       this.redeemScript = redeemScript;
@@ -39,26 +35,36 @@ PublicKeyHashInput.prototype.getRedeemScript = function(publicKey) {
 };
 
 PublicKeyHashInput.prototype.getScriptCode = function(publicKey) {
-  var writer = new BufferWriter();
-  var script;
+  const writer = new BufferWriter();
+  let script;
   if (this.output.script.isScriptHashOut()) {
     script = this.getRedeemScript(publicKey);
   } else {
     script = this.output.script;
   }
-  var scriptBuffer = Script.buildPublicKeyHashOut(script.toAddress()).toBuffer();
+  const scriptBuffer = Script.buildPublicKeyHashOut(script.toAddress()).toBuffer();
   writer.writeVarintNum(scriptBuffer.length);
   writer.write(scriptBuffer);
   return writer.toBuffer();
 };
 
-PublicKeyHashInput.prototype.getSighash = function(transaction, privateKey, index, sigtype) {
-  var scriptCode = this.getScriptCode(privateKey);
-  var satoshisBuffer = this.getSatoshisBuffer();
-  return SighashWitness.sighash(transaction, sigtype, index, scriptCode, satoshisBuffer);
+/**
+ * Get the hash data to sign for this input
+ * @param {Transaction} transaction The transaction to be signed
+ * @param {PublicKey} publicKey Unused for this input type
+ * @param {number} index The index of the input in the transaction input vector
+ * @param {number} sigtype The type of signature, defaults to Signature.SIGHASH_ALL
+ * @returns {Buffer}
+ */
+PublicKeyHashInput.prototype.getSighash = function(transaction, publicKey, index, sigtype) {
+  $.checkState(this.output instanceof Output, 'this.output is not an instance of Output');
+  sigtype = sigtype || Signature.SIGHASH_ALL;
+
+  const sighash = Sighash.sighash(transaction, sigtype, index, this.output.script);
+  // sighash() returns data little endian but it must be signed big endian, hence the reverse
+  return sighash.reverse();
 };
 
-/* jshint maxparams: 5 */
 /**
  * @param {Transaction} transaction - the transaction to be signed
  * @param {PrivateKey} privateKey - the private key with which to sign the transaction
@@ -72,12 +78,9 @@ PublicKeyHashInput.prototype.getSignatures = function(transaction, privateKey, i
   hashData = hashData || Hash.sha256ripemd160(privateKey.publicKey.toBuffer());
   sigtype = sigtype || Signature.SIGHASH_ALL;
 
-  var script;
-  if (this.output.script.isScriptHashOut()) {
-    script = this.getRedeemScript(privateKey.publicKey);
-  } else {
-    script = this.output.script;
-  }
+  const script = this.output.script.isScriptHashOut()
+    ? this.getRedeemScript(privateKey.publicKey)
+    : this.output.script;
 
   if (script && BufferUtil.equals(hashData, script.getPublicKeyHash())) {
     return [new TransactionSignature({

@@ -6,10 +6,10 @@ The `bitcore-p2p-doge` module provides peer-to-peer networking capabilities for 
 
 Peer-to-peer is implemented as a separate module.
 
-For node projects:
+To add to your project, run:
 
 ```sh
-npm install bitcore-p2p-doge --save
+npm install @bcpros/bitcore-p2p-doge
 ```
 
 ## Quick Start

@@ -1,8 +1,8 @@
 # Bitcore Lib Cash
 
-[![NPM Package](https://img.shields.io/npm/v/bitcore-lib-cash.svg?style=flat-square)](https://www.npmjs.org/package/bitcore-lib-cash)
-[![Build Status](https://img.shields.io/travis/bitpay/bitcore-lib-cash.svg?branch=master&style=flat-square)](https://travis-ci.org/bitpay/bitcore-lib-cash)
-[![Coverage Status](https://coveralls.io/repos/github/bitpay/bitcore-lib-cash/badge.svg)](https://coveralls.io/github/bitpay/bitcore-lib-cash)
+[![NPM Package](https://img.shields.io/npm/v/@bcpros/bitcore-lib-cash.svg?style=flat-square)](https://www.npmjs.org/package/@bcpros/bitcore-lib-cash)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/bitpay/bitcore/tree/master.svg?style=shield&task=bitcore-lib-cash)](https://dl.circleci.com/status-badge/redirect/gh/bitpay/bitcore/tree/master)
+[![Coverage Status](https://coveralls.io/repos/github/bitpay/bitcore-lib-cash/badge.svg?branch=master&path=packages/bitcore-lib-cash)](https://coveralls.io/github/bitpay/bitcore-lib-cash)
 
 **A pure and powerful JavaScript Bitcoin *Cash* library.**
 
@@ -17,15 +17,15 @@ Bitcoin cash uses a different `sighash` for transaction signatures. The implemen
 ## Get Started
 
 ```sh
-npm install bitcore-lib-cash
+npm install @bcpros/bitcore-lib-cash
 ```
 
-Adding Bitcore Cash to your app's `package.json`:
+
+Or manually add Bitcore Cash to your app's `package.json`:
 
 ```json
 "dependencies": {
-    "bitcore-lib-cash": "=0.18.0",
-    ...
+    "@bcpros/bitcore-lib-cash": "^11.5.1",
 }
 ```
 
@@ -82,7 +82,7 @@ If you find a security issue, please email security@bitpay.com.
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/bitpay/bitcore/blob/master/Contributing.md) on the main bitcore repo for information about how to contribute.
+See [CONTRIBUTING.md](https://github.com/bitpay/bitcore/blob/master/CONTRIBUTING.md) on the main bitcore repo for information about how to contribute.
 
 ## License
 

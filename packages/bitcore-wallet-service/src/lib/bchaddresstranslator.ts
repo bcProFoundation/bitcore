@@ -1,7 +1,8 @@
-import _ from 'lodash';
+import { BitcoreLib, BitcoreLibCash } from '@bcpros/crypto-wallet-core';
+
 const Bitcore_ = {
-  btc: require('@bcpros/bitcore-lib'),
-  bch: require('@bcpros/bitcore-lib-cash'),
+  btc: BitcoreLib,
+  bch: BitcoreLibCash,
   xec: require('@bcpros/bitcore-lib-xec'),
   xpi: require('@bcpros/bitcore-lib-xpi')
 };
@@ -11,12 +12,12 @@ export class BCHAddressTranslator {
     try {
       new Bitcore_['btc'].Address(address);
       return 'legacy';
-    } catch (e) {
+    } catch {
       try {
         const a = new Bitcore_['bch'].Address(address);
         if (a.toLegacyAddress() == address) return 'copay';
         return 'cashaddr';
-      } catch (e) {
+      } catch {
         return;
       }
     }
@@ -25,7 +26,7 @@ export class BCHAddressTranslator {
   // Supports 3 formats:  legacy (1xxx, mxxxx); Copay: (Cxxx, Hxxx), Cashaddr(qxxx);
   static translate(addresses, to, from?) {
     let wasArray = true;
-    if (!_.isArray(addresses)) {
+    if (!Array.isArray(addresses)) {
       wasArray = false;
       addresses = [addresses];
     }
@@ -35,26 +36,24 @@ export class BCHAddressTranslator {
     if (from == to) {
       ret = addresses;
     } else {
-      ret = _.filter(
-        _.map(addresses, x => {
-          const bitcore = Bitcore_[from == 'legacy' ? 'btc' : 'bch'];
-          let orig;
+      ret = addresses.map(x => {
+        const bitcore = Bitcore_[from == 'legacy' ? 'btc' : 'bch'];
+        let orig;
 
-          try {
-            orig = new bitcore.Address(x).toObject();
-          } catch (e) {
-            return null;
-          }
+        try {
+          orig = new bitcore.Address(x).toObject();
+        } catch {
+          return null;
+        }
 
-          if (to == 'cashaddr') {
-            return Bitcore_['bch'].Address.fromObject(orig).toCashAddress(true);
-          } else if (to == 'copay') {
-            return Bitcore_['bch'].Address.fromObject(orig).toLegacyAddress();
-          } else if (to == 'legacy') {
-            return Bitcore_['btc'].Address.fromObject(orig).toString();
-          }
-        })
-      );
+        if (to == 'cashaddr') {
+          return Bitcore_['bch'].Address.fromObject(orig).toCashAddress(true);
+        } else if (to == 'copay') {
+          return Bitcore_['bch'].Address.fromObject(orig).toLegacyAddress();
+        } else if (to == 'legacy') {
+          return Bitcore_['btc'].Address.fromObject(orig).toString();
+        }
+      }).filter(x => !!x);
     }
     if (wasArray) return ret;
     else return ret[0];

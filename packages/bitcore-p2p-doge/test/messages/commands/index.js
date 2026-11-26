@@ -1,11 +1,12 @@
 'use strict';
 
-var should = require('chai').should();
-var expect = require('chai').expect;
-var P2P = require('../../../');
-var Messages = P2P.Messages;
-var sinon = require('sinon');
-var bitcore = require('@bcpros/bitcore-lib-doge');
+const should = require('chai').should();
+const expect = require('chai').expect;
+const P2P = require('../../../');
+const sinon = require('sinon');
+const bitcore = require('@bcpros/bitcore-lib-doge');
+
+const Messages = P2P.Messages;
 
 describe('Command Messages', function() {
 
@@ -34,11 +35,11 @@ describe('Command Messages', function() {
 
     it('should accept a transaction instance as an argument', function() {
       var message = messages.Alert({
-        payload: new Buffer('abcdef', 'hex'),
-        signature: new Buffer('123456', 'hex')
+        payload: Buffer.from('abcdef', 'hex'),
+        signature: Buffer.from('123456', 'hex')
       });
-      message.payload.should.deep.equal(new Buffer('abcdef', 'hex'));
-      message.signature.should.deep.equal(new Buffer('123456', 'hex'));
+      message.payload.should.deep.equal(Buffer.from('abcdef', 'hex'));
+      message.signature.should.deep.equal(Buffer.from('123456', 'hex'));
     });
 
   });
@@ -88,7 +89,7 @@ describe('Command Messages', function() {
 
     it('should error if nonce buffer has invalid length', function() {
       (function() {
-        var message = messages.Pong(new Buffer(Array(9)));
+        var message = messages.Pong(Buffer.from(Array(9)));
       }).should.throw('First argument is expected to be an 8 byte buffer');
     });
 
@@ -110,7 +111,7 @@ describe('Command Messages', function() {
 
     it('should error if nonce buffer has invalid length', function() {
       (function() {
-        var message = messages.Ping(new Buffer(Array(9)));
+        var message = messages.Ping(Buffer.from(Array(9)));
       }).should.throw('First argument is expected to be an 8 byte buffer');
     });
 
@@ -270,7 +271,7 @@ describe('Command Messages', function() {
         message: 'tx',
         ccode: 0x01,
         reason: 'transaction is malformed',
-        data: new Buffer('12345678901234567890123456789012', 'hex')
+        data: Buffer.from('12345678901234567890123456789012', 'hex')
       });
       message.message.should.equal('tx');
       message.ccode.should.equal(0x01);
@@ -289,7 +290,7 @@ describe('Command Messages', function() {
         message: 'tx',
         ccode: 0x01,
         reason: 'transaction is malformed',
-        data: new Buffer('12345678901234567890123456789012', 'hex')
+        data: Buffer.from('12345678901234567890123456789012', 'hex')
       });
       var payload = message.getPayload();
       message = messages.Reject();

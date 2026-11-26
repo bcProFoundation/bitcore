@@ -1,21 +1,19 @@
 'use strict';
 
-var _ = require('lodash');
-var bs58 = require('bs58');
-var buffer = require('buffer');
+const bs58 = require('bs58');
 
-var ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'.split('');
+const ALPHABET = new Set('123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz');
 
-var Base58 = function Base58(obj) {
+const Base58 = function Base58(obj) {
   /* jshint maxcomplexity: 8 */
   if (!(this instanceof Base58)) {
     return new Base58(obj);
   }
   if (Buffer.isBuffer(obj)) {
-    var buf = obj;
+    const buf = obj;
     this.fromBuffer(buf);
   } else if (typeof obj === 'string') {
-    var str = obj;
+    const str = obj;
     this.fromString(str);
   } else if (obj) {
     this.set(obj);
@@ -23,10 +21,28 @@ var Base58 = function Base58(obj) {
 };
 
 Base58.validCharacters = function validCharacters(chars) {
-  if (buffer.Buffer.isBuffer(chars)) {
+  if (Buffer.isBuffer(chars)) {
     chars = chars.toString();
   }
-  return _.every(_.map(chars, function(char) { return _.includes(ALPHABET, char); }));
+  // Backwards compat: lodash _.map(null/undefined) yields [], _.every([]) is true.
+  if (chars == null) {
+    return true;
+  }
+  const length = chars.length;
+  // is array-like
+  if (
+    typeof chars !== 'function' &&
+    Number.isSafeInteger(length) &&
+    length >= 0
+  ) {
+    for (let i = 0; i < length; i++) {
+      if (!ALPHABET.has(chars[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return Object.values(Object(chars)).every(char => ALPHABET.has(char));
 };
 
 Base58.prototype.set = function(obj) {
@@ -35,7 +51,7 @@ Base58.prototype.set = function(obj) {
 };
 
 Base58.encode = function(buf) {
-  if (!buffer.Buffer.isBuffer(buf)) {
+  if (!Buffer.isBuffer(buf)) {
     throw new Error('Input should be a buffer');
   }
   return bs58.encode(buf);
@@ -54,7 +70,7 @@ Base58.prototype.fromBuffer = function(buf) {
 };
 
 Base58.prototype.fromString = function(str) {
-  var buf = Base58.decode(str);
+  const buf = Base58.decode(str);
   this.buf = buf;
   return this;
 };

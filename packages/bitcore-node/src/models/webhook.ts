@@ -27,7 +27,7 @@ export class WebhookModel extends BaseModel<IWebhook> {
     this.collection.createIndex({ chain: 1, network: 1, source: 1 }, { background: true });
   }
 
-  getTail(params: { chain: string; network: string; }) {
+  getTail(params: { chain: string; network: string }) {
     const { chain, network } = params;
 
     const MINUTE = 1000 * 60;
@@ -46,7 +46,7 @@ export class WebhookModel extends BaseModel<IWebhook> {
 
   setProcessed(params: { webhook?: IWebhook; webhookId?: ObjectId | string }) {
     const { webhook, webhookId } = params;
-    const id = webhook?._id || webhookId;
+    const id = webhook?._id || (typeof webhookId === 'string' ? new ObjectId(webhookId) : webhookId);
     if (!id) {
       throw new Error('No webhook id given to clear');
     }
@@ -54,4 +54,4 @@ export class WebhookModel extends BaseModel<IWebhook> {
   }
 }
 
-export let WebhookStorage = new WebhookModel();
+export const WebhookStorage = new WebhookModel();

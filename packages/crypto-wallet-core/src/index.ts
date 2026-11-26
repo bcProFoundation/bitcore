@@ -6,8 +6,14 @@ import * as BitcoreLibXec from '@bcpros/bitcore-lib-xec';
 import * as BitcoreLibXpi from '@bcpros/bitcore-lib-xpi';
 import { Constants } from './constants';
 import Deriver from './derivation';
+import Message from './message';
 import Transactions from './transactions';
+import * as Utils from './utils';
 import Validation from './validation';
+
+export type * as Types from './types';
+
+
 export {
   BitcoreLib,
   BitcoreLibCash,
@@ -16,7 +22,9 @@ export {
   BitcoreLibXec,
   BitcoreLibLtc,
   Deriver,
+  Message,
   Transactions,
   Validation,
-  Constants
+  Constants,
+  Utils
 };

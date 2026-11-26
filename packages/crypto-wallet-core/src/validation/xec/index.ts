@@ -1,4 +1,4 @@
-import { IValidation } from '..';
+import type { IValidation } from '../../types/validation';
 const BitcoreXec = require('@bcpros/bitcore-lib-xec');
 
 export class XecValidation implements IValidation {

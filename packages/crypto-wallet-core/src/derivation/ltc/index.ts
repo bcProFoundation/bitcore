@@ -1,5 +1,6 @@
-const BitcoreLibLtc = require('@bcpros/bitcore-lib-ltc');
+import BitcoreLibLtc from '@bcpros/bitcore-lib-ltc';
 import { AbstractBitcoreLibDeriver } from '../btc';
+
 export class LtcDeriver extends AbstractBitcoreLibDeriver {
   bitcoreLib = BitcoreLibLtc;
 }

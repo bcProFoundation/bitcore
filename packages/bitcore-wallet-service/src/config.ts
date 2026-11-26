@@ -1,8 +1,10 @@
+import fs from 'fs';
+import path from 'path';
 import _ from 'lodash';
 import { logger } from './lib/logger';
 
 const Config = (): any => {
-  let defaultConfig = {
+  const defaultConfig = {
     basePath: '/bws/api',
     disableLogs: false,
     port: 3232,
@@ -16,9 +18,9 @@ const Config = (): any => {
     // https: true,
     // privateKeyFile: 'private.pem',
     // certificateFile: 'cert.pem',
-    ////// The following is only for certs which are not
-    ////// trusted by nodejs 'https' by default
-    ////// CAs like Verisign do not require this
+    // //// The following is only for certs which are not
+    // //// trusted by nodejs 'https' by default
+    // //// CAs like Verisign do not require this
     // CAinter1: '', // ex. 'COMODORSADomainValidationSecureServerCA.crt'
     // CAinter2: '', // ex. 'COMODORSAAddTrustCA.crt'
     // CAroot: '', // ex. 'AddTrustExternalCARoot.crt'
@@ -147,6 +149,25 @@ const Config = (): any => {
           url: 'https://api-eth.bitcore.io'
         }
       },
+      arc: {
+        livenet: {
+          url: 'https://api-eth.bitcore.io'
+        },
+        testnet: {
+          url: 'https://api-eth.bitcore.io'
+        }
+      },
+      sol: {
+        livenet: {
+          url: 'https://api-sol.bitcore.io'
+        },
+        testnet: {
+          url: 'https://api-sol.bitcore.io'
+        },
+        devnet: {
+          url: 'https://api-sol.bitcore.io'
+        }
+      },
       socketApiKey: 'socketApiKey'
     },
     pushNotificationsOpts: {
@@ -176,8 +197,103 @@ const Config = (): any => {
     maintenanceOpts: {
       maintenanceMode: false
     },
+    emailOpts: {
+      mailer: 'sendgrid', // Valid options: sendgrid, nodemailer, mailersend
+      sendGridApiKey: process.env.SENDGRID_API_KEY, // Override in bws.config.js or set the env var
+      mailerSendApiKey: process.env.MAILERSEND_API_KEY, // Override in bws.config.js or set the env var
+      from: 'override me in bws.config.js',
+
+      // // nodemailer config
+      // host: 'localhost',
+      // port: 25,
+      // ignoreTLS: true,
+      // subjectPrefix: '[Wallet Service]',
+      // from: 'wallet-service@bitcore.io',
+      // // Note: Prod templates are in a the copay-emails repo (https://github.com/bitpay/copay-emails)
+      // templatePath: 'templates',
+      // defaultLanguage: 'en',
+      // defaultUnit: 'btc',
+      // publicTxUrlTemplate: {
+      //   btc: {
+      //     livenet: 'https://bitpay.com/insight/#/BTC/mainnet/tx/{{txid}}',
+      //     testnet: 'https://bitpay.com/insight/#/BTC/testnet/tx/{{txid}}',
+      //   },
+      //   bch: {
+      //     livenet: 'https://bitpay.com/insight/#/BCH/mainnet/tx/{{txid}}',
+      //     testnet: 'https://bitpay.com/insight/#/BCH/testnet/tx/{{txid}}',
+      //   },
+      //   eth: {
+      //     livenet: 'https://etherscan.io/tx/{{txid}}',
+      //     testnet: 'https://kovan.etherscan.io/tx/{{txid}}',
+      //   },
+      //   xrp: {
+      //     livenet: 'https://xrpscan.com/tx/{{txid}}',
+      //     testnet: 'https://test.bithomp.com/explorer//tx/{{txid}}',
+      //   },
+      //   doge: {
+      //     livenet: 'https://blockchair.com/dogecoin/transaction/{{txid}}',
+      //     testnet: 'https://sochain.com/tx/DOGETEST/{{txid}}',
+      //   },
+      //   ltc: {
+      //     livenet: 'https://bitpay.com/insight/#/LTC/mainnet/tx/{{txid}}',
+      //     testnet: 'https://bitpay.com/insight/#/LTC/testnet/tx/{{txid}}',
+      //   }
+      // }
+    },
     services: {
-      buyCrypto: { simplexPromotion202002: false }
+      buyCrypto: {
+        disabled: false,
+        banxa: {
+          disabled: false,
+          removed: false
+        },
+        moonpay: {
+          disabled: false,
+          removed: false
+        },
+        ramp: {
+          disabled: false,
+          removed: false
+        },
+        sardine: {
+          disabled: false,
+          removed: false
+        },
+        simplex: {
+          disabled: false,
+          removed: false
+        },
+        transak: {
+          disabled: false,
+          removed: false
+        }
+      },
+      sellCrypto: {
+        disabled: false,
+        moonpay: {
+          disabled: false,
+          removed: false
+        },
+        simplex: {
+          disabled: false,
+          removed: false
+        }
+      },
+      swapCrypto: {
+        disabled: false,
+        changelly: {
+          disabled: false,
+          removed: false
+        },
+        thorswap: {
+          disabled: false,
+          removed: false,
+          // config: {
+          //   affiliateAddress: 'thorname_here',
+          //   affiliateBasisPoints: 'type_number_fee_here'
+          // }
+        }
+      },
     },
     suspendedChains: [],
     staticRoot: '/tmp/static',
@@ -288,7 +404,7 @@ const Config = (): any => {
       minTokenConversion: 0.02
     },
     chronik: {
-      xpiUrl: 'https://chronik01.abcpay.cash/xpi,https://chronik.be.cash/xpi',
+      xpiUrl: process.env.CHRONIK_XPI_URL || 'https://chronik.givelotus.org/xpi',
       xecUrl: 'https://chronik.pay2stay.com/xec,https://chronik.lixi.app/xec'
     },
     emailMerchant: {
@@ -324,10 +440,11 @@ const Config = (): any => {
     // moonpay: {
     //   sandbox: {
     //     apiKey: 'moonpay_sandbox_api_key_here',
-    //     api: 'https://api.moonpay.com',
+    //     api: 'https://api.moonpay.dev',
     //     widgetApi: 'https://buy-sandbox.moonpay.com',
     //     sellWidgetApi: 'https://sell-sandbox.moonpay.com',
     //     secretKey: 'moonpay_sandbox_secret_key_here',
+    //     secretKeyEmbedded: 'moonpay_sandbox_secret_key_embedded_here',
     //   },
     //   production: {
     //     apiKey: 'moonpay_production_api_key_here',
@@ -335,10 +452,11 @@ const Config = (): any => {
     //     widgetApi: 'https://buy.moonpay.com',
     //     sellWidgetApi: 'https://sell.moonpay.com',
     //     secretKey: 'moonpay_production_secret_key_here',
+    //     secretKeyEmbedded: 'moonpay_production_secret_key_embedded_here',
     //   },
     //   sandboxWeb: {
     //     apiKey: 'moonpay_sandbox_web_api_key_here',
-    //     api: 'https://api.moonpay.com',
+    //     api: 'https://api.moonpay.dev',
     //     widgetApi: 'https://buy-sandbox.moonpay.com',
     //     sellWidgetApi: 'https://sell-sandbox.moonpay.com',
     //     secretKey: 'moonpay_sandbox_web_secret_key_here',
@@ -356,21 +474,25 @@ const Config = (): any => {
     //     apiKey: 'ramp_sandbox_api_key_here',
     //     api: 'https://api.demo.ramp.network/api',
     //     widgetApi: 'https://app.demo.ramp.network/',
+    //     signingKey: 'ramp_sandbox_signing_key_here',
     //   },
     //   production: {
     //     apiKey: 'ramp_production_api_key_here',
     //     api: 'https://api.ramp.network/api',
-    //     widgetApi: 'https://app.ramp.network',
+    //     widgetApi: 'https://app.ramp.network/',
+    //     signingKey: 'ramp_production_signing_key_here',
     //   },
     //   sandboxWeb: {
     //     apiKey: 'ramp_sandbox_web_api_key_here',
     //     api: 'https://api.demo.ramp.network/api',
     //     widgetApi: 'https://app.demo.ramp.network/',
+    //     signingKey: 'ramp_sandbox_web_signing_key_here',
     //   },
     //   productionWeb: {
     //     apiKey: 'ramp_production_web_api_key_here',
     //     api: 'https://api.ramp.network/api',
-    //     widgetApi: 'https://app.ramp.network',
+    //     widgetApi: 'https://app.ramp.network/',
+    //     signingKey: 'ramp_production_web_signing_key_here',
     //   }
     // },
     // sardine: {
@@ -399,25 +521,37 @@ const Config = (): any => {
     //   sandbox: {
     //     apiKey: 'simplex_sandbox_api_key_here',
     //     api: 'https://sandbox.test-simplexcc.com',
-    //     appProviderId: 'simplex_provider_id_here'
+    //     apiSell: 'https://sell-checkout-waf.sandbox.test-simplexcc.com',
+    //     appProviderId: 'simplex_provider_id_here',
+    //     appSellRefId: 'simplex_sell_ref_id_here',
+    //     publicKey: 'simplex_sandbox_public_key_here',
     //   },
     //   production: {
     //     apiKey: 'simplex_production_api_key_here',
     //     api: 'https://backend-wallet-api.simplexcc.com',
-    //     appProviderId: 'simplex_provider_id_here'
+    //     apiSell: 'https://sell-checkout-widget.simplex.com',
+    //     appProviderId: 'simplex_provider_id_here',
+    //     appSellRefId: 'simplex_sell_ref_id_here',
+    //     publicKey: 'simplex_public_key_here',
     //   },
     //   sandboxWeb: {
     //     apiKey: 'simplex_sandbox_web_api_key_here',
     //     api: 'https://sandbox.test-simplexcc.com',
-    //     appProviderId: 'bitpaywidget'
+    //     apiSell: 'https://sell-checkout-waf.sandbox.test-simplexcc.com',
+    //     appProviderId: 'simplex_web_provider_id_here',
+    //     appSellRefId: 'simplex_web_sell_ref_id_here',
+    //     publicKey: 'simplex_web_sandbox_public_key_here',
     //   },
     //   productionWeb: {
     //     apiKey: 'simplex_production_web_api_key_here',
     //     api: 'https://backend-wallet-api.simplexcc.com',
-    //     appProviderId: 'simplex_web_provider_id_here'
+    //     apiSell: 'https://sell-checkout-widget.simplex.com',
+    //     appProviderId: 'simplex_web_provider_id_here',
+    //     appSellRefId: 'simplex_web_sell_ref_id_here',
+    //     publicKey: 'simplex_web_public_key_here',
     //   }
     // },
-    // thorswap : {
+    // thorswap: {
     //   sandbox: {
     //     api: 'https://dev-api.thorswap.net',
     //     apiKey: 'thorswap_sandbox_api_key_here',
@@ -431,7 +565,7 @@ const Config = (): any => {
     //     referer: 'thorswap_production_referer_here'
     //   },
     // },
-    // transak : {
+    // transak: {
     //   sandbox: {
     //     api: 'https://api-stg.transak.com',
     //     widgetApi: 'https://global-stg.transak.com',
@@ -455,23 +589,8 @@ const Config = (): any => {
     //     widgetApi: 'https://global.transak.com',
     //     apiKey: 'transak_production_web_api_key_here',
     //     secretKey: 'transak_production_web_secret_key_here',
-    //   }
-    // },
-    // wyre: {
-    //   sandbox: {
-    //     apiKey: 'wyre_sandbox_api_key_here',
-    //     secretApiKey: 'wyre_sandbox_secret_api_key_here',
-    //     api: 'https://api.testwyre.com',
-    //     widgetUrl: 'https://pay.testwyre.com',
-    //     appProviderAccountId: 'wyre_provider_sandbox_account_id_here'
     //   },
-    //   production: {
-    //     apiKey: 'wyre_production_api_key_here',
-    //     secretApiKey: 'wyre_production_secret_api_key_here',
-    //     api: 'https://api.sendwyre.com',
-    //     widgetUrl: 'https://pay.sendwyre.com/',
-    //     appProviderAccountId: 'wyre_provider_production_account_id_here'
-    //   }
+    //   whitelist: []
     // },
     // changelly: {
     //   v1: {
@@ -481,76 +600,78 @@ const Config = (): any => {
     //   },
     //   v2: {
     //     secret: 'changelly_secret_v2',
+    //     secret_stablecoin: 'changelly_secret_stablecoin_v2'
     //     api: 'https://api.changelly.com/v2'
     //   }
     // },
     // oneInch: {
-    //   api: 'https://api.1inch.dev/swap',
+    //   api: 'https://api.1inch.dev',
     //   apiKey: 'one_inch_api_key',
     //   referrerAddress: 'one_inch_referrer_address', // ETH
     //   referrerFee: 'one_inch_referrer_fee', // min: 0; max: 3; (represents percentage)
     // },
     // coinGecko: {
-    //   api: 'https://api.coingecko.com/api',
+    //   api: 'https://pro-api.coingecko.com/api/',
+    //   apiKey: 'coin_gecko_api_key',
     // },
     // moralis: {
     //   apiKey: 'moralis_api_key_here',
     //   whitelist: []
     // },
-    // To use email notifications uncomment this:
-    // emailOpts: {
-    //  host: 'localhost',
-    //  port: 25,
-    //  ignoreTLS: true,
-    //  subjectPrefix: '[Wallet Service]',
-    //  from: 'wallet-service@bitcore.io',
-    //  // Note: Prod templates are in a the copay-emails repo (https://github.com/bitpay/copay-emails)
-    //  templatePath: 'templates',
-    //  defaultLanguage: 'en',
-    //  defaultUnit: 'btc',
-    //  publicTxUrlTemplate: {
-    //   btc: {
-    //     livenet: 'https://bitpay.com/insight/#/BTC/mainnet/tx/{{txid}}',
-    //     testnet: 'https://bitpay.com/insight/#/BTC/testnet/tx/{{txid}}',
-    //   },
-    //   bch: {
-    //     livenet: 'https://bitpay.com/insight/#/BCH/mainnet/tx/{{txid}}',
-    //     testnet: 'https://bitpay.com/insight/#/BCH/testnet/tx/{{txid}}',
-    //   },
-    //   eth: {
-    //     livenet: 'https://etherscan.io/tx/{{txid}}',
-    //     testnet: 'https://kovan.etherscan.io/tx/{{txid}}',
-    //   },
-    //   xrp: {
-    //     livenet: 'https://xrpscan.com/tx/{{txid}}',
-    //     testnet: 'https://test.bithomp.com/explorer//tx/{{txid}}',
-    //   },
-    //   doge: {
-    //     livenet: 'https://blockchair.com/dogecoin/transaction/{{txid}}',
-    //     testnet: 'https://sochain.com/tx/DOGETEST/{{txid}}',
-    //  },
-    //   ltc: {
-    //     livenet: 'https://bitpay.com/insight/#/LTC/mainnet/tx/{{txid}}',
-    //     testnet: 'https://bitpay.com/insight/#/LTC/testnet/tx/{{txid}}',
-    //  }
-    // },
-    // },
-    // To use sendgrid:
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    //
-    //
-    // //then add:
-    // mailer: sgMail,
   };
 
   // Override default values with bws.config.js' values, if present
+  const {
+    BITCORE_CONFIG_PATH = path.join(__dirname, '../../../../'),
+    BWS_CONFIG_PATH = path.join(__dirname, '../../')
+  } = process.env;
+  
+  let bwsConfig;
+
   try {
-    const bwsConfig = require('../bws.config');
-    defaultConfig = _.merge(defaultConfig, bwsConfig);
-  } catch {
-    logger.info('bws.config.js not found, using default configuration values');
+    if (BITCORE_CONFIG_PATH) {
+      if (fs.existsSync(path.join(BITCORE_CONFIG_PATH, 'bitcore.config.json'))) {
+        bwsConfig = JSON.parse(fs.readFileSync(path.join(BITCORE_CONFIG_PATH, 'bitcore.config.json'), 'utf8'));
+      } else if (fs.existsSync(BITCORE_CONFIG_PATH) && BITCORE_CONFIG_PATH.endsWith('.json')) {
+        bwsConfig = JSON.parse(fs.readFileSync(BITCORE_CONFIG_PATH, 'utf8'));
+      }
+      bwsConfig = bwsConfig?.bitcoreWalletService;
+      if (bwsConfig) {
+        logger.info(`Using JSON config from ${BITCORE_CONFIG_PATH}`);
+      }
+    }
+
+    if (!bwsConfig && BWS_CONFIG_PATH) {
+      if (fs.existsSync(path.join(BWS_CONFIG_PATH, 'bws.config.js'))) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        bwsConfig = require(path.join(BWS_CONFIG_PATH, 'bws.config.js'));
+      } else if (fs.existsSync(BWS_CONFIG_PATH) && BWS_CONFIG_PATH.endsWith('.js')) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        bwsConfig = require(BWS_CONFIG_PATH);
+      }
+      if (bwsConfig) {
+        logger.info(`Using JS config from ${BWS_CONFIG_PATH}`);
+      }
+    }
+    
+    if (!bwsConfig) {
+      logger.info('No config file found. Using default configuration values');
+    }
+
+    bwsConfig = _.merge(defaultConfig, bwsConfig);
+  } catch (err) {
+    throw new Error('Error loading config file:\n' + err.stack);
   }
+
+  if (process.env.SENDGRID_API_KEY) {
+    // override the config value in bws.config.js with env var
+    defaultConfig.emailOpts.sendGridApiKey = process.env.SENDGRID_API_KEY;
+  }
+  if (process.env.MAILERSEND_API_KEY) {
+    // override the config value in bws.config.js with env var
+    defaultConfig.emailOpts.mailerSendApiKey = process.env.MAILERSEND_API_KEY;
+  }
+
   return defaultConfig;
 };
 

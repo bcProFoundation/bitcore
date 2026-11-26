@@ -1,4 +1,4 @@
-import { Document } from 'mongodb-legacy';
+import { Filter } from 'mongodb-legacy';
 import { StorageService } from '../services/storage';
 import { IBlock } from '../types/Block';
 import { ChainNetwork } from '../types/ChainNetwork';
@@ -12,8 +12,8 @@ export abstract class BaseBlock<T extends IBlock> extends BaseModel<T> {
 
   allowedPaging = [
     {
-      key: 'height' as 'height',
-      type: 'number' as 'number'
+      key: 'height' as const,
+      type: 'number' as const
     }
   ];
 
@@ -31,19 +31,19 @@ export abstract class BaseBlock<T extends IBlock> extends BaseModel<T> {
   }
 
   async getLocalTip({ chain, network }) {
-    const tip = await this.collection.findOne<IBlock>({ chain, network, processed: true }, { sort: { height: -1 } });
-    return tip;
+    const tip = await this.collection.findOne({ chain, network, processed: true } as Filter<MongoBound<T>>, { sort: { height: -1 } });
+    return tip as unknown as IBlock;
   }
 
   public async validateLocatorHashes(params: ChainNetwork) {
     const { chain, network } = params;
-    let headers = new Array<IBlock>();
+    const headers = new Array<IBlock>();
     const locatorBlocks = await this.collection
       .find<IBlock>({
         processed: true,
         chain,
         network
-      })
+      } as Filter<MongoBound<T>>)
       .sort({ height: -1 })
       .limit(100)
       .project({ hash: 1, previousBlockHash: 1, nextBlockHash: 1 })

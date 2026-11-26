@@ -6,10 +6,11 @@
   "main": "index.js",
   "scripts": {
     "test": "gulp test",
-    "test:ci": "npm run test",
-    "coverage": "gulp coverage",
     "build": "gulp",
-    "pub": "npm run build && npm publish"
+    "pub": "pnpm run build && npm publish",
+    "prepack": "gulp browser:compressed",
+    "test:ci": "npm run test",
+    "coverage": "gulp coverage"
   },
   "contributors": [
     {
@@ -23,7 +24,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/bitpay/bitcore-mnemonic.git"
+    "url": "https://github.com/bitpay/bitcore/tree/master/packages/bitcore-mnemonic"
   },
   "keywords": [
     "bitcoin",
@@ -46,11 +47,17 @@
     "@bcpros/bitcore-lib": "workspace:*",
     "unorm": "^1.4.1"
   },
+  "gitHead": "012cc0216a9bc6b195035855bd17149bad41acd1",
+  "files": [
+    "index.js",
+    "lib",
+    "bitcore-mnemonic.js",
+    "bitcore-mnemonic.min.js"
+  ],
   "peerDependencies": {
     "@bcpros/bitcore-lib": "*"
   },
   "publishConfig": {
     "access": "public"
-  },
-  "gitHead": "169e28b0b13c25c386faccf38a2fdc4e1275a5db"
+  }
 }

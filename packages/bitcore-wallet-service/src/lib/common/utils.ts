@@ -1,27 +1,119 @@
-import * as CWC from '@bcpros/crypto-wallet-core';
+import {
+  BitcoreLib,
+  BitcoreLibCash,
+  BitcoreLibDoge,
+  BitcoreLibLtc,
+  Constants as CWConstants,
+  Transactions
+} from '@bcpros/crypto-wallet-core';
 import _ from 'lodash';
+import { singleton } from 'preconditions';
+import secp256k1 from 'secp256k1';
 import Config from '../../config';
 import { logger } from '../logger';
 import { Constants } from './constants';
+import { Defaults } from './defaults';
+import type { IChain } from '../../types/chain';
+import type { TxProposal } from '../model/txproposal';
 
-const $ = require('preconditions').singleton();
-const bitcore = require('@bcpros/bitcore-lib');
-const crypto = bitcore.crypto;
-const secp256k1 = require('secp256k1');
-const Bitcore = require('@bcpros/bitcore-lib');
+const $ = singleton();
 const Bitcore_ = {
-  btc: Bitcore,
-  bch: require('@bcpros/bitcore-lib-cash'),
+  btc: BitcoreLib,
+  bch: BitcoreLibCash,
   xec: require('@bcpros/bitcore-lib-xec'),
-  doge: require('@bcpros/bitcore-lib-doge'),
+  doge: BitcoreLibDoge,
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@bcpros/bitcore-lib-ltc')
+  ltc: BitcoreLibLtc
 };
 
 export const Utils = {
 
-  isObject(obj) {
-    return obj && typeof obj === 'object' && !Array.isArray(obj);
+  /**
+   * txp.prePublishRaw as a list of raw transactions, or null when it isn't one. An empty list is truthy and
+   * hashes to nothing, so without this the value reaches the tx provider and fails as a thrown error rather
+   * than a refused check. Mirrors the client-side Verifier helper so both ends agree on a usable fallback.
+   *
+   * @param txp - the transaction proposal
+   */
+  prePublishRawParts(txp: TxProposal<any>): string[] | null {
+    if (!txp?.prePublishRaw) {
+      return null;
+    }
+    const parts = Array.isArray(txp.prePublishRaw) ? txp.prePublishRaw : [txp.prePublishRaw];
+    if (!parts.length || parts.some(raw => !raw || typeof raw !== 'string')) {
+      return null;
+    }
+    return parts;
+  },
+
+  /**
+   * Shared implementation of IChain.isPrePublishRawBound for account-based chains (SVM/EVM/XRP). True only if
+   * txp.prePublishRaw is the same transaction as the current proposal, differing solely in the field BWS
+   * mutates at publish (blockhash on SVM, nonce on EVM/XRP). Recovers that field from prePublishRaw, rebuilds
+   * the proposal via the chain's own getBitcoreTx, and requires byte-for-byte equality, so a tampered stored
+   * proposal cannot reuse an old, still-valid proposalSignature. Fails closed on any error.
+   *
+   * @param chain - the IChain implementation (provides chain + getBitcoreTx)
+   * @param txp - the transaction proposal (must carry prePublishRaw)
+   */
+  isPrePublishRawBound(chain: IChain, txp: TxProposal<any>): boolean {
+    try {
+      const prePublishRaw = Utils.prePublishRawParts(txp);
+      if (!prePublishRaw) return false;
+      const provider = Transactions.get({ chain: txp.chain }) as any;
+      if (typeof provider?.getMutableFields !== 'function') return false;
+      const mutableFields = provider.getMutableFields(prePublishRaw[0]);
+      if (!mutableFields || Object.values(mutableFields).every(v => v == null)) return false;
+      const cloned = Object.assign(Object.create(Object.getPrototypeOf(txp)), txp, mutableFields);
+      // signed: false to match prePublishRaw, which is captured before any copayer signature exists.
+      const rebuilt = chain.getBitcoreTx(cloned, { signed: false }).uncheckedSerialize();
+      const rebuiltArr = Array.isArray(rebuilt) ? rebuilt : [rebuilt];
+      if (rebuiltArr.length !== prePublishRaw.length) return false;
+      return rebuiltArr.every((raw, i) => raw === prePublishRaw[i]);
+    } catch (err) {
+      logger.warn('prePublishRaw binding check failed for txp %s on %s: %o', txp?.id, txp?.chain, err.stack || err.message || err);
+      return false;
+    }
+  },
+
+  /**
+   * @deprecated
+   * Moved from ChainService to prevent circular dependency
+   */
+  getChain(coin: string): string {
+    try {
+      if (coin === undefined) { // This happens frequently for very old btc wallets/addresses
+        return Defaults.CHAIN;
+      }
+      // TODO add a warning that we are not including chain
+      let normalizedChain = coin.toLowerCase();
+      if (
+        Constants.BITPAY_SUPPORTED_ETH_ERC20[normalizedChain.toUpperCase()] ||
+        !Constants.CHAINS[normalizedChain.toUpperCase()]
+      ) {
+        // default to eth if it's an ETH ERC20 or if we don't know the chain
+        normalizedChain = 'eth';
+      }
+      return normalizedChain;
+    } catch (err) {
+      logger.error(`Error getting chain for coin ${coin}: %o`, err.stack || err.message || err);
+      return Defaults.CHAIN; // coin should always exist but most unit test don't have it -> return btc as default
+    }
+  },
+
+  /**
+   * obj[key], but only if obj has key as an own property. Use it to look up a key that comes from outside
+   * (a request, an API response) so that names like "__proto__" or "constructor" can't resolve to inherited members.
+   */
+  getOwn(obj: any, key: PropertyKey): any {
+    return obj != null && Object.hasOwn(obj, key) ? obj[key] : undefined;
+  },
+
+  /**
+   * True for a non-null, non-array object. Always returns a boolean, never the falsy input itself.
+   */
+  isObject(obj: unknown): obj is Record<string, any> {
+    return typeof obj === 'object' && obj !== null && !Array.isArray(obj);
   },
 
   /**
@@ -32,6 +124,14 @@ export const Utils = {
    */
   isNumber(val) {
     return val != null && !isNaN(val);
+  },
+
+  /**
+   * True for a numeric, non-negative safe integer, excluding negative zero and numeric strings.
+   * Does not enforce JavaScript's array-index limit or an application-specific upper bound.
+   */
+  isCanonicalIndex(value: unknown): value is number {
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && !Object.is(value, -0);
   },
 
   /**
@@ -47,17 +147,17 @@ export const Utils = {
     args = args || [];
     if (!Array.isArray(args)) args = [args];
     if (!Utils.isObject(obj)) return args;
-    const missing = args.filter(arg => !obj.hasOwnProperty(arg));
+    const missing = args.filter(arg => !Object.hasOwn(obj, arg));
     return missing;
   },
 
   /**
    *
-   * @desc rounds a JAvascript number
-   * @param number
+   * @desc rounds a Javascript number
+   * @param {number} number
    * @return {number}
    */
-  strip(number) {
+  strip(number: number): number {
     return parseFloat(number.toPrecision(12));
   },
 
@@ -66,11 +166,19 @@ export const Utils = {
   hashMessage(text, noReverse) {
     $.checkArgument(text);
     const buf = Buffer.from(text);
-    let ret = crypto.Hash.sha256sha256(buf);
+    let ret = BitcoreLib.crypto.Hash.sha256sha256(buf);
     if (!noReverse) {
-      ret = new bitcore.encoding.BufferReader(ret).readReverse();
+      ret = new BitcoreLib.encoding.BufferReader(ret).readReverse();
     }
     return ret;
+  },
+
+  /**
+   * True for a hex-encoded compressed or uncompressed secp256k1 public key that is a point on the curve.
+   * BitcoreLib.PublicKey.isValid alone accepts strings of the wrong length, so the format is checked first.
+   */
+  isValidSecp256k1PublicKey(value: unknown): value is string {
+    return typeof value === 'string' && /^(0[23][0-9a-f]{64}|04[0-9a-f]{128})$/i.test(value) && BitcoreLib.PublicKey.isValid(value);
   },
 
   verifyMessage(message, signature, publicKey) {
@@ -130,7 +238,7 @@ export const Utils = {
   },
 
   formatAmount(satoshis, unit, opts) {
-    const UNITS = Object.entries(CWC.Constants.UNITS).reduce((units, [currency, currencyConfig]) => {
+    const UNITS = Object.entries(CWConstants.UNITS).reduce((units, [currency, currencyConfig]) => {
       units[currency] = {
         toSatoshis: currencyConfig.toSatoshis,
         maxDecimals: currencyConfig.short.maxDecimals,
@@ -163,8 +271,8 @@ export const Utils = {
     }
 
     const u = Object.assign({}, UNITS[unit], opts);
-    var decimals = opts.decimals ? opts.decimals : u;
-    var toSatoshis = opts.toSatoshis ? opts.toSatoshis : u.toSatoshis;
+    const decimals = opts.decimals ? opts.decimals : u;
+    const toSatoshis = opts.toSatoshis ? opts.toSatoshis : u.toSatoshis;
 
     const amount = (satoshis / toSatoshis).toFixed(decimals.maxDecimals);
     return addSeparators(amount, opts.thousandsSeparator || ',', opts.decimalSeparator || '.', decimals.minDecimals);
@@ -254,13 +362,20 @@ export const Utils = {
   },
 
   getIpFromReq(req): string {
+    let ip = '';
     if (req.headers) {
-      if (req.headers['x-forwarded-for']) return req.headers['x-forwarded-for'].split(',')[0];
-      if (req.headers['x-real-ip']) return req.headers['x-real-ip'].split(',')[0];
+      if (req.headers['x-forwarded-for']) {
+        ip = req.headers['x-forwarded-for'].split(',')[0];
+      } else if (req.headers['x-real-ip']) {
+        ip = req.headers['x-real-ip'].split(',')[0];
+      }
     }
-    if (req.ip) return req.ip;
-    if (req.connection && req.connection.remoteAddress) return req.connection.remoteAddress;
-    return '';
+    if (!ip && req.ip) ip = req.ip;
+    if (!ip && req.connection?.remoteAddress) ip = req.connection.remoteAddress;
+
+    if (ip && typeof ip === 'string') ip = ip.trim();
+
+    return ip;
   },
 
   checkValueInCollection(value, collection) {
@@ -272,19 +387,19 @@ export const Utils = {
     try {
       new Bitcore_['btc'].Address(address);
       return 'btc';
-    } catch (e) {
+    } catch {
       try {
         new Bitcore_['bch'].Address(address);
         return 'bch';
-      } catch (e) {
+      } catch {
         try {
           new Bitcore_['doge'].Address(address);
           return 'doge';
-        } catch (e) {
+        } catch {
           try {
             new Bitcore_['ltc'].Address(address);
             return 'ltc';
-          } catch (e) {
+          } catch {
             return;
           }
         }
@@ -312,11 +427,8 @@ export const Utils = {
 
   // Good for going from generic 'testnet' to specific 'testnet3', 'sepolia', etc
   getNetworkName(chain, network) {
-    const aliases = Constants.NETWORK_ALIASES[chain];
-    if (aliases && aliases[network]) {
-      return aliases[network];
-    }
-    return network;
+    const alias = Utils.getOwn(Utils.getOwn(Constants.NETWORK_ALIASES, chain), network);
+    return alias || network;
   },
 
   // Good for going from specific 'testnet3', 'sepolia', etc to generic 'testnet'
@@ -332,9 +444,15 @@ export const Utils = {
       return 'mainnet';
     }
     if (network === 'regtest') {
-       return 'regtest';
+      return 'regtest';
     }
     return 'testnet';
+  },
+
+  getAddressNetworkForDbLookup(address, network) {
+    const generic = Utils.getGenericName(network);
+    if (generic === 'livenet') return address;
+    return `${address}:${generic}`;
   },
 
   castToBool(input: any) {
@@ -346,57 +464,99 @@ export const Utils = {
   },
 
   /**
-   * Sort array by keys
-   * @param {Array<any>} arr Array to be sorted
-   * @param {...string|Array<string>} keys Keys to sort by in order. If a key is an array, it will be treated as a nested key.
+   * Sort array by keys in ascending order
+   * @param {Array<T>} arr Array to be sorted
+   * @param {...(string|string[])} keys Keys to sort by in order. If a key is an array, it will be treated as a nested key.
    *  e.g.: sortAsc(arr, 'a', 'b', ['c', 'd']) will sort by a, then b, then c.d
    * @returns 
    */
-  sortAsc(arr, ...keys) {
-    function transformVals(val1, val2) {
-      if (val1 === undefined) {
-        val1 = '\uFFFF'; // highest possible string value, otherwise 'undefined' < 'xyz'
-      } else if (val1 === null || val1 === false || val1.toString() === 'NaN') {
-        val1 = '0';
-      } else if (val1 === true) {
-        val1 = '1';
+  sortAsc<T = any>(arr: Array<T>, ...keys: (string | string[])[]): Array<T> {
+    function normalizeVal(v) {
+      if (v === undefined) return '\uFFFF'; // highest possible value, sorts last
+      if (v === null || v === false || v?.toString() === 'NaN') return 0;
+      if (v === true) return 1;
+      return v;
+    }
+
+    function compareVals(a, b): number {
+      a = normalizeVal(a);
+      b = normalizeVal(b);
+
+      // Compare bigints directly to avoid loss of precision via Number()
+      if (typeof a === 'bigint' && typeof b === 'bigint') {
+        return a < b ? -1 : a > b ? 1 : 0;
       }
 
-      if (val2 === undefined) {
-        val2 = '\uFFFF'; // highest possible string value, otherwise 'undefined' < 'xyz'
-      } else if (val2 === null || val2 === false || val2.toString() === 'NaN') {
-        val2 = '0';
-      } else if (val2 === true) {
-        val2 = '1';
+      // Numeric comparison for numbers, bigints, and non-empty numeric strings
+      const aIsNumeric = typeof a !== 'string' ? !isNaN(Number(a)) : a.trim() !== '' && !isNaN(Number(a));
+      const bIsNumeric = typeof b !== 'string' ? !isNaN(Number(b)) : b.trim() !== '' && !isNaN(Number(b));
+      if (aIsNumeric && bIsNumeric) {
+        const na = Number(a);
+        const nb = Number(b);
+        return na < nb ? -1 : na > nb ? 1 : 0;
       }
 
-      return [Buffer.from(val1.toString()), Buffer.from(val2.toString())];
-    };
+      // String comparison fallback
+      const sa = String(a);
+      const sb = String(b);
+      return sa < sb ? -1 : sa > sb ? 1 : 0;
+    }
 
     if (!keys.length) {
-      return arr.sort((a, b) => { const [_a, _b] = transformVals(a, b); return _a.compare(_b) });
-    } else if (keys.length === 1 && !Array.isArray(keys[0])) {
-      return arr.sort((a, b) => { const [_a, _b] = transformVals(a[keys[0]], b[keys[0]]); return _a.compare(_b) });
+      return arr.sort((a, b) => compareVals(a, b));
     }
+
     return arr.sort((a, b) => {
-      // compare concatenated strings for multiple key sorting
-      let aVal = '';
-      let bVal = '';
-      for (let k of keys) {
-        const [aTemp, bTemp] = transformVals(
+      for (const k of keys) {
+        const cmp = compareVals(
           Array.isArray(k) ? k.reduce((val, key) => val[key], a) : a[k],
           Array.isArray(k) ? k.reduce((val, key) => val[key], b) : b[k]
         );
-
-        aVal += aTemp.toString();
-        bVal += bTemp.toString();
+        if (cmp !== 0) return cmp;
       }
-      return Buffer.from(aVal).compare(Buffer.from(bVal));
+      return 0;
     });
   },
 
-  sortDesc(arr, ...keys) {
+  /**
+   * Sort array by keys in descending order
+   * @param {Array<T>} arr Array to be sorted
+   * @param {...(string|string[])} keys Keys to sort by in order. If a key is an array, it will be treated as a nested key.
+   *  e.g.: sortDesc(arr, 'a', 'b', ['c', 'd']) will sort by a, then b, then c.d
+   */
+  sortDesc<T = any>(arr: Array<T>, ...keys: (string | string[])[]): Array<T> {
     return Utils.sortAsc(arr, ...keys).reverse();
+  },
+
+  /**
+   * Return a new object with only the specified keys
+   * E.g.: pick({a: 1, b: 2, c: 3, d: 4}, 'a', 'c') => {a: 1, c: 3}
+   * 
+   * Keys can be given as an array
+   * E.g.: pick({a: 1, b: 2, c: 3, d: 4}, ['a', 'c']) => {a: 1, c: 3}
+   * 
+   * Keys are flattened
+   * E.g.: pick({a: 1, b: 2, c: 3, d: 4}, ['a', ['c']], 'd') => {a: 1, c: 3, d: 4}
+   * 
+   * Properties that are defined but nullish will be included on result
+   * E.g.: pick({a: 1, b: 2, c: null, d: undefined}, ['a', 'c', 'd']) => {a: 1, c: null, d: undefined}
+   *
+   * Non-existent properties will not exist on result
+   * E.g.: pick({a: 1, b: 2, c: null, d: 4}, ['a', 'e']) => {a: 1}
+   * @param {Object} obj Object to pick keys from
+   * @param keys Keys to pick from obj
+   * @returns {Object} New object with only the specified keys
+   */
+  pick<T>(obj: T, ...keys): Partial<T> {
+    keys = keys.flat();
+    const retval: Partial<T> = {};
+    if (!obj) return retval;
+    for (const key of keys) {
+      if (Object.hasOwn(obj as object, key)) {
+        retval[key] = obj[key];
+      }
+    }
+    return retval;
   },
 
   /**
@@ -404,7 +564,7 @@ export const Utils = {
    * @param {Array<Array<any, any>>} input e.g. [[a, 1], [b, 2]]
    * @returns {Object} e.g. { a: 1, b: 2 }
    */
-  fromPairs(input) {
+  fromPairs(input: Array<[any, any]>) {
     return input.reduce((map, [k, v]) => {
       map[k] = v;
       return map;
@@ -417,9 +577,42 @@ export const Utils = {
    * @param {Array<any>} [arr2] Elements to remove from arr1 if they exist. If not provided, returns a copy of arr1.
    * @returns 
    */
-  difference(arr1, arr2) {
+  difference(arr1: any, arr2: any) {
     if (!Array.isArray(arr1)) return [];
     if (!Array.isArray(arr2)) arr2 = null;
     return arr1.filter(x => !arr2?.includes(x));
+  },
+
+  /**
+   * Shuffles array using a Fisher-Yates shuffle
+   * @param {Array<any>} array Array to shuffle
+   * @returns New array of shuffled elements
+   */
+  shuffle(array: Array<any>) {
+    const retval = [...array];
+    for (let i = retval.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [retval[i], retval[j]] = [retval[j], retval[i]];
+    }
+    return retval;
+  },
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  },
+
+  convertXPubKeyForNetwork(xPubKey: string, chain: string, network: string) {
+    // Convert named network for non-UTXO chains to generic name (e.g. sepolia -> testnet)
+    network = !Bitcore_[chain] ? Utils.getGenericName(network) : network;
+    const lib = Bitcore_[chain] || BitcoreLib;
+    $.checkArgument(xPubKey, 'xPubKey is required at <convertXPubKeyForNetwork()>');
+    $.checkArgument(chain, 'chain is required at <convertXPubKeyForNetwork()>');
+    $.checkArgument(lib.Networks.get(network), 'invalid network at <convertXPubKeyForNetwork()>: ' + network);
+    const hdPubKeyObj = new lib.HDPublicKey(xPubKey).toObject();
+    hdPubKeyObj.network = network;
+    delete hdPubKeyObj.checksum;
+    delete hdPubKeyObj.xpubkey;
+    const newHdPubKey = lib.HDPublicKey.fromObject(hdPubKeyObj);
+    return newHdPubKey.toString();
   }
-}
+};

@@ -27,6 +27,17 @@ export class ClientError {
     this.name = this.code;
   }
 
+  withMessage(message: string) {
+    return new ClientError(this.code, message, this.messageData);
+  }
+
+  withMessageMaybe(message?: string | any) {
+    if (typeof message === 'string') {
+      return new ClientError(this.code, message, this.messageData);
+    }
+    return this;
+  }
+
   toString() {
     return '<ClientError:' + this.code + ' ' + this.message + '>';
   }

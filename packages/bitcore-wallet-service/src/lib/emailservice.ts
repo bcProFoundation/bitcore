@@ -1,14 +1,12 @@
+import fs from 'fs';
+import { IncomingMessage } from 'http';
+import path from 'path';
+import sgMail from '@sendgrid/mail';
 import * as async from 'async';
 import juice from 'juice';
 import 'source-map-support/register';
-
-import sgMail from '@sendgrid/mail';
-import { Constants as ConstantsCWC } from '@bcpros/crypto-wallet-core';
-import fs from 'fs';
-import { IncomingMessage } from 'http';
 import Mustache from 'mustache';
 import * as nodemailer from 'nodemailer';
-import path from 'path';
 import request from 'request';
 import config from '../config';
 import { Common } from './common';
@@ -202,9 +200,9 @@ export class EmailService {
                       }
                       return reject(data?.body || data);
                     }
-                  )
+                  );
                 });
-              }
+              };
             } else {
               throw new Error('Unknown emailOpts.mailer: ' + opts.emailOpts.mailer);
             }
@@ -224,7 +222,7 @@ export class EmailService {
   }
 
   _getTemplateLanguages(templatePath) {
-    const contents = fs.readdirSync(templatePath, { withFileTypes: true});
+    const contents = fs.readdirSync(templatePath, { withFileTypes: true });
     const langs = contents.filter(item => item.isDirectory()).map(item => item.name);
     return langs;
   }
@@ -325,7 +323,7 @@ export class EmailService {
             unit
           };
         })
-        .filter(p => !!p); // filter out falsy values (e.g. undefined)
+          .filter(p => !!p); // filter out falsy values (e.g. undefined)
 
         return cb(null, recipients);
       });
@@ -340,6 +338,7 @@ export class EmailService {
       xec: 'XEC',
       eth: 'ETH',
       matic: 'MATIC',
+      arc: 'USDC',
       xrp: 'XRP',
       doge: 'DOGE',
       ltc: 'LTC',
@@ -357,6 +356,8 @@ export class EmailService {
       usdt: 'USDT',
       weth: 'WETH',
       'usdc.e': 'USDC.e',
+      sol: 'SOL',
+      xaut: 'XAUT',
     };
 
     const data = JSON.parse(JSON.stringify(notification.data)) as Notification['data'];
@@ -384,7 +385,7 @@ export class EmailService {
       if (firstLine && firstLine.startsWith('{{subjectPrefix}}')) {
         data.title = toTitleCase(firstLine.replace('{{subjectPrefix}}', ''));
       }
-    } catch (err) {
+    } catch {
       const templateName = EMAIL_TYPES[notification.type].filename;
       data.title = toTitleCase(templateName.split('_').join(' '));
     }
@@ -399,7 +400,7 @@ export class EmailService {
       try {
         let unit = recipient.unit.toLowerCase();
         let label = UNIT_LABELS[unit];
-        let opts = {} as any;
+        const opts = {} as any;
         if (data.tokenAddress) {
           const tokenAddress = data.tokenAddress.toLowerCase();
           if (Constants.ETH_TOKEN_OPTS[tokenAddress]) {
@@ -417,17 +418,22 @@ export class EmailService {
           } else if (Constants.BASE_TOKEN_OPTS[tokenAddress]) {
             unit = Constants.BASE_TOKEN_OPTS[tokenAddress].symbol.toLowerCase();
             label = UNIT_LABELS[unit];
+          } else if (Constants.SOL_TOKEN_OPTS[tokenAddress]) {
+            unit = Constants.SOL_TOKEN_OPTS[tokenAddress].symbol.toLowerCase();
+            label = UNIT_LABELS[unit];
           } else {
             let customTokensData;
+            let tokenData;
             try {
               customTokensData = await this.getTokenData(data.address.coin);
-            } catch (error) {
+              tokenData = customTokensData.find(t => t.address === tokenAddress);
+            } catch {
               return cb(new Error('Could not get custom tokens data'));
             }
-            if (customTokensData && customTokensData[tokenAddress]) {
-              unit = customTokensData[tokenAddress].symbol.toLowerCase();
+            if (tokenData) {
+              unit = tokenData.symbol.toLowerCase();
               label = unit.toUpperCase();
-              opts.toSatoshis = 10 ** customTokensData[tokenAddress].decimals;
+              opts.toSatoshis = 10 ** tokenData.decimals;
               opts.decimals = {
                 maxDecimals: 6,
                 minDecimals: 2
@@ -508,7 +514,7 @@ export class EmailService {
         let errStr;
         try {
           errStr = err.toString();
-        } catch (e) { }
+        } catch { /* ignore errors */ }
 
         logger.warn('An error occurred when trying to send email to %o %o', email.to, (errStr || err));
         return cb(err);
@@ -559,7 +565,8 @@ export class EmailService {
   _checkShouldSendEmail(notification: Notification, cb) {
     if (notification.type != 'NewTxProposal') return cb(null, true);
     this.storage.fetchWallet(notification.walletId, (err, wallet) => {
-      return cb(err, wallet.m > 1);
+      // TSS wallets are stored as m=1 but still need other signers
+      return cb(err, wallet && (wallet.m > 1 || !!wallet.tssKeyId));
     });
   }
 
@@ -624,7 +631,7 @@ export class EmailService {
                         this.storage.storeEmail(email, next);
                       });
                     },
-                    err => {
+                    () => {
                       return next();
                     }
                   );
@@ -635,7 +642,7 @@ export class EmailService {
                   let errStr;
                   try {
                     errStr = err.toString();
-                  } catch (e) { }
+                  } catch { /* ignore errors */ }
 
                   logger.warn('An error ocurred generating email notification: %o', errStr || err);
                 }
@@ -648,48 +655,93 @@ export class EmailService {
     });
   }
 
-  private oneInchGetCredentials() {
-    if (!config.oneInch) throw new Error('1Inch missing credentials');
+  private coinGeckoGetCredentials() {
+    if (!config.coinGecko) throw new Error('coinGecko missing credentials');
 
     const credentials = {
-      API: config.oneInch.api,
-      API_KEY: config.oneInch.apiKey,
-      referrerAddress: config.oneInch.referrerAddress,
-      referrerFee: config.oneInch.referrerFee
+      API: config.coinGecko.api,
+      API_KEY: config.coinGecko.apiKey,
     };
 
     return credentials;
   }
 
-  public getTokenData(chain: string) {
+  getTokenData(chain: string): Promise<Array<{
+    chainId: number;
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    logoURI: string;
+  }>> {
     return new Promise((resolve, reject) => {
-      try {
-        const credentials = this.oneInchGetCredentials();
-        // Get mainnet chainId
-        const chainId = ConstantsCWC.EVM_CHAIN_NETWORK_TO_CHAIN_ID[`${chain.toUpperCase()}_mainnet`]
-        this.request(
+      const cacheKey = `cgTokenList:${chain}`;
+      const credentials = this.coinGeckoGetCredentials();
+
+      this.storage.checkAndUseGlobalCache(cacheKey, Defaults.COIN_GECKO_CACHE_DURATION, (err, values, oldvalues) => {
+        if (err) logger.warn('Cache check failed', err);
+        if (values) return resolve(values);
+
+        const assetPlatformMap = {
+          eth: 'ethereum',
+          matic: 'polygon-pos',
+          pol: 'polygon-pos',
+          arb: 'arbitrum-one',
+          base: 'base',
+          op: 'optimistic-ethereum',
+          arc: 'arc',
+          sol: 'solana',
+        };
+
+        const assetId = assetPlatformMap[chain];
+        if (!assetId) return reject(new Error(`Unsupported chain '${chain}'`));
+
+        const URL: string = `${credentials.API}/v3/token_lists/${assetId}/all.json`;
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-cg-pro-api-key': credentials.API_KEY
+        };
+
+        this.request.get(
+          URL,
           {
-            url: `${credentials.API}/v5.2/${chainId}/tokens`,
-            method: 'GET',
-            json: true,
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              Authorization: 'Bearer ' + credentials.API_KEY,
-            }
+            headers,
+            json: true
           },
           (err, data) => {
-            if (err) return reject(err);
-            if (data?.statusCode === 429) {
-              // oneinch rate limit
-              return reject();
+            const tokens = data?.body?.tokens;
+            const status = data?.body?.status;
+            if (err) {
+              logger.warn('An error occured while retrieving the token list', err);
+              if (oldvalues) {
+                logger.warn('Using old cached values');
+                return resolve(oldvalues);
+              }
+              return reject(err.body ?? err);
+            } else if (status?.error_code === 429 && oldvalues) {
+              return resolve(oldvalues);
+            } else {
+              if (!tokens) {
+                if (oldvalues) {
+                  logger.warn('No token list available... using old cached values');
+                  return resolve(oldvalues);
+                }
+                return reject(new Error(`Could not get tokens list. Code: ${status?.error_code}. Error: ${status?.error_message || 'Unknown error'}`));
+              }
+              const updatedTokens = tokens.map(token => {
+                if (token.logoURI?.includes('/thumb/')) {
+                  token.logoURI = token.logoURI.replace('/thumb/', '/large/');
+                }
+                return token;
+              });
+              this.storage.storeGlobalCache(cacheKey, updatedTokens, storeErr => {
+                if (storeErr) logger.warn('Could not cache token list', storeErr);
+                return resolve(updatedTokens);
+              });
             }
-            return resolve(data?.body?.tokens);
-          }
-        );
-      } catch (err) {
-        return reject(err);
-      }
+          });
+      });
     });
   }
 }

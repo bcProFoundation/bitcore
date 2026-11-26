@@ -10,9 +10,9 @@ import { Wallet, AddressTypes } from '../../src/wallet';
 import { utils } from '../../src/utils';
 import { describe, it, before, beforeEach, afterEach, after } from 'mocha';
 
-const { Modules } = require('../../../bitcore-node/build/src/modules');
-const { Api: bcnApi } = require('../../../bitcore-node/build/src/services/api');
-const { Storage: bcnStorage } = require('../../../bitcore-node/build/src/services/storage');
+const { loadModules } = require('../../../../bitcore-node/build/src/modules');
+const { Api: bcnApi } = require('../../../../bitcore-node/build/src/services/api');
+const { Storage: bcnStorage } = require('../../../../bitcore-node/build/src/services/storage');
 
 const should = chai.should();
 const expect = chai.expect;
@@ -38,7 +38,7 @@ describe('Wallet', function() {
       dbPort: process.env.DB_PORT || '27017',
       dbName: process.env.DB_NAME || 'bitcore-client-tests'
     });
-    Modules.loadConfigured();
+    loadModules();
     const httpServer: Server = await bcnApi.start();
     api = supertest(httpServer);
   });
@@ -48,7 +48,7 @@ describe('Wallet', function() {
     await bcnStorage.stop();
   });
   beforeEach(function() {
-    sandbox.stub(request, 'post').callsFake(function(args) {
+    sandbox.stub(request, 'post').callsFake(function(args: any) {
       args.url = args.url.replace('https://api.bitcore.io/api', baseUrl);
       args.url = args.url.replace(baseUrl, '/api');
       const req = api[args.method.toLowerCase()](args.url);

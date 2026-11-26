@@ -1,7 +1,7 @@
 import { BitcoreLibXpi } from '@bcpros/crypto-wallet-core';
 import { ChronikClient } from 'legacy-chronik-client';
 import _ from 'lodash';
-import { IChain } from '..';
+import { IChain } from '../../../types/chain';
 import config from '../../../config'
 import { BtcChain } from '../btc';
 import { Utils } from '../../common/utils';

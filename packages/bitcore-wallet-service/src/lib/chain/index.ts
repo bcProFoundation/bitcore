@@ -1,7 +1,8 @@
 import { ChronikClient } from 'chronik-client';
 import { ChronikClient as LegacyChronikClient } from 'legacy-chronik-client';
+import { IChain } from '../../types/chain';
 import { Common } from '../common';
-import { ITxProposal, IWallet, TxProposal } from '../model';
+import { IWallet, TxProposal } from '../model';
 import { WalletService } from '../server';
 import logger from './../logger';
 import { BchChain } from './bch';
@@ -10,83 +11,17 @@ import { DogeChain } from './doge';
 import { LtcChain } from './ltc';
 import { XecChain } from './xec';
 import { XpiChain } from './xpi';
-import { XrpChain } from './xrp';
 
 const Constants = Common.Constants;
 const Defaults = Common.Defaults;
 
-export interface INotificationData {
-  out: {
-    address: any;
-    amount: any;
-    tokenAddress?: any;
-  };
-  txid: any;
-}
-
-export interface IChain {
-  getWalletBalance(server: WalletService, wallet: IWallet, opts: { coin: string; addresses: string[] } & any, cb);
-  getWalletSendMaxInfo(
-    server: WalletService,
-    wallet: IWallet,
-    opts: {
-      excludeUnconfirmedUtxos: string;
-      returnInputs: string;
-      from: string;
-      feePerKb: number;
-      useProUrl: boolean;
-    } & any,
-    cb
-  );
-  getInputSizeSafetyMargin(opts: any): number;
-  getSizeSafetyMargin(opts: any): number;
-  getDustAmountValue();
-  getTransactionCount(server: WalletService, wallet: IWallet, from: string);
-  getChangeAddress(server: WalletService, wallet: IWallet, opts: { changeAddress: string } & any);
-  checkDust(output: { amount: number; toAddress: string; valid: boolean }, opts: { outputs: any[] } & any);
-  checkScriptOutput(output: { script: string; amount: number; });
-  getFee(server: WalletService, wallet: IWallet, opts: { fee: number; feePerKb: number } & any);
-  getBitcoreTx(txp: TxProposal, opts: { signed: boolean });
-  convertFeePerKb(p: number, feePerKb: number);
-  convertAddressToScriptPayload(coin: string, address: string);
-  sendToken(wallet, mnemonic, tokenId, token, TOKENQTY, etokenAddress);
-  burnToken(wallet, mnemonic, tokenId, TOKENQTY, splitTxId);
-  getLegacyChronikClient();
-  getChronikClient();
-  getTokenInfo(tokenId);
-  checkTx(server: WalletService, txp: ITxProposal);
-  checkTxUTXOs(server: WalletService, txp: ITxProposal, opts: { noCashAddr: boolean } & any, cb);
-  selectTxInputs(server: WalletService, txp: ITxProposal, wallet: IWallet, opts: { utxosToExclude: any[] } & any, cb);
-  checkUtxos(opts: { fee: number; inputs: any[] });
-  checkValidTxAmount(output): boolean;
-  isUTXOChain(): boolean;
-  isSingleAddress(): boolean;
-  supportsMultisig(): boolean;
-  notifyConfirmations(network: string): boolean;
-  addSignaturesToBitcoreTx(
-    tx: string,
-    inputs: any[],
-    inputPaths: any[],
-    signatures: any[],
-    xpub: string,
-    signingMethod?: string
-  );
-  addressToStorageTransform(network: string, address: {}): void;
-  addressFromStorageTransform(network: string, address: {}): void;
-  validateAddress(wallet: IWallet, inaddr: string, opts: { noCashAddr: boolean } & any);
-  onCoin(coin: any): INotificationData | null;
-  onTx(tx: any): INotificationData | null;
-  getReserve(server: WalletService, wallet: IWallet, cb: (err?, reserve?: number) => void);
-}
-
 const chains: { [chain: string]: IChain } = {
   BTC: new BtcChain(),
   BCH: new BchChain(),
-  XRP: new XrpChain(),
   DOGE: new DogeChain(),
+  LTC: new LtcChain(),
   XEC: new XecChain(),
   XPI: new XpiChain(),
-  LTC: new LtcChain()
 };
 
 class ChainProxy {
@@ -100,6 +35,9 @@ class ChainProxy {
    */
   getChain(coin: string): string {
     try {
+      if (coin === undefined) { // This happens frequently for very old btc wallets/addresses
+        return Defaults.CHAIN;
+      }
       // TODO add a warning that we are not including chain
       let normalizedChain = coin.toLowerCase();
       if (
@@ -156,8 +94,12 @@ class ChainProxy {
     return this.get(wallet.chain).getFee(server, wallet, opts);
   }
 
-  getBitcoreTx(txp: TxProposal, opts = { signed: true }) {
+  getBitcoreTx(txp: TxProposal<any>, opts = { signed: true }) {
     return this.get(txp.chain).getBitcoreTx(txp, { signed: opts.signed });
+  }
+
+  isPrePublishRawBound(txp: TxProposal<any>) {
+    return this.get(txp.chain).isPrePublishRawBound(txp);
   }
 
   convertFeePerKb(chain, p, feePerKb) {
@@ -212,6 +154,10 @@ class ChainProxy {
     return this.get(chain).supportsMultisig();
   }
 
+  supportsThresholdsig(chain: string): boolean {
+    return this.get(chain).supportsThresholdsig();
+  }
+
   addSignaturesToBitcoreTx(chain, tx, inputs, inputPaths, signatures, xpub, signingMethod) {
     this.get(chain).addSignaturesToBitcoreTx(tx, inputs, inputPaths, signatures, xpub, signingMethod);
   }
@@ -243,6 +189,10 @@ class ChainProxy {
   getReserve(server: WalletService, wallet: IWallet, cb: (err?, reserve?: number) => void) {
     return this.get(wallet.chain).getReserve(server, wallet, cb);
   }
+
+  refreshTxData(server, txp, opts, cb) {
+    return this.get(txp.chain).refreshTxData(server, txp, opts, cb);
+  }
 }
 
-export let ChainService = new ChainProxy();
+export const ChainService = new ChainProxy();

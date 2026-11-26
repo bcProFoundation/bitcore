@@ -71,6 +71,12 @@ Messages.prototype.parseBuffer = function(dataBuffer) {
 
   dataBuffer.skip(messageLength);
 
+  // Unknown commands are skipped, as full nodes do: newer nodes announce
+  // optional features with messages that older peers simply ignore.
+  if (!this.builder.commands[command]) {
+    return this.parseBuffer(dataBuffer);
+  }
+
   return this._buildFromBuffer(command, payload);
 };
 

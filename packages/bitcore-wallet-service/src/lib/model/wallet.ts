@@ -1,72 +1,86 @@
-import _ from 'lodash';
+import {
+  BitcoreLib,
+  BitcoreLibCash,
+  BitcoreLibDoge,
+  BitcoreLibLtc,
+} from '@bcpros/crypto-wallet-core';
+import { singleton } from 'preconditions';
+import Uuid from 'uuid';
 import config from '../../config';
-import { ChainService } from '../chain/index';
 import { Common } from '../common';
 import logger from '../logger';
 import { Address } from './address';
-import { AddressManager } from './addressmanager';
-import { Copayer } from './copayer';
+import { AddressManager, IAddressManager } from './addressmanager';
+import { Copayer, ICopayer } from './copayer';
 
-const $ = require('preconditions').singleton();
-const Uuid = require('uuid');
+const $ = singleton();
+const { Constants, Defaults, Utils } = Common;
 
-const Constants = Common.Constants,
-  Defaults = Common.Defaults,
-  Utils = Common.Utils;
 const Bitcore = {
-  btc: require('@bcpros/bitcore-lib'),
-  bch: require('@bcpros/bitcore-lib-cash'),
+  btc: BitcoreLib,
+  bch: BitcoreLibCash,
+  eth: BitcoreLib,
+  matic: BitcoreLib,
+  arb: BitcoreLib,
+  base: BitcoreLib,
+  op: BitcoreLib,
+  arc: BitcoreLib,
+  xrp: BitcoreLib,
+  doge: BitcoreLibDoge,
+  ltc: BitcoreLibLtc,
   xec: require('@bcpros/bitcore-lib-xec'),
-  eth: require('@bcpros/bitcore-lib'),
-  xrp: require('@bcpros/bitcore-lib'),
-  doge: require('@bcpros/bitcore-lib-doge'),
   xpi: require('@bcpros/bitcore-lib-xpi'),
-  ltc: require('@bcpros/bitcore-lib-ltc')
+  sol: BitcoreLib,
 };
 
-export interface IWallet {
+export interface IWallet<isSharedT = boolean | (() => boolean)> {
   version: string;
   createdOn: number;
-  id: number;
+  id: string;
   name: string;
   m: number;
   n: number;
   singleAddress: boolean;
   status: string;
   publicKeyRing: Array<{ xPubKey: string; requestPubKey: string }>;
-  hardwareSourcePublicKey: string;
+  hardwareSourcePublicKey?: string;
+  clientDerivedPublicKey?: string;
   addressIndex: number;
-  copayers: string[];
+  copayers: Array<ICopayer>;
   pubKey: string;
   coin: string;
   chain: string;
   network: string;
   derivationStrategy: string;
   addressType: string;
-  addressManager: string;
-  scanStatus: 'error' | 'success';
+  addressManager: IAddressManager;
+  scanStatus?: 'error' | 'success' | 'running';
   beRegistered: boolean; // Block explorer registered
-  beAuthPrivateKey2: string;
-  beAuthPublicKey2: string;
-  nativeCashAddr: boolean;
+  beAuthPrivateKey2?: string;
+  beAuthPublicKey2?: string;
+  nativeCashAddr?: boolean;
   isTestnet?: boolean;
   usePurpose48?: boolean;
   isSlpToken?: boolean;
   isFromRaipay?: boolean;
   isPath899?: boolean;
-}
+  isShared?: isSharedT;
+  tssVersion?: number;
+  tssKeyId?: string;
+};
 
-export class Wallet {
+export class Wallet implements IWallet<() => boolean> {
   version: string;
   createdOn: number;
-  id: number;
+  id: string;
   name: string;
   m: number;
   n: number;
   singleAddress: boolean;
   status: string;
   publicKeyRing: Array<{ xPubKey: string; requestPubKey: string }>;
-  hardwareSourcePublicKey: string;
+  hardwareSourcePublicKey?: string;
+  clientDerivedPublicKey?: string;
   addressIndex: number;
   copayers: Array<Copayer>;
   pubKey: string;
@@ -76,24 +90,48 @@ export class Wallet {
   derivationStrategy: string;
   addressType: string;
   addressManager: AddressManager;
-  scanStatus: 'error' | 'success';
+  scanStatus?: 'error' | 'success' | 'running';
   beRegistered: boolean; // Block explorer registered
-  beAuthPrivateKey2: string;
-  beAuthPublicKey2: string;
-  nativeCashAddr: boolean;
+  beAuthPrivateKey2?: string;
+  beAuthPublicKey2?: string;
+  nativeCashAddr?: boolean;
   isTestnet?: boolean;
   usePurpose48?: boolean;
   isSlpToken?: boolean;
   isFromRaipay?: boolean;
   isPath899?: boolean;
   scanning: boolean;
+  tssVersion: number;
+  tssKeyId: string;
+
   static COPAYER_PAIR_LIMITS = {};
 
-  static create(opts) {
-    opts = opts || {};
+  static create(opts: {
+    id: string;
+    name: string;
+    m: number;
+    n: number;
+    coin: string;
+    chain: string; // chain === coin for stored wallets
+    network: string;
+    pubKey: string;
+    singleAddress: boolean;
+    derivationStrategy: string;
+    addressType: string;
+    nativeCashAddr?: boolean;
+    usePurpose48?: boolean;
+    hardwareSourcePublicKey?: string;
+    clientDerivedPublicKey?: string;
+    tssVersion?: number;
+    tssKeyId?: string;
+    isSlpToken?: boolean;
+    isFromRaipay?: boolean;
+    isPath899?: boolean;
+  }) {
+    opts = opts || {} as any;
 
     const chain = opts.chain || opts.coin;
-    let x = new Wallet();
+    const x = new Wallet();
 
     $.shouldBeNumber(opts.m);
     $.shouldBeNumber(opts.n);
@@ -113,7 +151,7 @@ export class Wallet {
     x.copayers = [];
     x.pubKey = opts.pubKey;
     x.coin = opts.coin;
-    x.chain = opts.chain || ChainService.getChain(x.coin);
+    x.chain = opts.chain || Utils.getChain(x.coin);
     x.network = opts.network;
     x.derivationStrategy = opts.derivationStrategy || Constants.DERIVATION_STRATEGIES.BIP45;
     x.addressType = opts.addressType || Constants.SCRIPT_TYPES.P2SH;
@@ -133,15 +171,22 @@ export class Wallet {
     x.beAuthPublicKey2 = null;
 
     // x.nativeCashAddr opts is only for testing
-    x.nativeCashAddr = _.isUndefined(opts.nativeCashAddr) ? (x.chain == 'bch' ? true : null) : opts.nativeCashAddr;
+    x.nativeCashAddr = opts.nativeCashAddr == null ? (x.chain == 'bch' ? true : null) : opts.nativeCashAddr;
 
     // hardware wallet related
     x.hardwareSourcePublicKey = opts.hardwareSourcePublicKey;
+    // client derived
+    x.clientDerivedPublicKey = opts.clientDerivedPublicKey;
+
+    // Threshold signatures
+    x.tssVersion = opts.tssVersion;
+    x.tssKeyId = opts.tssKeyId;
+
     return x;
   }
 
   static fromObj(obj: IWallet) {
-    let x = new Wallet();
+    const x = new Wallet();
 
     $.shouldBeNumber(obj.m);
     $.shouldBeNumber(obj.n);
@@ -155,12 +200,10 @@ export class Wallet {
     x.singleAddress = !!obj.singleAddress;
     x.status = obj.status;
     x.publicKeyRing = obj.publicKeyRing;
-    x.copayers = _.map(obj.copayers, copayer => {
-      return Copayer.fromObj(copayer);
-    });
+    x.copayers = (obj.copayers || []).map(copayer => Copayer.fromObj(copayer));
     x.pubKey = obj.pubKey;
     x.coin = obj.coin || Defaults.COIN;
-    x.chain = obj.chain || ChainService.getChain(x.coin); // getChain -> backwards compatibility;
+    x.chain = obj.chain || Utils.getChain(x.coin); // getChain -> backwards compatibility;
     x.network = obj.network;
     if (!x.network) {
       x.network = obj.isTestnet ? Utils.getNetworkName(x.chain, 'testnet') : 'livenet';
@@ -181,11 +224,18 @@ export class Wallet {
     x.isSlpToken = !!obj.isSlpToken;
     x.isFromRaipay = !!obj.isFromRaipay;
     x.isPath899 = !!obj.isPath899;
+    // client derived
+    x.clientDerivedPublicKey = obj.clientDerivedPublicKey;
+
+    // Threshold signatures
+    x.tssVersion = obj.tssVersion;
+    x.tssKeyId = obj.tssKeyId;
+
     return x;
   }
 
   toObject() {
-    let x: any = _.cloneDeep(this);
+    const x: IWallet = JSON.parse(JSON.stringify(this));
     x.isShared = this.isShared();
     return x;
   }
@@ -215,14 +265,13 @@ export class Wallet {
   updateBEKeys() {
     $.checkState(this.isComplete(), 'Failed state: wallet incomplete at <updateBEKeys()>');
 
-    const chain = this.chain || ChainService.getChain(this.coin); // getChain -> backwards compatibility
+    const chain = this.chain || Utils.getChain(this.coin); // getChain -> backwards compatibility
     const bitcore = Bitcore[chain];
     const salt = config.BE_KEY_SALT || Defaults.BE_KEY_SALT;
 
-    var seed =
-      _.map(this.copayers, 'xPubKey')
-        .sort()
-        .join('') +
+    let seed = (this.copayers || []).map(c => c.xPubKey)
+      .sort()
+      .join('') +
       Utils.getGenericName(this.network) + // Maintaining compatibility with previous versions
       this.coin +
       salt;
@@ -235,9 +284,7 @@ export class Wallet {
   }
 
   _updatePublicKeyRing() {
-    this.publicKeyRing = _.map(this.copayers, copayer => {
-      return _.pick(copayer, ['xPubKey', 'requestPubKey']);
-    });
+    this.publicKeyRing = (this.copayers || []).map(c => Utils.pick(c, ['xPubKey', 'requestPubKey']) as { xPubKey: string; requestPubKey: string });
   }
 
   addCopayer(copayer) {
@@ -284,13 +331,13 @@ export class Wallet {
     return this.coin === 'bch' && this.addressType === 'P2PKH';
   }
 
-  createAddress(isChange, step, escrowInputs) {
+  createAddress(isChange, step?, escrowInputs?) {
     $.checkState(this.isComplete(), 'Failed state: this.isComplete() at <createAddress()>');
 
     const path = this.addressManager.getNewAddressPath(isChange, step);
     logger.debug('Deriving addr:' + path);
     const scriptType = escrowInputs ? 'P2SH' : this.addressType;
-    const address = Address.derive(
+    return Address.derive(
       this.id,
       scriptType,
       this.publicKeyRing,
@@ -303,11 +350,11 @@ export class Wallet {
       !this.nativeCashAddr,
       escrowInputs,
       this.hardwareSourcePublicKey,
+      this.clientDerivedPublicKey
     );
-    return address;
   }
 
-  /// Only for power scan
+  // Only for power scan
   getSkippedAddress() {
     $.checkState(this.isComplete(), 'Failed state: this.isComplete() at <getSkipeedAddress()>');
 

@@ -5,7 +5,7 @@ const identifier = process.env.LOGGER_IDENTIFIER || 'bws';
 
 export const transport = new winston.transports.DailyRotateFile({
   filename: `${identifier}-%DATE%.log`,
-  handleExceptions: true,
+  handleExceptions: !(process.env.MOCHA_TEST || process.argv.some(a => /mocha/.test(a))),
   maxSize: '40m',
   maxFiles: '14d',
   dirname: './logs',
@@ -46,7 +46,7 @@ export const logger = winston.createLogger({
     })
   ),
   transports: [transport],
-  exceptionHandlers: [new winston.transports.File({ filename: 'exceptions.log', dirname: './logs' })],
+  exceptionHandlers: !(process.env.MOCHA_TEST || process.argv.some(a => /mocha/.test(a))) ? [new winston.transports.File({ filename: 'exceptions.log', dirname: './logs' })] : [],
   exitOnError: false
 });
 
@@ -92,71 +92,79 @@ export function logWithCallStack(level: string, message: string): void {
   logger.log(level, `${message}\nCall Stack:\n${stack}`);
 }
 
-// Error handler for global exceptions
-process.on('uncaughtException', (error) => {
-  const message = typeof error === 'string' ? error : error.message;
-  logger.error({
-    message: `Uncaught Exception: ${message}`,
-    error,
-    timestamp: timestamp()
+// Under mocha the process handlers below would end the logger on the first failing
+// assertion and abort the whole run, so they are only installed outside tests.
+const underTest = !!process.env.MOCHA_TEST || process.argv.some(a => /mocha/.test(a));
+if (!underTest) {
+  // Error handler for global exceptions
+  process.on('uncaughtException', (error) => {
+    const message = typeof error === 'string' ? error : error.message;
+    logger.error({
+      message: `Uncaught Exception: ${message}`,
+      error,
+      timestamp: timestamp()
+    });
+    // Exit the process to allow Docker to restart the container
+    logger.on('finish', () => process.exit(1)); // Ensure logs are flushed
+    logger.end(); // Close transports
   });
-  // Exit the process to allow Docker to restart the container
-  logger.on('finish', () => process.exit(1)); // Ensure logs are flushed
-  logger.end(); // Close transports
-});
 
-// Error handler for unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  const error = reason instanceof Error
-    ? reason
-    : new Error(`Non-error reason: ${String(reason)}`);
+  // Error handler for unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    const error = reason instanceof Error
+      ? reason
+      : new Error(`Non-error reason: ${String(reason)}`);
 
-  // Keep original stack trace for non-Error reasons
-  if (!(reason instanceof Error) && reason && (reason as any).stack) {
-    error.stack = (reason as any).stack;
-  }
-
-  // Extract request details if available
-  let requestDetails = '';
-  if (reason instanceof Error && (reason as any).options) {
-    try {
-      const options = (reason as any).options;
-      requestDetails = `\nRequest Details: ${JSON.stringify({
-        url: options.url || options.uri,
-        method: options.method,
-        host: options.host,
-        timeout: options.timeout
-      }, null, 2)}`;
-    } catch (e) {
-      requestDetails = `\nCould not extract request details: ${e.message}`;
+    // Keep original stack trace for non-Error reasons
+    if (!(reason instanceof Error) && reason && (reason as any).stack) {
+      error.stack = (reason as any).stack;
     }
-  }
 
-  // Log complete error information
-  logger.error(error);
-  logger.info(`Unhandled Promise Rejection: ${error.message}${requestDetails}`);
+    // Extract request details if available
+    let requestDetails = '';
+    if (reason instanceof Error && (reason as any).options) {
+      try {
+        const options = (reason as any).options;
+        requestDetails = `\nRequest Details: ${JSON.stringify({
+          url: options.url || options.uri,
+          method: options.method,
+          host: options.host,
+          timeout: options.timeout
+        }, null, 2)}`;
+      } catch (e) {
+        requestDetails = `\nCould not extract request details: ${e.message}`;
+      }
+    }
 
-  logger.error({
-    message: `Unhandled Promise Rejection: ${error.message}${requestDetails}`,
-    error: {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      code: (error as any).code,
-      // Include the original reason for debugging
-      originalReason: reason !== error ? inspect(reason, { depth: null }) : undefined
-    },
-    callContext: captureCallStack(1),
-    timestamp: timestamp()
+    // Log complete error information
+    logger.error(error);
+    logger.info(`Unhandled Promise Rejection: ${error.message}${requestDetails}`);
+
+    logger.error({
+      message: `Unhandled Promise Rejection: ${error.message}${requestDetails}`,
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        code: (error as any).code,
+        // Include the original reason for debugging
+        originalReason: reason !== error ? inspect(reason, { depth: null }) : undefined
+      },
+      callContext: captureCallStack(1),
+      timestamp: timestamp()
+    });
+    // Exit the process to allow Docker to restart the container
+    logger.on('finish', () => process.exit(1)); // Ensure logs are flushed
+    logger.end(); // Close transports
   });
-  // Exit the process to allow Docker to restart the container
-  logger.on('finish', () => process.exit(1)); // Ensure logs are flushed
-  logger.end(); // Close transports
-});
 
-process.on('SIGTERM', () => {
-  logger.info('Application shutting down...');
-  logger.end(); // Close transports
-});
+  process.on('SIGTERM', () => {
+    logger.info('Application shutting down...');
+    logger.end(); // Close transports
+  });
+}
 
 export default logger;
+
+// Upstream code reads the transports from the logger module.
+export const transports = logger.transports;

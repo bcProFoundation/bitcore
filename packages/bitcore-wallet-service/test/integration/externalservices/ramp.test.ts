@@ -1,0 +1,724 @@
+'use strict';
+
+import * as chai from 'chai';
+import * as sinon from 'sinon';
+import crypto from 'crypto';
+import 'chai/register-should';
+import util from 'util';
+import { WalletService } from '../../../src/lib/server';
+import * as TestData from '../../testdata';
+import helpers from '../helpers';
+import config from '../../../src/config';
+import { ClientError } from '../../../src/lib/errors/clienterror';
+import logger from '../../../src/lib/logger';
+
+const should = chai.should();
+const { privateKey: privDer } = crypto.generateKeyPairSync('ed25519', {
+  publicKeyEncoding: {
+    type: 'spki',
+    format: 'pem',
+  },
+  privateKeyEncoding: {
+    type: 'pkcs8',
+    format: 'der',
+  },
+});
+
+describe('Ramp integration', () => {
+  const sandbox = sinon.createSandbox();
+  let server;
+  let wallet;
+  let fakeRequest;
+  let req;
+  let loggerError: sinon.SinonStub;
+  let loggerWarn: sinon.SinonStub;
+
+  before(async () => {
+    await helpers.before();
+  });
+
+  beforeEach(async () => {
+    config.ramp = {
+      sandbox: {
+        apiKey: 'apiKey1',
+        api: 'api1',
+        widgetApi: 'widgetApi1',
+        signingKey: privDer.toString('base64'),
+      },
+      production: {
+        apiKey: 'apiKey2',
+        api: 'api2',
+        widgetApi: 'widgetApi2',
+        signingKey: privDer.toString('base64'),
+      },
+      sandboxWeb: {
+        apiKey: 'apiKey3',
+        api: 'api3',
+        widgetApi: 'widgetApi3',
+        signingKey: privDer.toString('base64'),
+      },
+      productionWeb: {
+        apiKey: 'apiKey4',
+        api: 'api4',
+        widgetApi: 'widgetApi4',
+        signingKey: privDer.toString('base64'),
+      }
+    };
+
+    fakeRequest = {
+      get: (_url, _opts, _cb) => { return _cb(null, { body: 'data' }); },
+      post: (_url, _opts, _cb) => { return _cb(null, { body: 'data' }); },
+    };
+
+    await helpers.beforeEach();
+    ({ wallet } = await helpers.createAndJoinWallet(1, 1));
+    const priv = TestData.copayers[0].privKey_1H_0;
+    const sig = helpers.signMessage('hello world', priv);
+
+    (server = await util.promisify(WalletService.getInstanceWithAuth).call(WalletService, {
+      // test assumes wallet's copayer[0] is TestData's copayer[0]
+      copayerId: wallet.copayers[0].id,
+      message: 'hello world',
+      signature: sig,
+      clientVersion: 'bwc-2.0.0',
+      walletId: '123',
+    }));
+    loggerWarn = sandbox.stub(logger, 'warn');
+    loggerError = sandbox.stub(logger, 'error');
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  after(async () => {
+    await helpers.after();
+  });
+
+  describe('#rampGetQuote', () => {
+    beforeEach(() => {
+      req = {
+        headers: {},
+        body: {
+          env: 'sandbox',
+          cryptoAssetSymbol: 'BTC_BTC',
+          fiatValue: 50,
+          fiatCurrency: 'USD',
+        }
+      };
+      server.externalServices.ramp.request = fakeRequest;
+    });
+
+    it('should work properly if req is OK', async () => {
+      const data = await server.externalServices.ramp.rampGetQuote(req);
+      should.exist(data);
+    });
+
+    it('should work properly if req is OK for web', async () => {
+      req.body.context = 'web';
+      const data = await server.externalServices.ramp.rampGetQuote(req);
+      should.exist(data);
+    });
+
+    it('should return error if post returns error', async () => {
+      const fakeRequest2 = {
+        post: (_url, _opts, _cb) => { return _cb(new Error('Error'), null); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        loggerError.callCount.should.equal(1);
+        loggerError.args[0][0].should.contain('Ramp request failed with error (');
+        err.message.should.equal('Failed to get Ramp quote');
+      }
+    });
+
+    it('should return error and not leak the response if body is empty', async () => {
+      const fakeRequest2 = {
+        post: (_url, opts, cb) => { return cb(null, { statusCode: 200, body: undefined, request: { headers: opts.headers } }); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp did not return quote data');
+      }
+    });
+
+    it('should return error if there is some missing arguments', async () => {
+      delete req.body.fiatValue;
+      try {
+        await server.externalServices.ramp.rampGetQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp\'s request missing arguments');
+      }
+    });
+
+    it('should return error if ramp is commented in config', async () => {
+      config.ramp = undefined;
+      try {
+        await server.externalServices.ramp.rampGetQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp missing credentials');
+      }
+    });
+  });
+
+  describe('#rampGetSellQuote', () => {
+    beforeEach(() => {
+      req = {
+        headers: {},
+        body: {
+          env: 'sandbox',
+          cryptoAssetSymbol: 'BTC_BTC',
+          cryptoAmount: '10000000',
+          fiatCurrency: 'USD',
+        }
+      };
+      server.externalServices.ramp.request = fakeRequest;
+    });
+
+    it('should work properly if req is OK', async () => {
+      const data = await server.externalServices.ramp.rampGetSellQuote(req);
+      should.exist(data);
+    });
+
+    it('should work properly if req is OK for web', async () => {
+      req.body.context = 'web';
+      const data = await server.externalServices.ramp.rampGetSellQuote(req);
+      should.exist(data);
+    });
+
+    it('should return error if post returns error', async () => {
+      const fakeRequest2 = {
+        post: (_url, _opts, _cb) => { return _cb(new Error('Error'), null); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetSellQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        loggerError.callCount.should.equal(1);
+        loggerError.args[0][0].should.contain('Ramp request failed with error (');
+        err.message.should.equal('Failed to get Ramp sell quote');
+      }
+    });
+
+    it('should return error and not leak the response if body is empty', async () => {
+      const fakeRequest2 = {
+        post: (_url, opts, cb) => { return cb(null, { statusCode: 200, body: undefined, request: { headers: opts.headers } }); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetSellQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp did not return sell quote data');
+      }
+    });
+
+    it('should return error if there is some missing arguments', async () => {
+      delete req.body.cryptoAmount;
+      try {
+        await server.externalServices.ramp.rampGetSellQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp\'s request missing arguments');
+      }
+    });
+
+    it('should return error if ramp is commented in config', async () => {
+      config.ramp = undefined;
+      try {
+        await server.externalServices.ramp.rampGetSellQuote(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp missing credentials');
+      }
+    });
+  });
+
+  describe('#rampGetSignedPaymentUrl', () => {
+    beforeEach(() => {
+      req = {
+        headers: {},
+        body: {
+          env: 'production',
+          flow: 'buy',
+          swapAsset: 'BTC_BTC',
+          swapAmount: '1000000',
+          enabledFlows: 'ONRAMP',
+          defaultFlow: 'ONRAMP',
+          userAddress: 'bitcoin:123123',
+          selectedCountryCode: 'US',
+          defaultAsset: 'BTC_BTC',
+          finalUrl: 'bitpay://ramp',
+        }
+      };
+      server.externalServices.ramp.request = fakeRequest;
+    });
+
+    // ONRAMP (buy) - legacy params sent by older app versions.
+    // The service must translate them into Ramp's new unified search params:
+    //   swapAsset    -> enabledCryptoAssets
+    //   defaultAsset -> outAsset
+    //   swapAmount   -> outAssetValue
+    //   fiatCurrency -> inAsset
+    //   fiatValue    -> inAssetValue
+    it('should get the paymentUrl properly with legacy onramp params', () => {
+      req.body = {
+        env: 'production',
+        flow: 'buy',
+        swapAsset: 'BTC_BTC',
+        swapAmount: '1000000',
+        defaultAsset: 'BTC_BTC',
+        fiatCurrency: 'USD',
+        fiatValue: 50,
+        enabledFlows: 'ONRAMP',
+        defaultFlow: 'ONRAMP',
+        userAddress: 'bitcoin:123123',
+        selectedCountryCode: 'US',
+        finalUrl: 'bitpay://ramp',
+      };
+      const data = server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+      should.exist(data.urlWithSignature);
+      const [base, qs] = data.urlWithSignature.split('?');
+
+      base.should.equal('widgetApi2');
+
+      const params = Object.fromEntries(new URLSearchParams(qs));
+      params.hostApiKey.should.equal('apiKey2');
+      params.selectedCountryCode.should.equal('US');
+      params.finalUrl.should.equal('bitpay://ramp');
+      params.userAddress.should.equal('bitcoin:123123');
+      params.enabledFlows.should.equal('ONRAMP');
+      params.defaultFlow.should.equal('ONRAMP');
+
+      // legacy fields must be translated into the new unified params
+      params.enabledCryptoAssets.should.equal('BTC_BTC');
+      params.outAsset.should.equal('BTC_BTC');
+      params.outAssetValue.should.equal('1000000');
+      params.inAsset.should.equal('USD');
+      params.inAssetValue.should.equal('50');
+
+      // legacy fields must NOT be forwarded to Ramp
+      should.not.exist(params.swapAsset);
+      should.not.exist(params.swapAmount);
+      should.not.exist(params.defaultAsset);
+      should.not.exist(params.fiatCurrency);
+      should.not.exist(params.fiatValue);
+
+      // timestamp must exist and be numeric
+      params.timestamp.should.match(/^\d+$/);
+
+      // signature must exist and not be empty
+      params.signature.should.be.a('string').and.not.equal('');
+    });
+
+    // ONRAMP (buy) - new unified params sent by newer app versions.
+    // They must be forwarded as-is.
+    it('should get the paymentUrl properly with new onramp params', () => {
+      req.body = {
+        env: 'production',
+        flow: 'buy',
+        enabledCryptoAssets: 'BTC_BTC',
+        outAsset: 'BTC_BTC',
+        outAssetValue: '1000000',
+        inAsset: 'USD',
+        inAssetValue: 50,
+        enabledFlows: 'ONRAMP',
+        defaultFlow: 'ONRAMP',
+        userAddress: 'bitcoin:123123',
+        selectedCountryCode: 'US',
+        finalUrl: 'bitpay://ramp',
+      };
+      const data = server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+      should.exist(data.urlWithSignature);
+      const [base, qs] = data.urlWithSignature.split('?');
+
+      base.should.equal('widgetApi2');
+
+      const params = Object.fromEntries(new URLSearchParams(qs));
+      params.hostApiKey.should.equal('apiKey2');
+      params.selectedCountryCode.should.equal('US');
+      params.finalUrl.should.equal('bitpay://ramp');
+      params.userAddress.should.equal('bitcoin:123123');
+      params.enabledFlows.should.equal('ONRAMP');
+      params.defaultFlow.should.equal('ONRAMP');
+      params.enabledCryptoAssets.should.equal('BTC_BTC');
+      params.outAsset.should.equal('BTC_BTC');
+      params.outAssetValue.should.equal('1000000');
+      params.inAsset.should.equal('USD');
+      params.inAssetValue.should.equal('50');
+
+      // timestamp must exist and be numeric
+      params.timestamp.should.match(/^\d+$/);
+
+      // signature must exist and not be empty
+      params.signature.should.be.a('string').and.not.equal('');
+    });
+
+    it('should get the paymentUrl properly if req is OK for web', () => {
+      req.body = {
+        env: 'production',
+        context: 'web',
+        swapAsset: 'BTC_BTC',
+        userAddress: 'bitcoin:123123',
+        selectedCountryCode: 'US',
+        defaultAsset: 'BTC_BTC',
+        finalUrl: 'bitpay://ramp',
+      };
+      const data = server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+      should.exist(data.urlWithSignature);
+      const [base, qs] = data.urlWithSignature.split('?');
+
+      base.should.equal('widgetApi4');
+
+      const params = Object.fromEntries(new URLSearchParams(qs));
+      params.hostApiKey.should.equal('apiKey4');
+      params.selectedCountryCode.should.equal('US');
+      params.finalUrl.should.equal('bitpay://ramp');
+      params.userAddress.should.equal('bitcoin:123123');
+      params.enabledCryptoAssets.should.equal('BTC_BTC');
+      params.outAsset.should.equal('BTC_BTC');
+
+      // timestamp must exist and be numeric
+      params.timestamp.should.match(/^\d+$/);
+
+      // signature must exist and not be empty
+      params.signature.should.be.a('string').and.not.equal('');
+    });
+
+    it('should return error if there is some missing arguments', () => {
+      delete req.body.selectedCountryCode;
+      try {
+        server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp\'s request missing arguments');
+      }
+    });
+
+    it('should return error if ramp is commented in config', () => {
+      config.ramp = undefined;
+
+      try {
+        server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp missing credentials');
+      }
+    });
+
+    // OFFRAMP (sell) - legacy params sent by older app versions.
+    // The service must translate them into Ramp's new unified search params:
+    //   offrampAsset -> enabledCryptoAssets
+    //   defaultAsset -> inAsset
+    //   swapAmount   -> inAssetValue
+    //   fiatCurrency -> outAsset
+    //   fiatValue    -> outAssetValue
+    it('should get the sell paymentUrl properly with legacy offramp params', () => {
+      req.body = {
+        env: 'production',
+        flow: 'sell',
+        offrampAsset: 'BTC_BTC',
+        swapAmount: '1000000',
+        defaultAsset: 'BTC_BTC',
+        fiatCurrency: 'USD',
+        fiatValue: 50,
+        enabledFlows: 'OFFRAMP',
+        defaultFlow: 'OFFRAMP',
+        selectedCountryCode: 'US',
+        useSendCryptoCallback: true,
+        hideExitButton: false,
+      };
+      const data = server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+      should.exist(data.urlWithSignature);
+      const [base, qs] = data.urlWithSignature.split('?');
+      base.should.equal('widgetApi2');
+
+      const params = Object.fromEntries(new URLSearchParams(qs));
+      params.hostApiKey.should.equal('apiKey2');
+      params.selectedCountryCode.should.equal('US');
+      params.enabledFlows.should.equal('OFFRAMP');
+      params.defaultFlow.should.equal('OFFRAMP');
+      params.useSendCryptoCallback.should.equal('true');
+
+      // legacy fields must be translated into the new unified params
+      params.enabledCryptoAssets.should.equal('BTC_BTC');
+      params.inAsset.should.equal('BTC_BTC');
+      params.inAssetValue.should.equal('1000000');
+      params.outAsset.should.equal('USD');
+      params.outAssetValue.should.equal('50');
+
+      // legacy fields must NOT be forwarded to Ramp
+      should.not.exist(params.offrampAsset);
+      should.not.exist(params.swapAmount);
+      should.not.exist(params.defaultAsset);
+      should.not.exist(params.fiatCurrency);
+      should.not.exist(params.fiatValue);
+
+      // timestamp must exist and be numeric
+      params.timestamp.should.match(/^\d+$/);
+
+      // signature must exist and not be empty
+      params.signature.should.be.a('string').and.not.equal('');
+    });
+
+    // OFFRAMP (sell) - new unified params sent by newer app versions.
+    it('should get the sell paymentUrl properly with new offramp params', () => {
+      req.body = {
+        env: 'production',
+        flow: 'sell',
+        enabledCryptoAssets: 'BTC_BTC',
+        inAsset: 'BTC_BTC',
+        inAssetValue: '1000000',
+        outAsset: 'USD',
+        outAssetValue: 50,
+        enabledFlows: 'OFFRAMP',
+        defaultFlow: 'OFFRAMP',
+        selectedCountryCode: 'US',
+        useSendCryptoCallback: true,
+        hideExitButton: false,
+      };
+      const data = server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+      should.exist(data.urlWithSignature);
+      const [base, qs] = data.urlWithSignature.split('?');
+      base.should.equal('widgetApi2');
+
+      const params = Object.fromEntries(new URLSearchParams(qs));
+      params.hostApiKey.should.equal('apiKey2');
+      params.selectedCountryCode.should.equal('US');
+      params.enabledFlows.should.equal('OFFRAMP');
+      params.defaultFlow.should.equal('OFFRAMP');
+      params.useSendCryptoCallback.should.equal('true');
+      params.enabledCryptoAssets.should.equal('BTC_BTC');
+      params.inAsset.should.equal('BTC_BTC');
+      params.inAssetValue.should.equal('1000000');
+      params.outAsset.should.equal('USD');
+      params.outAssetValue.should.equal('50');
+
+      // timestamp must exist and be numeric
+      params.timestamp.should.match(/^\d+$/);
+
+      // signature must exist and not be empty
+      params.signature.should.be.a('string').and.not.equal('');
+    });
+
+    it('should get the sell paymentUrl properly if req is OK for web', () => {
+      req.body = {
+        env: 'production',
+        flow: 'sell',
+        context: 'web',
+        offrampAsset: 'BTC_BTC',
+        swapAmount: '1000000',
+        defaultAsset: 'BTC_BTC',
+        enabledFlows: 'OFFRAMP',
+        defaultFlow: 'OFFRAMP',
+        selectedCountryCode: 'US',
+        useSendCryptoCallback: true,
+        hideExitButton: false,
+      };
+      const data = server.externalServices.ramp.rampGetSignedPaymentUrl(req);
+      should.exist(data.urlWithSignature);
+      const [base, qs] = data.urlWithSignature.split('?');
+      base.should.equal('widgetApi4');
+
+      const params = Object.fromEntries(new URLSearchParams(qs));
+      params.hostApiKey.should.equal('apiKey4');
+      params.selectedCountryCode.should.equal('US');
+      params.enabledFlows.should.equal('OFFRAMP');
+      params.defaultFlow.should.equal('OFFRAMP');
+      params.useSendCryptoCallback.should.equal('true');
+      params.enabledCryptoAssets.should.equal('BTC_BTC');
+      params.inAsset.should.equal('BTC_BTC');
+      params.inAssetValue.should.equal('1000000');
+
+      // timestamp must exist and be numeric
+      params.timestamp.should.match(/^\d+$/);
+
+      // signature must exist and not be empty
+      params.signature.should.be.a('string').and.not.equal('');
+    });
+  });
+
+  describe('#rampGetAssets', () => {
+    beforeEach(() => {
+      req = {
+        headers: {},
+        body: {
+          env: 'sandbox',
+          currencyCode: 'USD',
+        }
+      };
+      server.externalServices.ramp.request = fakeRequest;
+    });
+
+    it('should work properly if req is OK with currencyCode', async () => {
+      const data = await server.externalServices.ramp.rampGetAssets(req);
+      should.exist(data);
+    });
+
+    it('should work properly if req is OK with useIp', async () => {
+      delete req.body.currencyCode;
+      req.body.useIp = true;
+      const data = await server.externalServices.ramp.rampGetAssets(req);
+      should.exist(data);
+    });
+
+    it('should return error if get returns error', async () => {
+      const fakeRequest2 = {
+        get: (_url, _opts, _cb) => { return _cb(new Error('Error'), null); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetAssets(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        loggerError.callCount.should.equal(1);
+        loggerError.args[0][0].should.contain('Ramp request failed with error (');
+        err.message.should.equal('Failed to get Ramp assets');
+      }
+    });
+
+    it('should return error and not leak the response if body is empty', async () => {
+      const fakeRequest2 = {
+        get: (_url, opts, cb) => { return cb(null, { statusCode: 200, body: undefined, request: { headers: opts.headers } }); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetAssets(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp did not return assets data');
+      }
+    });
+
+    it('should return error if Ramp is commented in config', async () => {
+      config.ramp = undefined;
+      try {
+        await server.externalServices.ramp.rampGetAssets(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp missing credentials');
+      }
+    });
+  });
+
+  describe('#rampGetSellTransactionDetails', () => {
+    beforeEach(() => {
+      req = {
+        headers: {},
+        body: {
+          env: 'production',
+          id: 'id1',
+          saleViewToken: 'saleViewToken1',
+        }
+      };
+      server.externalServices.ramp.request = fakeRequest;
+    });
+
+    it('should work properly if req is OK with currencyCode', async () => {
+      const data = await server.externalServices.ramp.rampGetSellTransactionDetails(req);
+      should.exist(data);
+    });
+
+    it('should return error if get returns error', async () => {
+      const fakeRequest2 = {
+        get: (_url, _opts, _cb) => { return _cb(new Error('Error'), null); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetSellTransactionDetails(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        loggerError.callCount.should.equal(1);
+        loggerError.args[0][0].should.contain('Ramp request failed with error (');
+        err.message.should.equal('Failed to get Ramp sell transaction details');
+      }
+    });
+
+    it('should return error and not leak the response if body is empty', async () => {
+      const fakeRequest2 = {
+        get: (_url, opts, cb) => { return cb(null, { statusCode: 200, body: undefined, request: { headers: opts.headers } }); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetSellTransactionDetails(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp did not return sell transaction details');
+      }
+    });
+
+    it('should log the redacted URL and not leak the saleViewToken if get returns error', async () => {
+      let requestedUrl;
+      const fakeRequest2 = {
+        get: (url, _opts, cb) => { requestedUrl = url; return cb(new Error('Error'), null); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetSellTransactionDetails(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        // the real request must still carry the token
+        requestedUrl.should.equal('api2/host-api/v3/offramp/sale/id1?secret=saleViewToken1');
+
+        loggerError.callCount.should.equal(1);
+        loggerError.args[0][0].should.contain('(api2/host-api/v3/offramp/sale/id1?secret=***)');
+        loggerError.args[0][0].should.not.contain('saleViewToken1');
+
+        err.should.be.instanceOf(ClientError);
+        err.message.should.equal('Failed to get Ramp sell transaction details');
+        JSON.stringify(err).should.not.contain('saleViewToken1');
+        err.toString().should.not.contain('saleViewToken1');
+      }
+    });
+
+    it('should log the redacted URL and not leak the saleViewToken on non-2xx status', async () => {
+      const fakeRequest2 = {
+        get: (_url, _opts, cb) => { return cb(null, { statusCode: 401, body: undefined }); },
+      };
+
+      server.externalServices.ramp.request = fakeRequest2;
+      try {
+        await server.externalServices.ramp.rampGetSellTransactionDetails(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        loggerWarn.callCount.should.equal(1);
+        loggerWarn.args[0][0].should.equal('Ramp request failed with status code 401: api2/host-api/v3/offramp/sale/id1?secret=***');
+        loggerWarn.args[0][0].should.not.contain('saleViewToken1');
+
+        err.should.be.instanceOf(ClientError);
+        err.message.should.equal('Ramp did not return sell transaction details');
+        JSON.stringify(err).should.not.contain('saleViewToken1');
+        err.toString().should.not.contain('saleViewToken1');
+      }
+    });
+
+    it('should return error if Ramp is commented in config', async () => {
+      config.ramp = undefined;
+
+      try {
+        await server.externalServices.ramp.rampGetSellTransactionDetails(req);
+        should.fail('should have thrown');
+      } catch (err) {
+        err.message.should.equal('Ramp missing credentials');
+      }
+    });
+  });
+});

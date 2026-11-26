@@ -1,6 +1,6 @@
 # Bitcore P2P Cash
 
-[![NPM Package](https://img.shields.io/npm/v/bitcore-p2p-cash.svg?style=flat-square)](https://www.npmjs.org/package/bitcore-p2p-cash)
+[![NPM Package](https://img.shields.io/npm/v/@bcpros/bitcore-p2p-cash.svg?style=flat-square)](https://www.npmjs.org/package/@bcpros/bitcore-p2p-cash)
 
 **The peer-to-peer networking protocol for BCH.**
 
@@ -11,7 +11,7 @@ See [the main bitcore repo](https://github.com/bitpay/bitcore) for more informat
 ## Getting Started
 
 ```sh
-npm install bitcore-p2p-cash
+npm install @bcpros/bitcore-p2p-cash
 ```
 
 In order to connect to the Bitcoin Cash network, you'll need to know the IP address of at least one node of the network, or use [Pool](./docs/pool.md) to discover peers using a DNS seed.

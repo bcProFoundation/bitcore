@@ -4,11 +4,10 @@
   "author": "BitPay Inc",
   "version": "9.0.12",
   "license": "MIT",
-  "main": "ts_build/index.js",
-  "types": "ts_build/index.d.js",
+  "main": "ts_build/src/index.js",
+  "types": "ts_build/src/index.d.ts",
   "keywords": [
     "bitcoin",
-    "copay",
     "multisig",
     "wallet",
     "client",
@@ -20,63 +19,70 @@
     "node": ">=18.0.0"
   },
   "repository": {
-    "url": "git@github.com:bitpay/bitcore-wallet-client.git",
-    "type": "git"
+    "type": "git",
+    "url": "https://github.com/bitpay/bitcore/tree/master/packages/bitcore-wallet-client"
   },
   "bugs": {
-    "url": "https://github.com/bitpay/bitcore-wallet-client/issues"
+    "url": "https://github.com/bitpay/bitcore/issues"
   },
   "dependencies": {
     "@bcpros/bitcore-mnemonic": "workspace:*",
+    "@bcpros/bitcore-tss": "workspace:*",
     "@bcpros/crypto-wallet-core": "workspace:*",
     "ajv": "6.12.0",
     "async": "0.9.2",
     "bip38": "1.4.0",
+    "bs58": "^2.0.1",
     "json-stable-stringify": "1.0.1",
+    "kbpgp": "^2.1.4",
     "preconditions": "2.2.3",
-    "sjcl": "1.0.3",
+    "request-promise": "^4.2.4",
+    "sjcl": "1.0.9",
     "source-map-loader": "0.2.4",
     "source-map-support": "0.5.19",
     "superagent": "5.2.2",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@bcpros/bitcore-wallet-service": "^9.0.14",
+    "@bcpros/bitcore-wallet-service": "workspace:*",
+    "@types/chai": "^5.2.2",
     "@types/lodash": "^4.14.136",
-    "@types/node": "22.13.1",
+    "@types/mocha": "^5.2.0",
+    "@types/node": "22.14.1",
+    "@types/sinon": "^22.0.0",
     "browserify": "^13.1.0",
-    "chai": "^1.9.1",
-    "coveralls": "^3.0.2",
-    "istanbul": "*",
+    "chai": "^5.2.0",
     "kbpgp": "^2.1.4",
     "mocha": "11.1.0",
+    "mongodb": "^3.5.9",
     "mongodb-legacy": "^4.0.2",
     "prettier": "^2.1.2",
     "request-promise": "^4.2.4",
     "sinon": "^7.1.1",
     "supertest": "*",
     "ts-node": "^8.0.3",
-    "tslint": "^5.14.0",
-    "typescript-eslint-parser": "^22.0.0",
     "uuid": "^2.0.1"
   },
   "scripts": {
-    "coverage": "./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha -- --reporter spec test",
-    "test": "pnpm run compile && mocha --exit",
-    "test:ci": "pnpm run test",
+    "test": "pnpm run compile && node ./copyTestData && mcr mocha ts_build/test",
     "docs": "TODO ./node_modules/.bin/tsdoc src/lib/* src/lib/common src/lib/errors -o docs && cat README.header.md  docs/*.md LICENSE > README.md",
-    "coveralls": "./node_modules/.bin/istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
-    "compile": "pnpm run tsc",
-    "tsc": "pnpm run clean && tsc",
+    "compile": "pnpm run clean && tsc",
     "build": "tsc && pnpm run lint",
     "clean": "rm -rf ./ts_build",
-    "lint": "tslint -c ../../tslint.json 'src/**/*.ts'",
-    "fix": "tslint --fix -c ../../tslint.json 'src/**/*.ts'",
+    "lint": "eslint .",
+    "fix:errors": "eslint --fix --quiet .",
+    "fix:all": "eslint --fix .",
+    "fix": "pnpm run fix:errors",
     "pub": "pnpm run build && npm publish",
+    "coverage": "./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha -- --reporter spec test",
+    "test:ci": "pnpm run test",
+    "coveralls": "./node_modules/.bin/istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
+    "tsc": "pnpm run clean && tsc",
     "precommit": "pnpm run fix && pnpm run lint"
   },
+  "gitHead": "a1890ef287c9e5d0e966fb445d15bc59a9393761",
   "publishConfig": {
     "access": "public"
-  },
-  "gitHead": "169e28b0b13c25c386faccf38a2fdc4e1275a5db"
+  }
 }

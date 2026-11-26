@@ -1,8 +1,11 @@
 import _ from 'lodash';
+import preconditions from 'preconditions';
 import { V8 } from './blockchainexplorers/v8';
-import { ChainService } from './chain/index';
+import { Common } from './common';
 
-const $ = require('preconditions').singleton();
+const $ = preconditions.singleton();
+
+const { Utils } = Common;
 
 const PROVIDERS = {
   v8: {
@@ -18,26 +21,51 @@ const PROVIDERS = {
       livenet: 'https://bitcore.abcpay.cash',
       testnet: 'https://bitcore.abcpay.cash'
     },
-    eth: {
-      livenet: 'https://api-eth.bitcore.io',
-      testnet: 'https://api-eth.bitcore.io'
+    doge: {
+      livenet: 'https://api.bitcore.io',
+      testnet3: 'https://api.bitcore.io'
+    },
+    ltc: {
+      livenet: 'https://api.bitcore.io',
+      testnet4: 'https://api.bitcore.io'
     },
     xrp: {
       livenet: 'https://api-xrp.bitcore.io',
       testnet: 'https://api-xrp.bitcore.io'
     },
-    doge: {
-      livenet: 'https://api.bitcore.io',
-      testnet: 'https://api.bitcore.io'
+    eth: {
+      livenet: 'https://api-eth.bitcore.io',
+      sepolia: 'https://api-eth.bitcore.io'
+    },
+    matic: {
+      livenet: 'https://api-matic.bitcore.io',
+      amoy: 'https://api-matic.bitcore.io'
+    },
+    arb: {
+      livenet: 'https://api-eth.bitcore.io',
+      sepolia: 'https://api-eth.bitcore.io'
+    },
+    base: {
+      livenet: 'https://api-eth.bitcore.io',
+      sepolia: 'https://api-eth.bitcore.io'
+    },
+    op: {
+      livenet: 'https://api-eth.bitcore.io',
+      sepolia: 'https://api-eth.bitcore.io'
+    },
+    arc: {
+      livenet: 'https://api-eth.bitcore.io',
+      testnet: 'https://api-eth.bitcore.io'
+    },
+    sol: {
+      livenet: 'https://api-sol.bitcore.io',
+      testnet: 'https://api-sol.bitcore.io',
+      devnet: 'https://api-sol.bitcore.io'
     },
     xpi: {
       livenet: 'https://bitcore.abcpay.test',
       testnet: 'https://bitcore.abcpay.test'
     },
-    ltc: {
-      livenet: 'https://api.bitcore.io',
-      testnet: 'https://api.bitcore.io'
-    }
   }
 };
 
@@ -45,9 +73,9 @@ export function BlockChainExplorer(opts): V8 {
   $.checkArgument(opts, 'Failed state: opts undefined at <BlockChainExplorer()>');
 
   const provider = opts.provider || 'v8';
-  const chain = opts.chain?.toLowerCase() || ChainService.getChain(opts.coin); // getChain -> backwards compatibility
+  const chain = opts.chain?.toLowerCase() || Utils.getChain(opts.coin); // getChain -> backwards compatibility
   const network = opts.network || 'livenet';
-  const url = opts.url || PROVIDERS[provider]?.[chain]?.[network];
+  const url = opts.url || Utils.getOwn(Utils.getOwn(Utils.getOwn(PROVIDERS, provider), chain), network);
 
   $.checkState(url, `No url found for provider: ${provider}:${chain}:${network}`);
 
@@ -63,8 +91,7 @@ export function BlockChainExplorer(opts): V8 {
         network,
         url,
         apiPrefix: opts.apiPrefix,
-        userAgent: opts.userAgent,
-        addressFormat: opts.addressFormat
+        userAgent: opts.userAgent
       });
     default:
       throw new Error(`Provider not supported: ${provider}`);

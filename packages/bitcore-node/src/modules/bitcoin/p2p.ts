@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import * as os from 'os';
 import logger, { timestamp } from '../../logger';
 import { BitcoinBlock, BitcoinBlockStorage, IBtcBlock } from '../../models/block';
 import { StateStorage } from '../../models/state';
@@ -10,6 +11,7 @@ import { SpentHeightIndicators } from '../../types/Coin';
 import { IUtxoNetworkConfig } from '../../types/Config';
 import { BitcoinBlockType, BitcoinHeaderObj, BitcoinTransaction } from '../../types/namespaces/Bitcoin';
 import { wait } from '../../utils';
+import { UtxoMultiThreadSync } from './sync';
 
 export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
   protected bitcoreLib: any;
@@ -22,6 +24,7 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
   protected initialSyncComplete: boolean;
   protected blockModel: BitcoinBlock;
   protected pool: any;
+  protected multiThreadSync: UtxoMultiThreadSync;
   public events: EventEmitter;
   public isSyncing: boolean;
   constructor({ chain, network, chainConfig, blockModel = BitcoinBlockStorage }) {
@@ -56,6 +59,26 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
       listenAddr: false,
       network: this.network,
       messages: this.messages
+    });
+    this.multiThreadSync = new UtxoMultiThreadSync({
+      chain,
+      network,
+      config: chainConfig,
+      callbacks: {
+        getHeaders: () => this.getHeadersForSync(),
+        processBlock: (block) => this.processBlock(block),
+        getLocalTip: () => ChainStateProvider.getLocalTip({ chain, network }),
+        deserializeBlock: (rawHex) => new this.bitcoreLib.Block(Buffer.from(rawHex, 'hex'))
+      }
+    });
+    this.multiThreadSync.once('INITIALSYNCDONE', async () => {
+      this.initialSyncComplete = true;
+      await StateStorage.collection.findOneAndUpdate(
+        {},
+        { $addToSet: { initialSyncComplete: `${chain}:${network}` } } as any,
+        { upsert: true }
+      );
+      this.events.emit('SYNCDONE');
     });
   }
 
@@ -102,41 +125,51 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
     });
 
     this.pool.on('peertx', async (peer, message) => {
-      const hash = message.transaction.hash;
-      logger.debug('peer tx received: %o', {
-        peer: `${peer.host}:${peer.port}`,
-        chain: this.chain,
-        network: this.network,
-        hash
-      });
-      if (this.isSyncingNode && !this.isCachedInv(this.bitcoreP2p.Inventory.TYPE.TX, hash)) {
-        this.cacheInv(this.bitcoreP2p.Inventory.TYPE.TX, hash);
-        await this.processTransaction(message.transaction);
-        this.events.emit('transaction', message.transaction);
+      try {
+        const hash = message.transaction.hash;
+        logger.debug('peer tx received: %o', {
+          peer: `${peer.host}:${peer.port}`,
+          chain: this.chain,
+          network: this.network,
+          hash
+        });
+        if (this.isSyncingNode && !this.isCachedInv(this.bitcoreP2p.Inventory.TYPE.TX, hash)) {
+          this.cacheInv(this.bitcoreP2p.Inventory.TYPE.TX, hash);
+          await this.processTransaction(message.transaction);
+          this.events.emit('transaction', message.transaction);
+        }
+      } catch (err) {
+        logger.error('Error in peertx handler:', err);
       }
     });
 
     this.pool.on('peerblock', async (peer, message) => {
-      const { block } = message;
-      const { hash } = block;
-      logger.debug('peer block received: %o', {
-        peer: `${peer.host}:${peer.port}`,
-        chain: this.chain,
-        network: this.network,
-        hash
-      });
+      try {
+        const { block } = message;
+        const { hash } = block;
+        logger.debug('peer block received: %o', {
+          peer: `${peer.host}:${peer.port}`,
+          chain: this.chain,
+          network: this.network,
+          hash
+        });
 
-      const blockInCache = this.isCachedInv(this.bitcoreP2p.Inventory.TYPE.BLOCK, hash);
-      if (!blockInCache) {
-        block.transactions.forEach(transaction => this.cacheInv(this.bitcoreP2p.Inventory.TYPE.TX, transaction.hash));
-        this.cacheInv(this.bitcoreP2p.Inventory.TYPE.BLOCK, hash);
-      }
-      if (this.isSyncingNode && (!blockInCache || this.isSyncing)) {
-        this.events.emit(hash, message.block);
-        this.events.emit('block', message.block);
-        if (!this.isSyncing) {
-          this.sync();
+        const blockInCache = this.isCachedInv(this.bitcoreP2p.Inventory.TYPE.BLOCK, hash);
+        if (!blockInCache) {
+          for (const transaction of block.transactions) {
+            this.cacheInv(this.bitcoreP2p.Inventory.TYPE.TX, transaction.hash);
+          }
+          this.cacheInv(this.bitcoreP2p.Inventory.TYPE.BLOCK, hash);
         }
+        if (this.isSyncingNode && (!blockInCache || this.isSyncing)) {
+          this.events.emit(hash, message.block);
+          this.events.emit('block', message.block);
+          if (!this.isSyncing) {
+            this.sync();
+          }
+        }
+      } catch (err) {
+        logger.error('Error in peerblock handler:', err);
       }
     });
 
@@ -225,44 +258,118 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
   }
 
   async processBlock(block: BitcoinBlockType): Promise<any> {
-    await this.blockModel.addBlock({
-      chain: this.chain,
-      network: this.network,
-      forkHeight: this.chainConfig.forkHeight,
-      parentChain: this.chainConfig.parentChain,
-      initialSyncComplete: this.initialSyncComplete,
-      block,
-      initialHeight: this.chainConfig.syncStartHeight
-    });
+    await this.write(() =>
+      this.blockModel.addBlock({
+        chain: this.chain,
+        network: this.network,
+        forkHeight: this.chainConfig.forkHeight,
+        parentChain: this.chainConfig.parentChain,
+        initialSyncComplete: this.initialSyncComplete,
+        block,
+        initialHeight: this.chainConfig.syncStartHeight
+      })
+    );
   }
 
   async processTransaction(tx: BitcoinTransaction): Promise<any> {
     const now = new Date();
-    await TransactionStorage.batchImport({
-      chain: this.chain,
-      network: this.network,
-      txs: [tx],
-      height: SpentHeightIndicators.pending,
-      mempoolTime: now,
-      blockTime: now,
-      blockTimeNormalized: now,
-      initialSyncComplete: true
-    });
+    await this.write(() =>
+      TransactionStorage.batchImport({
+        chain: this.chain,
+        network: this.network,
+        txs: [tx],
+        height: SpentHeightIndicators.pending,
+        mempoolTime: now,
+        blockTime: now,
+        blockTimeNormalized: now,
+        initialSyncComplete: true
+      })
+    );
   }
 
   async syncDone() {
     return new Promise(resolve => this.events.once('SYNCDONE', resolve));
   }
 
+  useMultiThread(): boolean {
+    if (this.chainConfig.threads == null) {
+      // use multithread by default if there are >2 threads in the CPU
+      return os.cpus().length > 2;
+    }
+    return this.chainConfig.threads > 0;
+  }
+
+  // Get headers using locator hashes (shared between sync modes)
+  private async getHeadersForSync(): Promise<BitcoinHeaderObj[]> {
+    const { chain, network } = this;
+    let locators = await ChainStateProvider.getLocatorHashes({ chain, network });
+    if (locators.length === 1 && locators[0] === Array(65).join('0') && this.chainConfig.syncStartHash) {
+      locators = [this.chainConfig.syncStartHash];
+    }
+    return this.getHeaders(locators);
+  }
+
+  // Handle genesis block fetch (needed when syncing from height 0)
+  private async handleGenesisBlock(headers: BitcoinHeaderObj[]): Promise<number> {
+    if (headers[0]) {
+      const block = await this.getBlock(headers[0].hash);
+      if (block.header.prevHash) {
+        const prevHash = Buffer.from(block.header.prevHash).reverse().toString('hex');
+        const genesisBlock = await this.getBlock(prevHash);
+        await this.processBlock(genesisBlock);
+        return 1;
+      }
+    }
+    return 0;
+  }
+
   async sync() {
-    if (this.isSyncing) {
+    if (this.isSyncing || !this.canWrite()) {
       return false;
     }
+
+    // Multi-thread mode check BEFORE DB read (matches EVM pattern).
+    // The in-memory flag is set by INITIALSYNCDONE event after multi-thread sync finishes.
+    // Reading from DB here would overwrite it back to false before the DB is updated.
+    if (!this.initialSyncComplete && this.useMultiThread()) {
+      this.isSyncing = true;
+      const { chain, chainConfig, network } = this;
+      const { parentChain, forkHeight } = chainConfig;
+
+      let tip = await ChainStateProvider.getLocalTip({ chain, network });
+      if (parentChain && (!tip || tip.height < forkHeight!)) {
+        let parentTip = await ChainStateProvider.getLocalTip({ chain: parentChain, network });
+        while (!parentTip || parentTip.height < forkHeight!) {
+          logger.info(`Waiting until ${parentChain} syncs before ${chain} ${network}`);
+          await wait(5000);
+          parentTip = await ChainStateProvider.getLocalTip({ chain: parentChain, network });
+        }
+      }
+
+      // Handle genesis block before multi-thread sync
+      tip = await ChainStateProvider.getLocalTip({ chain, network });
+      const currentHeight = tip?.height ?? (chainConfig.syncStartHeight || 0);
+      if (currentHeight === 0) {
+        const headers = await this.getHeadersForSync();
+        if (headers.length > 0) {
+          await this.handleGenesisBlock(headers);
+        }
+      }
+
+      this.isSyncing = false;
+      if (!this.canWrite()) {
+        return false;
+      }
+      logger.info(`${timestamp()} | Starting multi-thread sync | Chain: ${chain} | Network: ${network}`);
+      return this.multiThreadSync.sync();
+    }
+
+    // Single-thread mode with prefetching (for near-tip sync and post-initial sync)
     this.isSyncing = true;
     const { chain, chainConfig, network } = this;
     const { parentChain, forkHeight } = chainConfig;
     const state = await StateStorage.collection.findOne({});
-    this.initialSyncComplete = state?.initialSyncComplete?.includes(`${chain}:${network}`);
+    this.initialSyncComplete = !!state?.initialSyncComplete?.includes(`${chain}:${network}`);
     let tip = await ChainStateProvider.getLocalTip({ chain, network });
     if (parentChain && (!tip || tip.height < forkHeight!)) {
       let parentTip = await ChainStateProvider.getLocalTip({ chain: parentChain, network });
@@ -273,47 +380,61 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
       }
     }
 
-    const getHeaders = async () => {
-      let locators = await ChainStateProvider.getLocatorHashes({ chain, network });
-      if (locators.length === 1 && locators[0] === Array(65).join('0') && this.chainConfig.syncStartHash) {
-        locators = [this.chainConfig.syncStartHash];
+    // Handle genesis block
+    tip = await ChainStateProvider.getLocalTip({ chain, network });
+    const currentHeight = tip?.height ?? (chainConfig.syncStartHeight || 0);
+    if (currentHeight === 0) {
+      const genesisHeaders = await this.getHeadersForSync();
+      if (genesisHeaders.length > 0) {
+        await this.handleGenesisBlock(genesisHeaders);
       }
-      return this.getHeaders(locators);
-    };
+    }
 
-    let headers = await getHeaders();
-    while (headers.length > 0) {
+    const prefetchSize = chainConfig.prefetchSize ?? 10;
+
+    let headers = await this.getHeadersForSync();
+    while (headers.length > 0 && this.canWrite()) {
       tip = await ChainStateProvider.getLocalTip({ chain, network });
-      let currentHeight = tip?.height ?? (this.chainConfig.syncStartHeight || 0);
-      const startingHeight = currentHeight;
+      let height = tip?.height ?? (chainConfig.syncStartHeight || 0);
+      const startingHeight = height;
       const startingTime = Date.now();
       let lastLog = startingTime;
-      logger.info(`${timestamp()} | Syncing ${headers.length} blocks | Chain: ${chain} | Network: ${network}`);
-      // Default starting hash is the genesis block +1. If we have no blocks, we need to fetch the genesis block
-      logger.info(`CurrentHeight ${currentHeight} blocks | Chain: ${chain} | Network: ${network}`);
-      if (currentHeight == 0 && headers[0]) {
-        const block = await this.getBlock(headers[0].hash);
-        if (block.header.prevHash) {
-          const prevHash = Buffer.from(block.header.prevHash).reverse().toString('hex');
-          const genesisBlock = await this.getBlock(prevHash);
-          await this.processBlock(genesisBlock);
-          currentHeight++;
-        }
+      logger.info(
+        `${timestamp()} | Syncing ${headers.length} blocks | Chain: ${chain} | Network: ${network}` +
+          (prefetchSize > 0 ? ` | Prefetch: ${prefetchSize}` : '')
+      );
+
+      // Prefetch: kick off parallel block downloads ahead of processing.
+      // Blocks are still processed sequentially to preserve UTXO ordering.
+      const prefetchMap = new Map<string, Promise<BitcoinBlockType>>();
+      const initialBatch = Math.min(prefetchSize, headers.length);
+      for (let i = 0; i < initialBatch; i++) {
+        prefetchMap.set(headers[i].hash, this.getBlock(headers[i].hash));
       }
-      for (const header of headers) {
+
+      for (let i = 0; i < headers.length && this.canWrite(); i++) {
+        const header = headers[i];
         try {
-          const block = await this.getBlock(header.hash);
+          const block = await (prefetchMap.get(header.hash) || this.getBlock(header.hash));
+          prefetchMap.delete(header.hash);
+
+          // Queue next block prefetch (sliding window)
+          const nextIdx = i + prefetchSize;
+          if (prefetchSize > 0 && nextIdx < headers.length) {
+            prefetchMap.set(headers[nextIdx].hash, this.getBlock(headers[nextIdx].hash));
+          }
+
           await this.processBlock(block);
-          currentHeight++;
+          height++;
           const now = Date.now();
           const oneSecond = 1000;
           if (now - lastLog > oneSecond) {
-            const blocksProcessed = currentHeight - startingHeight;
+            const blocksProcessed = height - startingHeight;
             const elapsedMinutes = (now - startingTime) / (60 * oneSecond);
             logger.info(
               `${timestamp()} | Syncing... | Chain: ${chain} | Network: ${network} |${(blocksProcessed / elapsedMinutes)
                 .toFixed(2)
-                .padStart(8)} blocks/min | Height: ${currentHeight.toString().padStart(7)}`
+                .padStart(8)} blocks/min | Height: ${height.toString().padStart(7)}`
             );
             lastLog = now;
           }
@@ -323,7 +444,11 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
           return this.sync();
         }
       }
-      headers = await getHeaders();
+      headers = await this.getHeadersForSync();
+    }
+    if (!this.canWrite()) {
+      this.isSyncing = false;
+      return false;
     }
 
     logger.info(`${timestamp()} | Sync completed | Chain: ${chain} | Network: ${network}`);
@@ -339,8 +464,8 @@ export class BitcoinP2PWorker extends BaseP2PWorker<IBtcBlock> {
 
   async stop() {
     this.stopping = true;
+    this.multiThreadSync.stop();
     logger.debug(`Stopping worker for chain ${this.chain}`);
-    this.queuedRegistrations.forEach(clearTimeout);
     await this.unregisterSyncingNode();
     await this.disconnect();
   }

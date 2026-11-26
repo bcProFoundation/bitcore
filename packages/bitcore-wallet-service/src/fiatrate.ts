@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 var spawn = require('child_process').spawn;
-var async = require('async');
+const asyncLib = require('async');
 
 var scripts = [
   'fiatrateservice/fiatrateservice.js',
 ];
 
-async.eachSeries(scripts, function (script, callback) {
+asyncLib.eachSeries(scripts, function (script, callback) {
   console.log(`Spawning ${script}`);
 
   const node = spawn('node', [script]);

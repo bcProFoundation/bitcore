@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 class LibProvider {
   libs = {
     BTC: {
-      lib: require('@bcpros/bitcore-lib'),
+      lib: require('@bcpros/crypto-wallet-core').BitcoreLib,
       p2p: require('@bcpros/bitcore-p2p')
     },
     BCH: {

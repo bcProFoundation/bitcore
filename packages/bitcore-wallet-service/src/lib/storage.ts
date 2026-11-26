@@ -4,6 +4,7 @@ import _ from 'lodash';
 import moment from 'moment';
 import { Db } from 'mongodb-legacy';
 import * as mongodb from 'mongodb-legacy';
+import preconditions from 'preconditions';
 import { BCHAddressTranslator } from './bchaddresstranslator'; // only for migration
 import { TokenInfo } from './chain/xec';
 import { Common } from './common';
@@ -11,6 +12,7 @@ import logger from './logger';
 import {
   Address,
   Advertisement,
+  Copayer,
   Email,
   IWallet,
   Notification,
@@ -34,8 +36,12 @@ import { IUser } from './model/user';
 import { ICoinConfigFilter } from './server';
 // import { Order } from './model/order';
 const mongoDbQueue = require('mongodb-queue');
+import { TssKeyGenModel } from './model/tsskeygen';
+import { TssSigGenModel } from './model/tsssign';
+import type { ITssKeyMessageObject } from './model/tsskeygen';
+import type { ITssSigMessageObject } from './model/tsssign';
 
-const $ = require('preconditions').singleton();
+const $ = preconditions.singleton();
 
 const collections = {
   // Duplciated in helpers.. TODO
@@ -68,7 +74,9 @@ const collections = {
   ORDER_INFO_NOTI: 'order_info_noti',
   ORDER_QUEUE: 'order_queue',
   LOG_DEVICE: 'log_device',
-  APPRECIATION: 'appreciation'
+  APPRECIATION: 'appreciation',
+  TSS_KEYGEN: 'tss_keygen',
+  TSS_SIGN: 'tss_sign'
 };
 
 const Constants = Common.Constants;
@@ -77,7 +85,7 @@ const Utils = Common.Utils;
 
 const ObjectId = mongodb.ObjectId;
 
-var objectIdDate = function (date) {
+const objectIdDate = function(date) {
   return Math.floor(date / 1000).toString(16) + '0000000000000000';
 };
 export class Storage {
@@ -241,6 +249,12 @@ export class Storage {
     db.collection(collections.APPRECIATION).createIndex({
       id: 1
     });
+    db.collection(collections.TSS_KEYGEN).createIndex({
+      id: 1
+    }, { unique: true });
+    db.collection(collections.TSS_SIGN).createIndex({
+      id: 1
+    }, { unique: true });
   }
 
   connect(opts, cb) {
@@ -1320,12 +1334,9 @@ export class Storage {
   }
 
   storeWalletAndUpdateCopayersLookup(wallet, cb) {
-    const copayerLookups = _.map(wallet.copayers, copayer => {
+    const copayerLookups = (wallet.copayers || []).map(copayer => {
       try {
-        $.checkState(
-          copayer.requestPubKeys,
-          'Failed state: copayer.requestPubkeys undefined at <storeWalletAndUpdateCopayersLookup()>'
-        );
+        $.checkState(copayer.requestPubKeys, 'Failed state: copayer.requestPubkeys undefined at <storeWalletAndUpdateCopayersLookup()>');
       } catch (e) {
         return cb(e);
       }
@@ -1360,27 +1371,19 @@ export class Storage {
     );
   }
 
-  fetchCopayerLookup(copayerId, cb) {
-    this.db.collection(collections.COPAYERS_LOOKUP).findOne(
-      {
-        copayerId
-      },
-      (err, result) => {
-        if (err) return cb(err);
-        if (!result) return cb();
-
-        if (!result.requestPubKeys) {
-          result.requestPubKeys = [
-            {
-              key: result.requestPubKey,
-              signature: result.signature
-            }
-          ];
+  async fetchCopayerLookup(copayerId: string): Promise<Copayer | undefined> {
+    const result = await this.db.collection(collections.COPAYERS_LOOKUP).findOne({ copayerId });
+    if (!result) return;
+    if (!result.requestPubKeys) {
+      result.requestPubKeys = [
+        {
+          key: result.requestPubKey,
+          signature: result.signature
         }
+      ];
+    }
 
-        return cb(null, result);
-      }
-    );
+    return Copayer.fromObj(result);
   }
 
   fetchAllAddressInUserWatchAddress(cb) {
@@ -1396,24 +1399,28 @@ export class Storage {
   }
 
   // TODO: should be done client-side
-  _completeTxData(walletId, txs, cb) {
-    this.fetchWallet(walletId, (err, wallet) => {
+  // Callers that already have the wallet pass it, to save reading it again
+  _completeTxData(walletId: string, txs: TxProposal | TxProposal[], cb: (err?: any, txs?: TxProposal | TxProposal[]) => void, wallet?: Wallet) {
+    const complete = (err, wallet: Wallet) => {
       if (err) return cb(err);
-      _.each([].concat(txs), tx => {
+      for (const tx of [].concat(txs) as TxProposal[]) {
         tx.derivationStrategy = wallet.derivationStrategy || 'BIP45';
         tx.creatorName = wallet.getCopayer(tx.creatorId).name;
-        _.each(tx.actions, action => {
+        for (const action of tx.actions) {
           action.copayerName = wallet.getCopayer(action.copayerId).name;
-        });
+        }
 
-        if (tx.status == 'accepted') tx.raw = tx.getRawTx();
-      });
+        if (tx.status == 'accepted')
+          tx.raw = tx.getRawTx();
+      }
       return cb(null, txs);
-    });
+    };
+    if (wallet) return complete(null, wallet);
+    this.fetchWallet(walletId, complete);
   }
 
   // TODO: remove walletId from signature
-  fetchTx(walletId, txProposalId, cb) {
+  fetchTx(walletId: string, txProposalId: string, cb: (err?: any, tx?: TxProposal) => void, wallet?: Wallet) {
     if (!this.db) return cb();
 
     this.db.collection(collections.TXS).findOne(
@@ -1424,7 +1431,7 @@ export class Storage {
       (err, result) => {
         if (err) return cb(err);
         if (!result) return cb();
-        return this._completeTxData(walletId, TxProposal.fromObj(result), cb);
+        return this._completeTxData(walletId, TxProposal.fromObj(result as any), cb, wallet);
       }
     );
   }
@@ -1440,7 +1447,26 @@ export class Storage {
         if (err) return cb(err);
         if (!result) return cb();
 
-        return this._completeTxData(result.walletId, TxProposal.fromObj(result), cb);
+        return this._completeTxData(result.walletId, TxProposal.fromObj(result as any), cb);
+      }
+    );
+  }
+
+  // Wallet-scoped counterpart to fetchTxByHash, used by the authenticated
+  // by-hash API read.
+  fetchTxByHashForWallet(walletId: string, hash, cb: (err?: any, tx?: TxProposal) => void, wallet?: Wallet) {
+    if (!this.db) return cb();
+
+    this.db.collection(collections.TXS).findOne(
+      {
+        walletId,
+        txid: hash
+      },
+      (err, result) => {
+        if (err) return cb(err);
+        if (!result) return cb();
+
+        return this._completeTxData(walletId, TxProposal.fromObj(result as any), cb, wallet);
       }
     );
   }
@@ -1464,14 +1490,14 @@ export class Storage {
         if (err) return cb(err);
         if (!result) return cb();
         const txs = _.map(result, tx => {
-          return TxProposal.fromObj(tx);
+          return TxProposal.fromObj(tx as any);
         });
         return cb(null, txs);
       });
   }
 
   fetchEthPendingTxs(multisigTxpsInfo) {
-    return new Promise((resolve, reject) => {
+    return new Promise<TxProposal[]>((resolve, reject) => {
       this.db
         .collection(collections.TXS)
         .find({
@@ -1492,31 +1518,31 @@ export class Storage {
               }
               tx.status = 'pending';
               tx.multisigTxId = multisigTxpsInfoByTransactionHash[tx.txid][0].transactionId;
-              tx.actions.forEach(action => {
+              for (const action of tx.actions) {
                 if (_.some(multisigTxpsInfoByTransactionHash[tx.txid], { event: 'ExecutionFailure' })) {
                   action.type = 'failed';
                 }
-              });
+              }
               if (tx.amount === 0) {
                 actionsById[tx.multisigTxId] = [...tx.actions, ...(actionsById[tx.multisigTxId] || [])];
                 return undefined;
               }
-              return TxProposal.fromObj(tx);
+              return TxProposal.fromObj(tx as any);
             })
           );
 
-          txs.forEach((tx: TxProposal) => {
+          for (const tx of txs as TxProposal[]) {
             if (actionsById[tx.multisigTxId]) {
               tx.actions = [...tx.actions, ...(actionsById[tx.multisigTxId] || [])];
             }
-          });
+          }
 
           return resolve(txs);
         });
     });
   }
 
-  fetchPendingTxs(walletId, cb) {
+  fetchPendingTxs(walletId, cb, wallet?: Wallet) {
     this.db
       .collection(collections.TXS)
       .find({
@@ -1530,9 +1556,9 @@ export class Storage {
         if (err) return cb(err);
         if (!result) return cb();
         const txs = _.map(result, tx => {
-          return TxProposal.fromObj(tx);
+          return TxProposal.fromObj(tx as any);
         });
-        return this._completeTxData(walletId, txs, cb);
+        return this._completeTxData(walletId, txs, cb, wallet);
       });
   }
 
@@ -1544,7 +1570,7 @@ export class Storage {
    * @param opts.maxTs
    * @param opts.limit
    */
-  fetchTxs(walletId, opts, cb) {
+  fetchTxs(walletId, opts, cb, wallet?: Wallet) {
     opts = opts || {};
 
     const tsFilter: { $gte?: number; $lte?: number } = {};
@@ -1569,9 +1595,9 @@ export class Storage {
         if (err) return cb(err);
         if (!result) return cb();
         const txs = _.map(result, tx => {
-          return TxProposal.fromObj(tx);
+          return TxProposal.fromObj(tx as any);
         });
-        return this._completeTxData(walletId, txs, cb);
+        return this._completeTxData(walletId, txs, cb, wallet);
       });
   }
 
@@ -1583,7 +1609,7 @@ export class Storage {
    * @param opts.maxTs
    * @param opts.limit
    */
-  fetchBroadcastedTxs(walletId, opts, cb) {
+  fetchBroadcastedTxs(walletId, opts, cb, wallet?: Wallet) {
     opts = opts || {};
 
     const tsFilter: { $gte?: number; $lte?: number } = {};
@@ -1613,9 +1639,9 @@ export class Storage {
         if (err) return cb(err);
         if (!result) return cb();
         const txs = _.map(result, tx => {
-          return TxProposal.fromObj(tx);
+          return TxProposal.fromObj(tx as any);
         });
-        return this._completeTxData(walletId, txs, cb);
+        return this._completeTxData(walletId, txs, cb, wallet);
       });
   }
 
@@ -1750,10 +1776,74 @@ export class Storage {
       });
   }
 
+  /**
+   * A page of the wallet's addresses, in fetchAddresses order (createdOn, then path), reading only the addresses the
+   * page needs. noChange and addresses filter the list, then reverse, skip and limit apply in that order.
+   *
+   * @param walletId
+   * @param opts.noChange - leave out change addresses
+   * @param opts.addresses - only these addresses
+   * @param opts.reverse - newest first
+   * @param opts.skip
+   * @param opts.limit
+   */
+  fetchAddressesPage(
+    walletId: string,
+    opts: { noChange?: boolean; addresses?: string[]; reverse?: boolean; skip?: number; limit?: number },
+    cb: (err?: any, addresses?: Address[]) => void
+  ) {
+    const query: { walletId: string; isChange?: { $in: Array<false | null> }; address?: { $in: string[] } } = { walletId };
+    // false, null or missing, the same addresses as !isChange
+    if (opts.noChange) query.isChange = { $in: [false, null] };
+    if (opts.addresses) query.address = { $in: opts.addresses };
+    // skip and limit apply only when positive, and as whole numbers, as slice does
+    const skip = opts.skip > 0 ? Math.floor(opts.skip) : 0;
+    const limit = opts.limit > 0 ? Math.floor(opts.limit) : null;
+    const collection = this.db.collection(collections.ADDRESSES);
+
+    const page = docs => {
+      let addresses = Utils.sortAsc(docs.map(Address.fromObj), 'createdOn', 'path');
+      if (opts.reverse) addresses.reverse();
+      if (skip) addresses = addresses.slice(skip);
+      if (limit !== null) addresses = addresses.slice(0, limit);
+      return addresses;
+    };
+    const readAll = () => collection.find(query).sort({ createdOn: 1 }).toArray((err, docs) => {
+      if (err) return cb(err);
+      return cb(null, page(docs));
+    });
+
+    // filtering by address, or reading without a limit or with one too large for a query limit, reads every matching
+    // address
+    if (opts.addresses || !(limit > 0) || !Number.isSafeInteger(skip + limit + 1)) return readAll();
+
+    // fetchAddresses sorts an address with a missing createdOn last and one with a null createdOn first, but Mongo sorts
+    // both first, so a wallet that has either is read whole
+    collection.findOne({ walletId, createdOn: null }, { projection: { _id: 1 } }, (err, unordered) => {
+      if (err) return cb(err);
+      if (unordered) return readAll();
+
+      // The page is within the first skip + limit addresses by createdOn plus any others sharing the last one's
+      // createdOn, whatever order addresses created in the same second are in. One more address shows whether there are any.
+      const count = skip + limit;
+      collection.find(query).sort({ createdOn: opts.reverse ? -1 : 1 }).limit(count + 1).toArray((err, docs) => {
+        if (err) return cb(err);
+        if (docs.length <= count || docs[count].createdOn !== docs[count - 1].createdOn) {
+          return cb(null, page(docs.slice(0, count)));
+        }
+        collection.find({ ...query, createdOn: docs[count - 1].createdOn }).toArray((err, ties) => {
+          if (err) return cb(err);
+          const read = new Set(docs.slice(0, count).map(doc => String(doc._id)));
+          return cb(null, page([...docs.slice(0, count), ...ties.filter(doc => !read.has(String(doc._id)))]));
+        });
+      });
+    });
+  }
+
   migrateToCashAddr(walletId, cb) {
     const cursor = this.db.collection(collections.ADDRESSES).find({
       walletId
-    });
+    }).stream();
 
     cursor.on('end', () => {
       console.log(`Migration to cash address of ${walletId} Finished`);
@@ -1838,6 +1928,26 @@ export class Storage {
     );
   }
 
+  storeWalletRegistration(wallet, cb) {
+    this.db.collection(collections.WALLETS).updateOne(
+      {
+        id: wallet.id
+      },
+      {
+        $set: {
+          beRegistered: wallet.beRegistered,
+          beAuthPrivateKey2: wallet.beAuthPrivateKey2,
+          beAuthPublicKey2: wallet.beAuthPublicKey2
+        }
+      },
+      {
+        writeConcern: { w: 1 },
+        upsert: false
+      },
+      cb
+    );
+  }
+
   deregisterWallet(walletId, cb) {
     this.db.collection(collections.WALLETS).updateOne(
       {
@@ -1868,7 +1978,7 @@ export class Storage {
 
   storeAddressAndWallet(wallet, addresses, cb) {
     const clonedAddresses = [].concat(addresses);
-    if (_.isEmpty(addresses)) return cb();
+    if (!addresses || !clonedAddresses.length) return cb();
     let duplicate;
 
     this.db.collection(collections.ADDRESSES).insertMany(
@@ -2358,7 +2468,7 @@ export class Storage {
     async.each(
       rates,
       (rate: { code: string; value: string }, next) => {
-        let i = {
+        const i = {
           ts: now,
           coin,
           code: rate.code,
@@ -2479,7 +2589,7 @@ export class Storage {
       });
   }
 
-  fetchTxNote(walletId, txid, cb) {
+  fetchTxNote(walletId, txid, cb: (err?: any, note?: TxNote) => void, wallet?: Wallet) {
     this.db.collection(collections.TX_NOTES).findOne(
       {
         walletId,
@@ -2488,20 +2598,23 @@ export class Storage {
       (err, result) => {
         if (err) return cb(err);
         if (!result) return cb();
-        return this._completeTxNotesData(walletId, TxNote.fromObj(result), cb);
+        return this._completeTxNotesData(walletId, TxNote.fromObj(result), cb, wallet);
       }
     );
   }
 
   // TODO: should be done client-side
-  _completeTxNotesData(walletId, notes, cb) {
-    this.fetchWallet(walletId, (err, wallet) => {
+  // Callers that already have the wallet pass it, to save reading it again
+  _completeTxNotesData(walletId, notes: TxNote | TxNote[], cb: (err?: any, notes?: TxNote | TxNote[]) => void, wallet?: Wallet) {
+    const complete = (err, wallet: Wallet) => {
       if (err) return cb(err);
-      _.each([].concat(notes), note => {
+      for (const note of [].concat(notes) as TxNote[]) {
         note.editedByName = wallet.getCopayer(note.editedBy).name;
-      });
+      }
       return cb(null, notes);
-    });
+    };
+    if (wallet) return complete(null, wallet);
+    this.fetchWallet(walletId, complete);
   }
 
   /**
@@ -2510,7 +2623,7 @@ export class Storage {
    * @param walletId
    * @param opts.minTs
    */
-  fetchTxNotes(walletId, opts, cb) {
+  fetchTxNotes(walletId, opts, cb, wallet?: Wallet) {
     const filter: { walletId: string; editedOn?: { $gte: number } } = {
       walletId
     };
@@ -2528,7 +2641,7 @@ export class Storage {
             return TxNote.fromObj(note);
           })
         );
-        return this._completeTxNotesData(walletId, notes, cb);
+        return this._completeTxNotesData(walletId, notes, cb, wallet);
       });
   }
 
@@ -3057,7 +3170,7 @@ export class Storage {
     const { walletId } = params;
 
     return new Promise(resolve => {
-      const addressStream = this.db.collection(collections.ADDRESSES).find({ walletId });
+      const addressStream = this.db.collection(collections.ADDRESSES).find({ walletId }).stream();
       let sum = 0;
       let lastAddress;
       addressStream.on('data', walletAddress => {
@@ -3154,7 +3267,7 @@ export class Storage {
       });
   }
 
-  fetchAllAdverts(cb) {
+  fetchAllAdverts(_cb) {
     this.db.collection(collections.ADVERTISEMENTS).find({});
   }
 
@@ -3227,4 +3340,216 @@ export class Storage {
       cb
     );
   }
+
+  async fetchTssKeyGenSession({ id }: { id: string }) {
+    const doc = await this.db.collection(collections.TSS_KEYGEN).findOne({ id });
+    if (!doc) {
+      return null;
+    }
+    return TssKeyGenModel.fromObj(doc as any);
+  }
+
+  async storeTssKeyGenSession({ doc }: { doc: TssKeyGenModel }) {
+    return this.db.collection(collections.TSS_KEYGEN).insertOne(doc);
+  }
+
+  async storeTssKeyGenAuthPublicKey({ id, partyId, authPublicKey, __v }: { id: string; partyId: number; authPublicKey: string; __v: number }) {
+    const result = await this.db.collection(collections.TSS_KEYGEN).updateOne(
+      { id, __v },
+      {
+        $set: {
+          [`authPublicKeys.${partyId}`]: authPublicKey
+        },
+        $inc: {
+          __v: 1
+        }
+      },
+      { upsert: false }
+    );
+    if (!result.matchedCount) {
+      if ((await this.db.collection(collections.TSS_KEYGEN).countDocuments({ id })) === 0) {
+        throw new Error('MONGO_DOC_NOT_FOUND: No document found for id ' + id);
+      }
+      throw new Error('MONGO_DOC_OUTDATED: No document found for version ' + __v);
+    }
+    return result;
+  }
+
+  async storeTssKeyGenParticipant({ id, partyId, copayerId, __v }: { id: string; partyId: number; copayerId: string; __v: number }) {
+    const result = await this.db.collection(collections.TSS_KEYGEN).updateOne(
+      { id, __v },
+      {
+        $set: {
+          [`participants.${partyId}`]: copayerId
+        },
+        $inc: {
+          __v: 1
+        }
+      },
+      { upsert: false }
+    );
+    if (!result.matchedCount) {
+      if ((await this.db.collection(collections.TSS_KEYGEN).countDocuments({ id })) === 0) {
+        throw new Error('MONGO_DOC_NOT_FOUND: No document found for id ' + id);
+      }
+      throw new Error('MONGO_DOC_OUTDATED: No document found for version ' + __v);
+    }
+    return result;
+  }
+
+  async storeTssKeyGenMessage({ id, message, __v }: { id: string; message: ITssKeyMessageObject; __v: number }) {
+    const result = await this.db.collection(collections.TSS_KEYGEN).updateOne(
+      { id, __v },
+      {
+        $push: {
+          [`rounds.${message.round}`]: {
+            fromPartyId: message.partyId,
+            messages: message
+          }
+        },
+        $inc: {
+          __v: 1
+        }
+      },
+      { upsert: false }
+    );
+    if (!result.matchedCount) {
+      if ((await this.db.collection(collections.TSS_KEYGEN).countDocuments({ id })) === 0) {
+        throw new Error('MONGO_DOC_NOT_FOUND: No document found for id ' + id);
+      }
+      throw new Error('MONGO_DOC_OUTDATED: No document found for version ' + __v);
+    }
+    return result;
+  }
+
+  async storeTssKeySharedPubKey({ id, publicKey }: { id: string; publicKey: string }) {
+    return this.db.collection(collections.TSS_KEYGEN).updateOne(
+      { id },
+      {
+        $set: {
+          sharedPublicKey: publicKey
+        }
+      },
+      { upsert: false }
+    );
+  }
+
+  async storeTssKeyShare({ id, partyId, encryptedKeyChain }: { id: string; partyId: number; encryptedKeyChain: string }) {
+    return this.db.collection(collections.TSS_KEYGEN).updateOne(
+      { id },
+      {
+        $set: {
+          [`keyShares.${partyId}`]: encryptedKeyChain
+        }
+      },
+      { upsert: false }
+    );
+  }
+
+  /**
+   * Use only for legacy (< v1.3) clients, where bwsJoinSecrets was not available.
+   * @deprecated Use storeTssKeyBwsJoinSecrets instead.
+   */
+  async storeTssKeyBwsJoinSecret({ id, secret }: { id: string; secret: string }) {
+    return this.db.collection(collections.TSS_KEYGEN).updateOne({
+      id
+    },
+    {
+      $set: {
+        bwsJoinSecret: secret
+      }
+    },
+    { upsert: false });
+  }
+
+  async storeTssKeyBwsJoinSecrets(params: { id: string; chain: string; network: string; secrets: { [partyId: number]: string } }) {
+    const { id, chain, network, secrets } = params;
+    const _chain = chain.toLowerCase();
+    const _network = network.toLowerCase();
+    return this.db.collection(collections.TSS_KEYGEN).updateOne({
+      id
+    },
+    {
+      $set: {
+        [`bwsJoinSecrets.${_chain}:${_network}`]: secrets
+      }
+    },
+    { upsert: false });
+  }
+
+  async fetchTssSigSession({ id }: { id: string }) {
+    const doc = await this.db.collection(collections.TSS_SIGN).findOne({ id });
+    if (!doc) {
+      return null;
+    }
+    return TssSigGenModel.fromObj(doc as any);
+  }
+
+  async storeTssSigSession({ doc }: { doc: TssSigGenModel }) {
+    return this.db.collection(collections.TSS_SIGN).insertOne(doc);
+  }
+
+  async storeTssSigParticipant({ id, partyId, copayerId, __v }: { id: string; partyId: number; copayerId: string; __v: number }) {
+    const result = await this.db.collection(collections.TSS_SIGN).updateOne(
+      { id, __v },
+      {
+        $push: {
+          participants: {
+            partyId,
+            copayerId
+          }
+        }
+      },
+      { upsert: false }
+    );
+    if (!result.matchedCount) {
+      if ((await this.db.collection(collections.TSS_SIGN).countDocuments({ id })) === 0) {
+        throw new Error('MONGO_DOC_NOT_FOUND: No document found for id ' + id);
+      }
+      throw new Error('MONGO_DOC_OUTDATED: No document found for version ' + __v);
+    }
+    return result;
+  }
+
+  async storeTssSigMessage({ id, message, __v }: { id: string; message: ITssSigMessageObject; __v: number }) {
+    const result = await this.db.collection(collections.TSS_SIGN).updateOne(
+      { id, __v },
+      {
+        $push: {
+          [`rounds.${message.round}`]: {
+            fromPartyId: message.partyId,
+            messages: message
+          }
+        },
+        $inc: {
+          __v: 1
+        }
+      },
+      { upsert: false }
+    );
+    if (!result.matchedCount) {
+      if ((await this.db.collection(collections.TSS_SIGN).countDocuments({ id })) === 0) {
+        throw new Error('MONGO_DOC_NOT_FOUND: No document found for id ' + id);
+      }
+      throw new Error('MONGO_DOC_OUTDATED: No document found for version ' + __v);
+    }
+    return result;
+  }
+
+  async storeTssSignature({ id, signature }: { id: string; signature: ITssSigMessageObject['signature'] }) {
+    return this.db.collection(collections.TSS_SIGN).updateOne(
+      { id, $or: [{ signature: null }, { signature: { $exists: false } }] },
+      {
+        $set: {
+          signature
+        }
+      },
+      { upsert: false }
+    );
+  }
+
+  async removeTssSigSession({ id }: { id: string }) {
+    return this.db.collection(collections.TSS_SIGN).deleteOne({ id }, { writeConcern: { w: 1 } });
+  }
+
 }

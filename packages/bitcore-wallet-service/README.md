@@ -1,6 +1,6 @@
 # Bitcore Wallet Service
 
-[![NPM Package](https://img.shields.io/npm/v/bitcore-wallet-service.svg?style=flat-square)](https://www.npmjs.org/package/bitcore-wallet-service)
+[![NPM Package](https://img.shields.io/npm/v/@bcpros/bitcore-wallet-service.svg?style=flat-square)](https://www.npmjs.org/package/@bcpros/bitcore-wallet-service)
 [![Build Status](https://img.shields.io/travis/bitpay/bitcore-wallet-service.svg?branch=master&style=flat-square)](https://travis-ci.org/bitpay/bitcore-wallet-service)
 [![Coverage Status](https://coveralls.io/repos/bitpay/bitcore-wallet-service/badge.svg?branch=master)](https://coveralls.io/r/bitpay/bitcore-wallet-service?branch=master)
 
@@ -12,7 +12,7 @@ Bitcore Wallet Service facilitates multisig HD wallets creation and operation th
 
 BWS can usually be installed within minutes and accommodates all the needed infrastructure for peers in a multisig wallet to communicate and operate – with minimum server trust.
 
-See [bitcore-wallet-client](https://github.com/bitpay/bitcore/tree/master/packages/bitcore-wallet-client) for the _official_ client library that communicates to BWS and verifies its response. Also check [bitcore-wallet](https://github.com/bitpay/bitcore/tree/master/packages/bitcore-wallet) for a simple CLI wallet implementation that relies on BWS.
+See [bitcore-wallet-client](https://github.com/bitpay/bitcore/tree/master/packages/bitcore-wallet-client) for the _official_ client library that communicates to BWS and verifies its response. Also check [bitcore-cli](https://github.com/bitpay/bitcore/tree/master/packages/bitcore-cli) for a simple CLI wallet implementation that relies on BWS.
 
 BWS is been used in production enviroments for [Copay Wallet](https://copay.io), [Bitpay App wallet](https://bitpay.com/wallet) and others.
 
@@ -20,28 +20,26 @@ More about BWS at https://blog.bitpay.com/announcing-the-bitcore-wallet-suite/
 
 ## Getting Started
 
+BWS is developed as part of the Bitcore monorepo. Clone the repo and install
+from the root — this installs and links every backend package (including
+this one) and compiles it automatically; see the root
+[SETUP.md](../../SETUP.md) for the exact Node/npm versions and
+other monorepo development commands.
+
 ```sh
- git clone https://github.com/bitpay/bitcore-wallet-service.git
- cd bitcore-wallet-service
- npm install
- npm start
+git clone https://github.com/bitpay/bitcore.git
+cd bitcore
+npm ci
+npm run bws
 ```
 
 This will launch the BWS service (with default settings) at `http://localhost:3232/bws/api`.
 
-BWS needs mongoDB. You can configure the connection at `config.js`
+BWS needs mongoDB. You can configure the connection inside the "bitcoreWalletService" section of your `bitcore.config.json`. See the Configuration section of [Installation.md](https://github.com/bitpay/bitcore/tree/master/packages/bitcore-wallet-service/Installation.md#Configuration).
 
-BWS supports SSL and Clustering. For a detailed guide on installing BWS with extra features see [Installing BWS](https://github.com/bitpay/bitcore/blob/master/packages/bitcore-wallet-service/installation.md).
 
 BWS uses by default a Request Rate Limitation to CreateWallet endpoint. If you need to modify it, check defaults.js' `Defaults.RateLimit`
 
-## Using BWS with PM2
-
-BWS can be used with PM2 with the provided `app.js` script:
-
-```sh
-  pm2 start app.js --name "bitcoin-wallet-service"
-```
 
 ## Security Considerations
 
@@ -82,7 +80,7 @@ Tx proposal need to be:
 3.  Then signed via /v?/txproposal/:id/signature for each copayer
 4.  Then broadcasted to the p2p network via /v?/txproposal/:id/broadcast
 
-The are plenty example creating and sending proposals in the `/test/integration` code.
+There are plenty examples of creating and sending proposals in the `/test/integration` code.
 
 ## Enabling Regtest Mode for BWS and Copay
 
@@ -94,18 +92,22 @@ The are plenty example creating and sending proposals in the `/test/integration`
 - copay running on port: 8100
 - bitcoin-core running on regtest mode (blue icon logo)
 
-> mongo topology crashes sometimes due to notifications being incompatible in a web browser
-> **bitcore-wallet-service/lib/notificationbroadcaster.js**
-> Note: If testing on a PC browser, comment out notificationbroadcaster.js to disable notifications.
 
 ### Steps:
 
 **bitcore.config.json**
 
-1.  Add regtest to bitcore.config.json.
+1.  Add a regtest configuration to the bitcoreNode section of your `bitcore.config.json`.
 
-```
-"regtest": {
+Example:
+```json
+// bitcore.config.json
+{
+  "bitcoreNode": {
+    "chains": {
+      "BTC": {
+        // add me:
+        "regtest": {
           "chainSource": "p2p",
           "trustedPeers": [
             {
@@ -120,25 +122,28 @@ The are plenty example creating and sending proposals in the `/test/integration`
             "password": "local321"
           }
         }
-```
-
-**bitcore-wallet-service/config.js**
-
-2. Point testnet to http://localhost:3000 in BWS/config.js and set regtestEnabled to true.
-
-```
-blockchainExplorerOpts: {
-    btc: {
-      livenet: {
-        url: 'https://api.bitcore.io'
-      },
-      testnet: {
-        // set url to http://localhost:3000 here
-        url: 'http://localhost:3000',
-        // set regtestEnabled to true here
-        regtestEnabled: true
       }
-    },
+    }
+  }
+}
+```
+
+2. Point regtest to http://localhost:3000 in the bitcoreWalletService.blockchainExplorerOpts section and set allowRegtest to true.
+
+```json
+// bitcore.config.json
+{
+  "bitcoreWalletService": {
+    "allowRegtest": true,
+    "blockchainExplorerOpts": {
+      "btc": {
+        "livenet": {
+          "url": "https://api.bitcore.io"
+        },
+        "regtest": {
+          "url": "http://localhost:3000",
+        }
+      },
 ...
 ```
 
@@ -229,6 +234,7 @@ Optional Arguments:
 
 - skip: Records to skip from the result (defaults to 0)
 - limit: Total number of records to return (return all available records if not specified).
+- reverse: Return oldest transactions first.
 
 Returns:
 
@@ -418,7 +424,7 @@ Recomended to complete config.js file:
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/bitpay/bitcore/blob/master/Contributing.md) on the main bitcore repo for information about how to contribute.
+See [CONTRIBUTING.md](https://github.com/bitpay/bitcore/blob/master/CONTRIBUTING.md) on the main bitcore repo for information about how to contribute.
 
 ## License
 

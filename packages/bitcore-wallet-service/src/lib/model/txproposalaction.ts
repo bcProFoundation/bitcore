@@ -6,6 +6,9 @@ export interface ITxProposalAction {
   signatures: string[];
   xpub: string;
   comment: string;
+
+  // Non-persistent fields
+  copayerName?: string;
 }
 export class TxProposalAction {
   version: string;
@@ -16,10 +19,13 @@ export class TxProposalAction {
   xpub: string;
   comment: string;
 
+  // Non-persistent fields
+  copayerName?: string;
+
   static create(opts) {
     opts = opts || {};
 
-    let x = new TxProposalAction();
+    const x = new TxProposalAction();
 
     x.version = '1.0.0';
     x.createdOn = Math.floor(Date.now() / 1000);
@@ -33,7 +39,7 @@ export class TxProposalAction {
   }
 
   static fromObj(obj) {
-    let x = new TxProposalAction();
+    const x = new TxProposalAction();
 
     x.version = obj.version;
     x.createdOn = obj.createdOn;
@@ -42,6 +48,9 @@ export class TxProposalAction {
     x.signatures = obj.signatures;
     x.xpub = obj.xpub;
     x.comment = obj.comment;
+
+    // copayerName is not stored in the actions collection, but it is returned by the server on fetchTxProposal, so we need to set it here.
+    x.copayerName = obj.copayerName; 
 
     return x;
   }

@@ -4,37 +4,45 @@ import { ICoin } from '../../models/coin';
 import { ITransaction } from '../../models/transaction';
 import { ChainStateProvider } from '../../providers/chain-state';
 import { StreamTransactionsParams } from '../../types/namespaces/ChainStateProvider';
-import { SetCache } from '../middleware';
-import { CacheTimes } from '../middleware';
+import { logStreamFailure, respondWithError, streamJsonArray } from '../apiUtils';
+import { CacheTimes, SetCache } from '../middleware';
 
 const router = Router({ mergeParams: true });
 
-router.get('/', function(req: Request, res: Response) {
-  let { chain, network } = req.params;
-  let { blockHeight, blockHash, limit, since, direction, paging } = req.query as any;
-  if (!chain || !network) {
-    return res.status(400).send('Missing required param');
-  }
-  if (!blockHash && !blockHeight) {
-    return res.status(400).send('Must provide blockHash or blockHeight');
-  }
-  chain = chain.toUpperCase();
-  network = network.toLowerCase();
-  let payload: StreamTransactionsParams = {
-    chain,
-    network,
-    req,
-    res,
-    args: { limit, since, direction, paging }
-  };
+router.get('/', async function(req: Request, res: Response) {
+  try {
+    let { chain, network } = req.params;
+    const { blockHeight, blockHash, limit, since, direction, paging } = req.query as any;
+    if (!chain || !network) {
+      return res.status(400).send('Missing required param');
+    }
+    if (!blockHash && !blockHeight) {
+      return res.status(400).send('Must provide blockHash or blockHeight');
+    }
+    chain = chain.toUpperCase();
+    network = network.toLowerCase();
+    const payload: StreamTransactionsParams = {
+      chain,
+      network,
+      args: { limit, since, direction, paging }
+    };
 
-  if (blockHeight !== undefined) {
-    payload.args.blockHeight = parseInt(blockHeight);
+    if (blockHeight !== undefined) {
+      payload.args.blockHeight = parseInt(blockHeight);
+    }
+    if (blockHash !== undefined) {
+      payload.args.blockHash = blockHash;
+    }
+    const stream = await ChainStateProvider.streamTransactions(payload);
+    const result = await streamJsonArray(stream, req, res);
+    if (!result.success) {
+      logStreamFailure(result, 'streamTransactions');
+    }
+    return;
+  } catch (err: any) {
+    logger.error('Error streaming transactions: %o', err.stack || err.message || err);
+    return respondWithError(res, err);
   }
-  if (blockHash !== undefined) {
-    payload.args.blockHash = blockHash;
-  }
-  return ChainStateProvider.streamTransactions(payload);
 });
 
 router.get('/:txId', async (req: Request, res: Response) => {
@@ -55,34 +63,30 @@ router.get('/:txId', async (req: Request, res: Response) => {
       return res.status(404).send(`The requested txid ${txId} could not be found.`);
     } else {
       const tip = await ChainStateProvider.getLocalTip({ chain, network });
-      if (tx && tip && tx.blockHeight > 0 && tip.height - tx.blockHeight > 100) {
+      if (tx && tip && tx.blockHeight > -1 && tip.height - tx.blockHeight > 100) {
         SetCache(res, CacheTimes.Month);
       }
       return res.send(tx);
     }
   } catch (err: any) {
     logger.error('Error getting transaction: %o', err.stack || err.message || err);
-    return res.status(500).send(err.message || err);
+    return respondWithError(res, err);
   }
 });
 
 // Get transaction with input and outputs, assigned to key coins
 router.get('/:txId/populated', async (req: Request, res: Response) => {
-  let { chain, network, txId } = req.params;
-  let txid = txId;
+  const { chain, network, txId } = req.params;
+  const txid = txId;
   if (typeof txid !== 'string' || !chain || !network) {
     return res.status(400).send('Missing required param');
   }
 
   try {
-    let tx: ITransaction & { blockHeight: number; coins?: Array<ICoin> };
-    let coins: any;
-    let tip: any;
-
-    [tx, coins, tip] = await Promise.all([
-      ChainStateProvider.getTransaction({ chain, network, txId }),
-      ChainStateProvider.getCoinsForTx({ chain, network, txid }),
-      ChainStateProvider.getLocalTip({ chain, network })
+    const [tx, coins, tip] = await Promise.all([
+      ChainStateProvider.getTransaction({ chain, network, txId }) as Promise<ITransaction & { blockHeight: number; coins?: Array<ICoin> }>,
+      ChainStateProvider.getCoinsForTx({ chain, network, txid }) as any, // must cast as any so tx.coins can be set to coins
+      ChainStateProvider.getLocalTip({ chain, network }) as any
     ]);
 
     if (!tx) {
@@ -100,12 +104,14 @@ router.get('/:txId/populated', async (req: Request, res: Response) => {
     }
   } catch (err: any) {
     logger.error('Error getting populated transaction: %o', err.stack || err.message || err);
-    return res.status(500).send(err.message || err);
+    return respondWithError(res, err);
   }
 });
 
 router.get('/:txId/authhead', async (req: Request, res: Response) => {
-  let { chain, network, txId } = req.params;
+  let { chain, network } = req.params;
+  const { txId } = req.params;
+
   if (typeof txId !== 'string' || !chain || !network) {
     return res.status(400).send('Missing required param');
   }
@@ -120,12 +126,13 @@ router.get('/:txId/authhead', async (req: Request, res: Response) => {
     }
   } catch (err: any) {
     logger.error('Error getting transaction authhead: %o', err.stack || err.message || err);
-    return res.status(500).send(err.message || err);
+    return respondWithError(res, err);
   }
 });
 
 router.get('/:txid/coins', (req: Request, res: Response, next) => {
-  let { chain, network, txid } = req.params;
+  let { chain, network } = req.params;
+  const { txid } = req.params;
   if (typeof txid !== 'string' || typeof chain !== 'string' || typeof network !== 'string') {
     res.status(400).send('Missing required param');
   } else {
@@ -142,7 +149,7 @@ router.get('/:txid/coins', (req: Request, res: Response, next) => {
 
 router.post('/send', async function(req: Request, res: Response) {
   let { chain, network } = req.params;
-  let { rawTx } = req.body;
+  const { rawTx } = req.body;
   try {
     if (typeof rawTx !== 'string' && !Array.isArray(rawTx)) {
       return res.status(400).send('Invalid rawTx');
@@ -152,7 +159,7 @@ router.post('/send', async function(req: Request, res: Response) {
     }
     chain = chain.toUpperCase();
     network = network.toLowerCase();
-    let txid = await ChainStateProvider.broadcastTransaction({
+    const txid = await ChainStateProvider.broadcastTransaction({
       chain,
       network,
       rawTx
@@ -160,11 +167,11 @@ router.post('/send', async function(req: Request, res: Response) {
     return res.send({ txid });
   } catch (err: any) {
     logger.error('Broadcast error: %o %o %o %o', chain, network, rawTx, err.stack || err.message || err);
-    return res.status(500).send(err.message);
+    return respondWithError(res, err);
   }
 });
 
-module.exports = {
+export const txRoute = {
   router,
   path: '/tx'
 };

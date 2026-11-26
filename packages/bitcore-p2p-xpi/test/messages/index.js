@@ -166,15 +166,29 @@ describe('Messages', function() {
   });
 
   describe('#parseBuffer', function() {
-    it('fails with invalid command', function() {
-      var invalidCommand = 'ece7eff36d616c6963696f757300000025000000bd5e830c' +
+    it('skips unknown commands', function() {
+      var unknownCommand = 'ece7eff36d616c6963696f757300000025000000bd5e830c' +
         '0102000000ec3995c1bf7269ff728818a65e53af00cbbee6b6eca8ac9ce7bc79d87' +
         '7041ed8';
-      var fails = function() {
-        var bufs = buildMessage(invalidCommand);
-        messages.parseBuffer(bufs);
-      };
-      fails.should.throw('Unsupported message command: malicious');
+      var bufs = buildMessage(unknownCommand);
+      should.not.exist(messages.parseBuffer(bufs));
+      bufs.length.should.equal(0);
+    });
+
+    it('returns the next known message after an unknown command', function() {
+      var unknownCommand = 'ece7eff36d616c6963696f757300000025000000bd5e830c' +
+        '0102000000ec3995c1bf7269ff728818a65e53af00cbbee6b6eca8ac9ce7bc79d87' +
+        '7041ed8';
+      var bufs = buildMessage(unknownCommand + messages.VerAck().toBuffer().toString('hex'));
+      var message = messages.parseBuffer(bufs);
+      should.exist(message);
+      message.command.should.equal('verack');
+    });
+
+    it('still refuses to build an unknown command directly', function() {
+      (function() {
+        messages._buildFromBuffer('malicious', Buffer.alloc(0));
+      }).should.throw('Unsupported message command: malicious');
     });
 
     it('ignores malformed messages', function() {

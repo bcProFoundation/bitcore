@@ -1,14 +1,13 @@
+import { BitcoreLib as bitcoreLib } from '@bcpros/crypto-wallet-core';
 import { Request, Response } from 'express';
 import { RequestHandler } from 'express-serve-static-core';
+import secp256k1 from 'secp256k1';
 import logger from '../logger';
 import { MongoBound } from '../models/base';
 import { IWallet } from '../models/wallet';
 import { ChainStateProvider } from '../providers/chain-state';
 import { Config } from '../services/config';
 import { ChainNetwork } from '../types/ChainNetwork';
-
-const secp256k1 = require('secp256k1');
-const bitcoreLib = require('@bcpros/bitcore-lib');
 
 export interface VerificationPayload {
   message: string;
@@ -22,7 +21,6 @@ export function verifyRequestSignature(params: VerificationPayload): boolean {
   const pub = new bitcoreLib.PublicKey(pubKey).toBuffer();
   const messageHash = bitcoreLib.crypto.Hash.sha256sha256(Buffer.from(message));
   if (typeof signature === 'string') {
-    // TODO we should use bitcoreLib.crypto.ECDSA.verify() instead of external dependency.
     return secp256k1.ecdsaVerify(Buffer.from(signature, 'hex'), messageHash, pub);
   } else {
     throw new Error('Signature must exist');
@@ -43,7 +41,7 @@ const authenticateMiddleware: RequestHandler = async (req: Request, res: Respons
   let wallet;
   try {
     wallet = await ChainStateProvider.getWallet({ chain, network, pubKey });
-  } catch (err) {
+  } catch {
     return res.status(500).send('Problem authenticating wallet');
   }
   try {

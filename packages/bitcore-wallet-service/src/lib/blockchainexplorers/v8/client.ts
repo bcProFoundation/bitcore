@@ -1,12 +1,12 @@
+import { URL } from 'url';
+import { BitcoreLib } from '@bcpros/crypto-wallet-core';
 import * as requestStream from 'request';
 import * as request from 'request-promise-native';
-import { URL } from 'url';
+import secp256k1 from 'secp256k1';
 import logger from '../../logger';
 import axios from 'axios';
 import { Readable } from 'stream';
 
-const bitcoreLib = require('@bcpros/bitcore-lib');
-const secp256k1 = require('secp256k1');
 export class Client {
   authKey: { bn: { toBuffer: (arg) => Buffer } };
   baseUrl: string;
@@ -24,7 +24,7 @@ export class Client {
   sign(params: { method: string; url: string; payload?: any }) {
     const message = this.getMessage(params);
     const privateKey = this.authKey.bn.toBuffer({ size: 32 });
-    const messageHash = bitcoreLib.crypto.Hash.sha256sha256(Buffer.from(message));
+    const messageHash = BitcoreLib.crypto.Hash.sha256sha256(Buffer.from(message));
     return Buffer.from(secp256k1.ecdsaSign(messageHash, privateKey).signature).toString('hex');
   }
 
@@ -69,6 +69,20 @@ export class Client {
     });
   }
 
+  async getBalanceAtTime(params) {
+    const { payload, pubKey, time, tokenAddress } = params;
+    let url = `${this.baseUrl}/wallet/${pubKey}/balance/${encodeURIComponent(time)}`;
+    if (tokenAddress) {
+      url += `?tokenAddress=${encodeURIComponent(tokenAddress)}`;
+    }
+    const signature = this.sign({ method: 'GET', url, payload });
+    return request.get(url, {
+      headers: { 'x-signature': signature },
+      body: payload,
+      json: true
+    });
+  }
+
   async getCheckData(params) {
     const { payload, pubKey } = params;
     const url = `${this.baseUrl}/wallet/${pubKey}/check`;
@@ -107,7 +121,7 @@ export class Client {
   async getCoins(params) {
     const { payload, pubKey, includeSpent } = params;
 
-    var extra = '';
+    let extra = '';
     if (includeSpent) {
       extra = `?includeSpent=${includeSpent}`;
     }
@@ -134,9 +148,7 @@ export class Client {
     const {
       pubKey,
       startBlock,
-      startDate,
       endBlock,
-      endDate,
       includeMempool,
       tokenAddress,
       multisigContractAddress

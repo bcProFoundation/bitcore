@@ -9,21 +9,23 @@ const providers = {
   BTC: new BTCTxProvider(),
   BCH: new BCHTxProvider(),
   DOGE: new DOGETxProvider(),
+  LTC: new LTCTxProvider(),
   XEC: new XECTxProvider(),
   XPI: new XPITxProvider(),
-  LTC: new LTCTxProvider()
 };
 
 export class TransactionsProxy {
   get({ chain }) {
-    return providers[chain];
+    const normalizedChain = chain.toUpperCase();
+    return providers[normalizedChain];
   }
 
   create(params) {
     return this.get(params).create(params);
   }
 
-  sign(params): string {
+  // SOL's sign() is async, all others are synchronous
+  sign(params): string | Promise<string> {
     return this.get(params).sign(params);
   }
 
@@ -37,6 +39,14 @@ export class TransactionsProxy {
 
   getHash(params) {
     return this.get(params).getHash(params);
+  }
+
+  transformSignatureObject(params) {
+    return this.get(params).transformSignatureObject(params);
+  }
+
+  getSighash(params): string {
+    return this.get(params).getSighash(params);
   }
 }
 
